@@ -115,6 +115,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       },
     });
 
+    // @ts-ignore - Vercel Edge TS compiler occasionally misses getSession on SupabaseAuthClient
     const { data } = await supabase.auth.getSession();
     hasSession = data.session !== null;
   } catch {
