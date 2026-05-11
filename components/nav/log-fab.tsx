@@ -61,7 +61,8 @@ export function LogFAB({ variant = 'food', disabled = false, onClick }: LogFABPr
         style={{
           width: '56px',
           height: '56px',
-          borderRadius: '0px',
+          borderRadius: 'var(--radius-pill)',
+          boxShadow: 'var(--shadow-float)',
           backgroundColor: 'var(--color-bg-1)',
           borderWidth: '1px',
           borderStyle: 'solid',
@@ -108,7 +109,8 @@ export function LogFAB({ variant = 'food', disabled = false, onClick }: LogFABPr
       style={{
         width: '56px',
         height: '56px',
-        borderRadius: '0px',
+        borderRadius: 'var(--radius-pill)',
+        boxShadow: 'var(--shadow-float)',
         backgroundColor: 'var(--color-oxblood)',
         borderWidth: '1px',
         borderStyle: 'solid',

@@ -63,7 +63,7 @@ function isPublicRoute(pathname: string): boolean {
   return false;
 }
 
-export async function middleware(request: NextRequest): Promise<NextResponse> {
+export default async function proxy(request: NextRequest): Promise<NextResponse> {
   const response = NextResponse.next();
   const pathname = request.nextUrl.pathname;
   const isPublic = isPublicRoute(pathname);
@@ -115,7 +115,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       },
     });
 
-    // @ts-ignore - Vercel Edge TS compiler occasionally misses getSession on SupabaseAuthClient
+    // @ts-expect-error - Vercel Edge TS compiler occasionally misses getSession on SupabaseAuthClient
     const { data } = await supabase.auth.getSession();
     hasSession = data.session !== null;
   } catch {

@@ -133,7 +133,6 @@ export function PWAInstallPrompt({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay
-          className="radix-overlay"
           data-testid="pwa-install-overlay"
           style={{
             position: 'fixed',
@@ -145,7 +144,6 @@ export function PWAInstallPrompt({
           }}
         />
         <Dialog.Content
-          className="radix-content"
           data-testid="pwa-install-prompt"
           data-platform={platform}
           data-reduced-motion={isReducedMotion ? 'true' : 'false'}
@@ -168,7 +166,7 @@ export function PWAInstallPrompt({
             borderRight: '1px solid var(--color-rule-strong)',
             borderBottom: '1px solid var(--color-rule-strong)',
             // Zero radius, no shadow per Ledger.
-            borderRadius: 0,
+            borderRadius: 'var(--radius-modal)',
             boxShadow: 'none',
             padding: '32px',
             color: 'var(--color-ivory)',
@@ -232,7 +230,7 @@ export function PWAInstallPrompt({
             }}
           >
             {showIosVariant ? (
-              <button className="btn-3d" type="button" autoFocus onClick={handleDismiss} style={primaryCtaStyle}>
+              <button type="button" autoFocus onClick={handleDismiss} style={primaryCtaStyle}>
                 {t.pwa.install.ctaGotIt}
               </button>
             ) : (
@@ -241,7 +239,6 @@ export function PWAInstallPrompt({
                   {t.pwa.install.ctaNotNow}
                 </button>
                 <button
-                  className="btn-3d"
                   type="button"
                   autoFocus
                   disabled={!canInstall}
@@ -336,7 +333,7 @@ const primaryCtaStyle: React.CSSProperties = {
   height: '44px',
   padding: '0 20px',
   cursor: 'pointer',
-  borderRadius: 0,
+  borderRadius: 'var(--radius-modal)',
 };
 
 const ghostCtaStyle: React.CSSProperties = {
@@ -351,7 +348,7 @@ const ghostCtaStyle: React.CSSProperties = {
   height: '44px',
   padding: '0 20px',
   cursor: 'pointer',
-  borderRadius: 0,
+  borderRadius: 'var(--radius-modal)',
 };
 
 export default PWAInstallPrompt;

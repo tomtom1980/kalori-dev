@@ -17,7 +17,7 @@ export function WeeklyReviewSkeleton() {
         background: 'var(--color-bg-1)',
         padding: 'var(--spacing-12) var(--spacing-8)',
         minHeight: 560,
-        borderRadius: 0,
+        borderRadius: 'var(--radius-card)',
       }}
     >
       <div

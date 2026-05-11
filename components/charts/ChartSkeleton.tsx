@@ -30,8 +30,8 @@ export function ChartSkeleton({ kind, fullWidth }: ChartSkeletonProps) {
     background: 'var(--color-bg-1)',
     padding: 'var(--spacing-6)',
     minHeight,
-    borderRadius: 0,
-    boxShadow: 'none',
+    borderRadius: 'var(--radius-card)',
+    boxShadow: 'var(--shadow-float)',
   };
   return (
     <section

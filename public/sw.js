@@ -1,4 +1,4 @@
-// Kalori service worker — build dev — generated 2026-05-11T05:25:02.937Z
+// Kalori service worker — build dev — generated 2026-05-11T17:44:22.597Z
 var g = {
     googleAnalytics: 'googleAnalytics',
     precache: 'precache-v2',

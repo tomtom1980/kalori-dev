@@ -41,8 +41,8 @@ export function ChartCard(props: ChartCardProps) {
         border: '1px solid var(--color-rule-strong)',
         background: 'var(--color-bg-1)',
         padding: pad,
-        borderRadius: 0,
-        boxShadow: 'none',
+        borderRadius: 'var(--radius-card)',
+        boxShadow: 'var(--shadow-float)',
         // Phase 7 regression fix (REG-1/REG-3): chart-card must allow
         // horizontal shrink when its grid track is narrower than its
         // intrinsic min-content (heatmap table, lcc fixed grid). Inner

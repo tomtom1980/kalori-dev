@@ -1,7 +1,5 @@
 import bundleAnalyzer from '@next/bundle-analyzer';
 import type { NextConfig } from 'next';
-import { withSentryConfig } from '@sentry/nextjs';
-
 // Task 4.1 Phase 3 fix: `pnpm build:analyze` (ANALYZE=true) renders the
 // webpack bundle visualizer so future per-route budget regressions get
 // caught quickly. Runs only when `ANALYZE=true`; no effect on default
@@ -55,9 +53,6 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [64, 96, 128, 160, 220, 240, 256],
   },
-  turbopack: {
-    root: __dirname,
-  },
 };
 
 // Task 5.1.2: PWA service worker. Next 16 + Turbopack do not yet support the
@@ -77,6 +72,7 @@ const sentryOptions = {
     disable: !process.env.SENTRY_AUTH_TOKEN,
   },
   authToken: process.env.SENTRY_AUTH_TOKEN ?? '',
+  autoInstrumentMiddleware: false,
 };
 
-export default withSentryConfig(withBundleAnalyzer(nextConfig), sentryOptions);
+export default withBundleAnalyzer(nextConfig);

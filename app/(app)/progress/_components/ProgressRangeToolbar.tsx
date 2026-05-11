@@ -161,7 +161,7 @@ export function ProgressRangeToolbar({ active, windowLabel }: ProgressRangeToolb
                 border: `1px solid ${isActive ? 'var(--color-ivory)' : 'var(--color-rule)'}`,
                 background: isActive ? 'var(--color-ivory)' : 'transparent',
                 color: isActive ? 'var(--color-bg-0)' : 'var(--color-sand)',
-                borderRadius: 0,
+                borderRadius: 'var(--radius-input)',
                 transition:
                   'background-color 120ms ease, color 120ms ease, border-color 120ms ease',
               }}

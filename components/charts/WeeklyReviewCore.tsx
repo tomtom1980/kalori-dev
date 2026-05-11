@@ -94,7 +94,7 @@ function FullReview(props: {
         borderLeft: isFull
           ? '1px solid var(--color-rule-strong)'
           : '2px solid var(--color-oxblood)',
-        borderRadius: 0,
+        borderRadius: 'var(--radius-card)',
         gridColumn: isFull ? '1 / -1' : undefined,
       }}
     >
@@ -168,7 +168,6 @@ function FullReview(props: {
                 float: 'left',
                 marginRight: 8,
                 marginTop: 4,
-                borderRadius: 0,
               }}
             >
               {firstChar}
@@ -256,7 +255,7 @@ function SparseState(props: {
         borderLeft: isFull
           ? '1px solid var(--color-rule-strong)'
           : '2px solid var(--color-oxblood)',
-        borderRadius: 0,
+        borderRadius: 'var(--radius-card)',
         gridColumn: isFull ? '1 / -1' : undefined,
       }}
     >

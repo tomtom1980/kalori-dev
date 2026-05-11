@@ -112,8 +112,8 @@ async function invoke(url: string, authed: boolean): Promise<MiddlewareResponse>
   } else {
     mocks.getSession.mockResolvedValue({ data: { session: null }, error: null });
   }
-  const { middleware } = await import('../../../middleware');
-  const res = (await middleware(req as never)) as unknown as MiddlewareResponse;
+  const { default: proxy } = await import('../../../proxy');
+  const res = (await proxy(req as never)) as unknown as MiddlewareResponse;
   return res;
 }
 
@@ -233,9 +233,9 @@ describe('I6 — middleware redirect contract (Task 2.1c)', () => {
 
   // ── Matcher contract ───────────────────────────────────────────────────
   it('exports a matcher that ignores Next internal + static assets', async () => {
-    const middlewareModule = await import('../../../middleware');
-    expect(middlewareModule.config).toBeDefined();
-    const matcher = middlewareModule.config.matcher;
+    const proxyModule = await import('../../../proxy');
+    expect(proxyModule.config).toBeDefined();
+    const matcher = proxyModule.config.matcher;
     const asArray = Array.isArray(matcher) ? matcher : [matcher];
     expect(asArray.join(' ')).toMatch(/_next\/static|_next\/image|favicon/);
   });

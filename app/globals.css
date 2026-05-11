@@ -151,18 +151,12 @@
     monospace
   );
 
-  /* Modern rounded aesthetic & depth */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-full: 9999px;
-  --radius: var(--radius-md);
-
-  /* Deep shadows for 3D feel in dark mode */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.8), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.9), 0 10px 10px -5px rgba(0, 0, 0, 0.6);
+  /* Modern web app radius and shadow tokens */
+  --radius-card: 16px;
+  --radius-input: 12px;
+  --radius-pill: 999px;
+  --radius-modal: 24px;
+  --shadow-float: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 :root {
@@ -218,12 +212,10 @@
 html,
 body {
   background-color: var(--color-bg-0);
-  background-image: radial-gradient(circle at 50% 0%, var(--color-bg-1) 0%, transparent 70%);
   color: var(--color-ivory);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  scroll-behavior: smooth;
 }
 
 /* Lining + tabular nums for every numeric display surface. */
@@ -4190,141 +4182,4 @@ html[data-offline='true'] body {
      ivory (already AAA on bg-0) — no contrast regression. */
   border-top-color: var(--color-oxblood-soft, var(--color-oxblood));
   border-bottom-color: var(--color-oxblood-soft, var(--color-oxblood));
-}
-
-/* =====================================================================
- * UI Aesthetic Overhaul: Radix Modal Animations & Modals
- * ===================================================================== */
-
-@keyframes radix-dialog-content-show {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -48%) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-@keyframes radix-dialog-content-hide {
-  from {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translate(-50%, -48%) scale(0.96);
-  }
-}
-
-@keyframes radix-dialog-overlay-show {
-  from {
-    opacity: 0;
-    backdrop-filter: blur(0px);
-  }
-  to {
-    opacity: 1;
-    backdrop-filter: blur(8px);
-  }
-}
-
-@keyframes radix-dialog-overlay-hide {
-  from {
-    opacity: 1;
-    backdrop-filter: blur(8px);
-  }
-  to {
-    opacity: 0;
-    backdrop-filter: blur(0px);
-  }
-}
-
-.radix-overlay[data-state='open'] {
-  animation: radix-dialog-overlay-show 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.radix-overlay[data-state='closed'] {
-  animation: radix-dialog-overlay-hide 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.radix-content[data-state='open'] {
-  animation: radix-dialog-content-show 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  border-radius: var(--radius-lg) !important;
-  box-shadow: var(--shadow-lg) !important;
-  border: 1px solid color-mix(in srgb, var(--color-ivory) 15%, transparent) !important;
-  position: relative;
-}
-
-.radix-content::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  opacity: 0.04;
-  z-index: 100;
-  border-radius: inherit;
-  mix-blend-mode: overlay;
-}
-
-.radix-content[data-state='closed'] {
-  animation: radix-dialog-content-hide 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* 3D Button Effects */
-.btn-3d {
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-  box-shadow: var(--shadow-sm) !important;
-  border-radius: var(--radius-md) !important;
-}
-
-.btn-3d:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: var(--shadow-md), 0 0 20px color-mix(in srgb, currentColor 20%, transparent) !important;
-}
-
-.btn-3d:active {
-  transform: translateY(1px) scale(0.98) !important;
-  box-shadow: none !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .btn-3d {
-    transition: none !important;
-  }
-  .btn-3d:hover, .btn-3d:active {
-    transform: none !important;
-  }
-}
-
-/* Premium Shimmer Effect */
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
-.skeleton-shimmer {
-  background: var(--color-bg-2);
-  background-image: linear-gradient(
-    to right,
-    var(--color-bg-2) 0%,
-    var(--color-bg-3) 20%,
-    var(--color-bg-2) 40%,
-    var(--color-bg-2) 100%
-  );
-  background-repeat: no-repeat;
-  background-size: 1000px 100%;
-  animation: shimmer 2s infinite linear forwards;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .skeleton-shimmer {
-    animation: none !important;
-    background-image: none !important;
-  }
 }

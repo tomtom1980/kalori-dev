@@ -42,6 +42,7 @@ import { TargetUpdatedNudgeWrapper } from '@/components/dashboard/TargetUpdatedN
 import { WaterTracker } from '@/components/dashboard/WaterTracker';
 import { WeeklyInsightCard } from '@/components/dashboard/WeeklyInsightCard';
 import { WeeklyInsightSkeleton } from '@/components/dashboard/WeeklyInsightSkeleton';
+import { FadeUpCard } from '@/components/motion/FadeUpCard';
 import { requireProfileOrRedirect } from '@/lib/auth/orphan-profile-fence';
 import { fetchDaySnapshot, fetchProfile } from '@/lib/dashboard/fetch';
 import { userTzNowIso, userTzToday } from '@/lib/time/day';
@@ -178,15 +179,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
          tablet/desktop (>=768px): two equal columns. Driven by
          `.kalori-dashboard-hero-row` in app/globals.css (Bug #1). */}
         <div className="kalori-dashboard-hero-row">
-          <div>
+          <FadeUpCard delay={0.05}>
             <ChronometerRing data={snapshot.chronometer} timezone={tz} />
-          </div>
-          <div>
+          </FadeUpCard>
+          <FadeUpCard delay={0.15}>
             <MacroBars macros={snapshot.macros} />
-          </div>
+          </FadeUpCard>
         </div>
 
-        <MealsBulletin meals={snapshot.meals} timezone={tz} viewedDay={viewedDay} />
+        <FadeUpCard delay={0.25}>
+          <MealsBulletin meals={snapshot.meals} timezone={tz} viewedDay={viewedDay} />
+        </FadeUpCard>
 
         <div className="kalori-dashboard-hero-row">
           {/*
@@ -196,21 +199,27 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           dashboard tab that crosses local midnight cannot durably write
           to yesterday's `logged_on`. Mirrors the C2 nav-shell pattern.
         */}
-          <WaterTracker
-            initial={{
-              consumedMl: snapshot.water.consumedMl,
-              targetMl: snapshot.water.targetMl,
-              entries: snapshot.water.entries,
-            }}
-            timezone={tz}
-            viewedDay={viewedDay}
-          />
-          <MicronutrientPanel rows={snapshot.micros} visibleCount={DESKTOP_MICRO_VISIBLE} />
+          <FadeUpCard delay={0.35}>
+            <WaterTracker
+              initial={{
+                consumedMl: snapshot.water.consumedMl,
+                targetMl: snapshot.water.targetMl,
+                entries: snapshot.water.entries,
+              }}
+              timezone={tz}
+              viewedDay={viewedDay}
+            />
+          </FadeUpCard>
+          <FadeUpCard delay={0.45}>
+            <MicronutrientPanel rows={snapshot.micros} visibleCount={DESKTOP_MICRO_VISIBLE} />
+          </FadeUpCard>
         </div>
 
-        <Suspense fallback={<WeeklyInsightSkeleton />}>
-          <WeeklyInsightCard userId={user.id} tz={tz} nowIso={now} />
-        </Suspense>
+        <FadeUpCard delay={0.55}>
+          <Suspense fallback={<WeeklyInsightSkeleton />}>
+            <WeeklyInsightCard userId={user.id} tz={tz} nowIso={now} />
+          </Suspense>
+        </FadeUpCard>
       </DashboardInteractionLock>
     </section>
   );

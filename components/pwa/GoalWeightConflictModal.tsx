@@ -210,7 +210,6 @@ export function GoalWeightConflictModalHost(): React.ReactElement | null {
     <AlertDialog.Root open={true}>
       <AlertDialog.Portal>
         <AlertDialog.Overlay
-          className="radix-overlay"
           data-testid="conflict-overlay"
           style={{
             position: 'fixed',
@@ -220,7 +219,6 @@ export function GoalWeightConflictModalHost(): React.ReactElement | null {
           }}
         />
         <AlertDialog.Content
-          className="radix-content"
           data-testid="goal-weight-conflict-modal"
           // Radix AlertDialog (unlike Dialog) intentionally omits the
           // `onPointerDownOutside` / `onInteractOutside` callbacks because
@@ -249,7 +247,7 @@ export function GoalWeightConflictModalHost(): React.ReactElement | null {
             width: 'min(440px, 92vw)',
             background: 'var(--color-bg-1)',
             border: '1px solid var(--color-rule-strong)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius-modal)',
             padding: '24px',
             zIndex: 61,
             color: 'var(--color-ivory)',
@@ -354,7 +352,7 @@ export function GoalWeightConflictModalHost(): React.ReactElement | null {
                   fontSize: '12px',
                   letterSpacing: '0.04em',
                   cursor: 'pointer',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius-input)',
                 }}
               >
                 {t.pwa.conflict.cancelButton}
@@ -362,7 +360,6 @@ export function GoalWeightConflictModalHost(): React.ReactElement | null {
             </AlertDialog.Cancel>
             <AlertDialog.Action asChild>
               <button
-                className="btn-3d"
                 type="button"
                 data-testid="conflict-use-current"
                 onClick={handleUseCurrent}
@@ -376,7 +373,7 @@ export function GoalWeightConflictModalHost(): React.ReactElement | null {
                   fontSize: '12px',
                   letterSpacing: '0.04em',
                   cursor: 'pointer',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius-input)',
                 }}
               >
                 {t.pwa.conflict.useCurrentButton}

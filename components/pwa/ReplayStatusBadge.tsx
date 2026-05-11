@@ -161,7 +161,7 @@ export function ReplayStatusBadge(): React.ReactElement | null {
           // clears WCAG 1.4.6 enhanced contrast.
           borderLeft: `1px solid ${copy.borderColor}`,
           borderRight: `1px solid ${copy.borderColor}`,
-          borderRadius: 0,
+          borderRadius: 'var(--radius-pill)',
           fontFamily: 'var(--font-jetbrains-mono)',
           fontSize: '10.5px',
           letterSpacing: '0.04em',

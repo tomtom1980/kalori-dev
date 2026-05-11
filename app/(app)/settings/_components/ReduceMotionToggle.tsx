@@ -201,7 +201,7 @@ export function ReduceMotionToggle(): React.ReactElement {
           width: '44px',
           minWidth: '44px',
           height: '24px',
-          borderRadius: 0,
+          borderRadius: 'var(--radius-pill)',
           background: effective ? 'var(--color-oxblood)' : 'transparent',
           border: '1px solid var(--color-rule-strong)',
           cursor: 'pointer',

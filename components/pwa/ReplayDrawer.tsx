@@ -155,7 +155,6 @@ export function ReplayDrawer({ open, onOpenChange }: ReplayDrawerProps): React.R
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay
-          className="radix-overlay"
           data-testid="replay-drawer-overlay"
           style={{
             position: 'fixed',
@@ -175,7 +174,7 @@ export function ReplayDrawer({ open, onOpenChange }: ReplayDrawerProps): React.R
             width: 'min(440px, 90vw)',
             background: 'var(--color-bg-1)',
             borderLeft: '1px solid var(--color-rule-strong)',
-            borderRadius: 0,
+            borderRadius: 'var(--radius-modal)',
             zIndex: 51,
             display: 'flex',
             flexDirection: 'column',
@@ -324,7 +323,7 @@ export function ReplayDrawer({ open, onOpenChange }: ReplayDrawerProps): React.R
                           fontSize: '11px',
                           padding: '0 12px',
                           cursor: 'pointer',
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius-modal)',
                         }}
                       >
                         {t.pwa.drawer.discardButton}
@@ -360,7 +359,7 @@ export function ReplayDrawer({ open, onOpenChange }: ReplayDrawerProps): React.R
                   fontSize: '12px',
                   letterSpacing: '0.04em',
                   cursor: 'pointer',
-                  borderRadius: 0,
+                  borderRadius: 'var(--radius-modal)',
                 }}
               >
                 {t.pwa.drawer.retryAllButton}

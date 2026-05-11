@@ -4,7 +4,7 @@
   "private": true,
   "description": "Kalori — AI-first calorie/nutrition tracker (PWA, dark-only, single-user).",
   "engines": {
-    "node": ">=20.19.0"
+    "node": "20.x"
   },
   "packageManager": "pnpm@10.29.3",
   "scripts": {
