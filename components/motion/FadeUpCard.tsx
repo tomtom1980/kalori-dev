@@ -18,8 +18,8 @@ export function FadeUpCard({ children, delay = 0, className, style }: FadeUpCard
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...motion.standard, delay }}
-      className={className}
-      style={style}
+      {...(className ? { className } : {})}
+      {...(style ? { style } : {})}
     >
       {children}
     </m.div>

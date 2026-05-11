@@ -115,7 +115,6 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
       },
     });
 
-    // @ts-expect-error - Vercel Edge TS compiler occasionally misses getSession on SupabaseAuthClient
     const { data } = await supabase.auth.getSession();
     hasSession = data.session !== null;
   } catch {
