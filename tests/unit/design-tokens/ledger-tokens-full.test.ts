@@ -140,9 +140,12 @@ describe('app/globals.css — Ledger tokens (full)', () => {
     }
   });
 
-  it('declares radius=0 and shadow=none (Ledger shape language)', () => {
-    expect(css).toMatch(/--radius\s*:\s*0\s*;/);
-    expect(css).toMatch(/--shadow\s*:\s*none\s*;/);
+  it('declares modern shape language (fluid radius and float shadow)', () => {
+    expect(css).toMatch(/--radius-card\s*:\s*16px\s*;/);
+    expect(css).toMatch(/--radius-input\s*:\s*12px\s*;/);
+    expect(css).toMatch(/--radius-pill\s*:\s*999px\s*;/);
+    expect(css).toMatch(/--radius-modal\s*:\s*24px\s*;/);
+    expect(css).toMatch(/--shadow-float\s*:\s*0 4px 24px rgba\(0, 0, 0, 0\.4\)\s*;/);
   });
 
   it('sets the ivory keyboard focus ring (WCAG 1.4.11 tiebreaker)', () => {
