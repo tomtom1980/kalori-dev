@@ -1,0 +1,36 @@
+{
+  "name": "western-caesar-salad",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "a chicken caesar salad with romaine lettuce, croutons, parmesan, and Caesar dressing",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "chicken caesar salad",
+        "portion": 1,
+        "unit": "bowl",
+        "kcal": 560,
+        "macros": {
+          "protein_g": 36,
+          "carbs_g": 26,
+          "fat_g": 34,
+          "fiber_g": 4
+        }
+      }
+    ],
+    "total": {
+      "kcal": 560,
+      "protein_g": 36,
+      "carbs_g": 26,
+      "fat_g": 34,
+      "fiber_g": 4
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "USDA composite: 130g grilled chicken breast ~215 kcal, 100g romaine ~17 kcal, 25g croutons ~110 kcal, 15g parmesan ~60 kcal, 30ml Caesar dressing ~150 kcal. Advisory tier — dressing portion is the dominant variance."
+}

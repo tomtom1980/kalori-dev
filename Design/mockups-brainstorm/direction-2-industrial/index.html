@@ -1,0 +1,2169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="dark" />
+<title>KALORI / APPARATUS — Direction 02</title>
+<style>
+  /* =========================================================
+     KALORI · APPARATUS
+     Direction 02 — Industrial / Swiss Precision
+     Dark-only. Monospace dominant. Grid-locked.
+     ========================================================= */
+
+  :root {
+    /* ---- Background tiers (cold gray, near-black) ---- */
+    --bg-0: #0B0C0D;   /* canvas */
+    --bg-1: #121315;   /* panel */
+    --bg-2: #181A1D;   /* raised block */
+    --bg-3: #1F2226;   /* input / inset */
+
+    /* ---- Hairline rules ---- */
+    --rule-1: #24272B; /* quiet divider */
+    --rule-2: #2E3238; /* visible grid line */
+    --rule-3: #3A3F46; /* active / focused */
+
+    /* ---- Text tiers ---- */
+    --ink-1: #EFEEE9; /* primary (warm off-white) */
+    --ink-2: #9FA2A6; /* secondary */
+    --ink-3: #656870; /* tertiary / labels */
+    --ink-4: #3E4249; /* disabled / ticks */
+
+    /* ---- Signature: safety orange ---- */
+    --sig:   #FF5A1F;
+    --sig-2: #FF7A47;
+    --sig-3: rgba(255,90,31,.18);
+    --sig-4: rgba(255,90,31,.08);
+
+    /* ---- Status ---- */
+    --ok:    #7EB88E;  /* muted sage */
+    --warn:  #E6B450;  /* cadmium */
+    --err:   #D1545B;  /* signal red */
+    --info:  #6C94B5;  /* cobalt-tinted */
+
+    /* ---- Data viz 6-palette ---- */
+    --v1: #FF5A1F;  /* orange — primary */
+    --v2: #6C94B5;  /* cobalt */
+    --v3: #7EB88E;  /* sage */
+    --v4: #E6B450;  /* cadmium */
+    --v5: #B58BD1;  /* mauve */
+    --v6: #C8CBD0;  /* graphite */
+
+    /* ---- Type ---- */
+    --mono: "JetBrains Mono", "IBM Plex Mono", "Berkeley Mono", ui-monospace, Menlo, monospace;
+    --sans: "Inter", "Söhne", "Suisse Int'l", "Neue Haas Unica", system-ui, sans-serif;
+
+    /* ---- Grid ---- */
+    --col: 60px;
+    --gutter: 16px;
+    --unit: 8px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg-0); color: var(--ink-1); }
+  body {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.45;
+    font-feature-settings: "ss01","ss02","zero","tnum","cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    background-image:
+      linear-gradient(var(--rule-1) 1px, transparent 1px),
+      linear-gradient(90deg, var(--rule-1) 1px, transparent 1px);
+    background-size: 120px 120px, 120px 120px;
+    background-position: -1px -1px, -1px -1px;
+    background-attachment: fixed;
+  }
+
+  /* --- Shared primitives --- */
+  .sans { font-family: var(--sans); letter-spacing: -0.01em; }
+  .mono { font-family: var(--mono); }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  .label,
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .eyebrow b { color: var(--ink-2); font-weight: 500; }
+
+  /* Hairline "corner bracket" registration marks */
+  .reg { position: relative; }
+  .reg::before, .reg::after {
+    content: ""; position: absolute; width: 10px; height: 10px; border: 1px solid var(--rule-3);
+  }
+  .reg::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+  .reg::after  { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+  /* ==================== LAYOUT SHELL ==================== */
+  .shell {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+    position: relative;
+  }
+
+  /* Top bar */
+  .topbar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    height: 44px;
+    border-bottom: 1px solid var(--rule-2);
+    padding: 0 20px;
+    background: var(--bg-0);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar .mark {
+    display:flex; align-items:center; gap:10px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.22em;
+  }
+  .topbar .mark .dot { width: 8px; height: 8px; background: var(--sig); display:inline-block; }
+  .topbar .crumb { color: var(--ink-3); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; display: flex; gap: 14px; justify-content: center; }
+  .topbar .crumb span { color: var(--ink-4); }
+  .topbar .meta { font-size: 10px; color: var(--ink-3); letter-spacing: 0.18em; text-transform: uppercase; display:flex; align-items:center; gap: 14px; }
+  .topbar .meta .live { color: var(--sig); }
+  .topbar .meta .live::before { content:""; display:inline-block; width:6px;height:6px; background: var(--sig); margin-right: 6px; transform: translateY(-1px); }
+
+  /* ==================== HERO MASTHEAD ==================== */
+  .hero {
+    border-bottom: 1px solid var(--rule-2);
+    padding: 64px 20px 48px;
+    position: relative;
+    background: var(--bg-0);
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 48px;
+    align-items: end;
+  }
+  .hero h1 {
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: clamp(80px, 11vw, 172px);
+    line-height: 0.86;
+    letter-spacing: -0.045em;
+    margin: 0;
+    color: var(--ink-1);
+    position: relative;
+  }
+  .hero h1 sup {
+    font-family: var(--mono); font-size: 14px; letter-spacing: 0.24em;
+    color: var(--sig); vertical-align: super; top: -0.8em; margin-left: 10px; font-weight: 400;
+  }
+  .hero .tagline {
+    color: var(--ink-2);
+    font-family: var(--mono);
+    font-size: 13px;
+    margin-top: 24px;
+    max-width: 36ch;
+    line-height: 1.55;
+  }
+  .hero .tagline b { color: var(--ink-1); font-weight: 500; }
+
+  .spec-block {
+    border: 1px solid var(--rule-2);
+    padding: 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 24px;
+    background: linear-gradient(var(--bg-1), var(--bg-1));
+  }
+  .spec-block .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-bottom: 1px dashed var(--rule-1); padding-bottom: 6px; }
+  .spec-block .row:last-child, .spec-block .row:nth-last-child(2) { border-bottom: none; }
+  .spec-block .k { color: var(--ink-3); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .spec-block .v { color: var(--ink-1); font-size: 12px; }
+  .spec-block .v.sig { color: var(--sig); }
+
+  /* Hairline scale ruler */
+  .ruler {
+    margin-top: 40px;
+    height: 22px;
+    border-top: 1px solid var(--rule-2);
+    border-bottom: 1px solid var(--rule-2);
+    position: relative;
+    color: var(--ink-3);
+    font-size: 9px;
+    letter-spacing: 0.16em;
+  }
+  .ruler .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--rule-2); }
+  .ruler .tick.lg { background: var(--rule-3); }
+  .ruler .tick span { position: absolute; top: 6px; left: 4px; text-transform: uppercase; }
+
+  /* ==================== SECTION SCAFFOLD ==================== */
+  section.apparatus { border-bottom: 1px solid var(--rule-2); padding: 48px 20px; }
+  .sec-head {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: end;
+    gap: 24px;
+    margin-bottom: 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px dashed var(--rule-2);
+  }
+  .sec-head .num {
+    font-family: var(--mono);
+    color: var(--sig);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+  }
+  .sec-head h2 {
+    font-family: var(--sans); font-weight: 500; font-size: 32px;
+    letter-spacing: -0.02em; margin: 0; color: var(--ink-1);
+  }
+  .sec-head .side { font-size: 10px; color: var(--ink-3); letter-spacing: 0.18em; text-transform: uppercase; text-align: right; }
+
+  /* ==================== DASHBOARD ==================== */
+  .dash {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 1000px){ .dash { grid-template-columns: 1fr; } }
+
+  .panel {
+    border: 1px solid var(--rule-2);
+    background: var(--bg-1);
+    position: relative;
+  }
+  .panel-head {
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 12px 14px; border-bottom: 1px solid var(--rule-2);
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .panel-head .id { color: var(--sig); }
+  .panel-body { padding: 18px; }
+
+  /* --- Gauge: the ring replacement --- */
+  .gauge-wrap { display: grid; grid-template-columns: 1fr 220px; gap: 24px; align-items: center; }
+  @media (max-width: 760px){ .gauge-wrap { grid-template-columns: 1fr; } }
+  .gauge { position: relative; }
+  .gauge-legend { display: grid; gap: 10px; }
+  .gauge-legend .stat { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 10px 12px; border: 1px solid var(--rule-2); background: var(--bg-2); }
+  .gauge-legend .stat .k { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
+  .gauge-legend .stat .v { font-family: var(--sans); font-weight: 500; font-size: 26px; letter-spacing: -0.02em; color: var(--ink-1); line-height: 1; }
+  .gauge-legend .stat .v.sig { color: var(--sig); }
+  .gauge-legend .stat .sub { grid-column: 1 / -1; font-size: 10px; color: var(--ink-3); letter-spacing: 0.12em; }
+
+  /* --- Macro stack --- */
+  .macros { display: grid; gap: 12px; margin-top: 24px; }
+  .macro {
+    display: grid;
+    grid-template-columns: 120px 1fr 88px;
+    gap: 16px; align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--rule-1);
+  }
+  .macro:last-child { border-bottom: none; }
+  .macro .k { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); }
+  .macro .k b { display:block; color: var(--ink-3); font-size: 9px; font-weight: 400; margin-top: 3px; }
+  .macro .bar { height: 10px; background: var(--bg-2); border: 1px solid var(--rule-2); position: relative; overflow: hidden; }
+  .macro .bar .fill { position:absolute; left:0; top:0; bottom:0; background: var(--sig); }
+  .macro .bar .fill.v2 { background: var(--v2); }
+  .macro .bar .fill.v3 { background: var(--v3); }
+  .macro .bar .fill.v4 { background: var(--v4); }
+  .macro .bar .ticks { position:absolute; inset:0; background-image: linear-gradient(90deg, var(--rule-2) 1px, transparent 1px); background-size: 10% 100%; opacity:.6; pointer-events:none; }
+  .macro .v { text-align: right; font-size: 12px; color: var(--ink-1); }
+  .macro .v b { color: var(--ink-3); font-weight: 400; font-size: 10px; margin-left: 4px; }
+
+  /* --- Water tracker --- */
+  .water {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 14px; align-items: center;
+    margin-top: 16px;
+    padding: 14px;
+    background: var(--bg-2);
+    border: 1px solid var(--rule-2);
+  }
+  .water .bar { grid-column: 1 / -1; margin-top: 4px; height: 8px; display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; }
+  .water .bar i { background: var(--bg-3); border: 1px solid var(--rule-2); }
+  .water .bar i.on { background: var(--v2); border-color: var(--v2); }
+  .water .lbl { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+  .water .val { font-family: var(--sans); font-weight: 500; font-size: 20px; letter-spacing: -0.01em; }
+  .water .btns { display: flex; gap: 6px; }
+  .water .btns button {
+    background: var(--bg-1); border: 1px solid var(--rule-2); color: var(--ink-1);
+    padding: 6px 10px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; cursor: pointer;
+  }
+  .water .btns button:hover { border-color: var(--sig); color: var(--sig); }
+
+  /* --- Meals --- */
+  .meals { margin-top: 24px; }
+  .meal {
+    border-top: 1px solid var(--rule-2);
+    padding: 14px 0;
+    display: grid;
+    grid-template-columns: 140px 1fr auto;
+    gap: 24px;
+    align-items: start;
+  }
+  .meal:last-child { border-bottom: 1px solid var(--rule-2); }
+  .meal .head .name { font-family: var(--sans); font-size: 15px; letter-spacing: -0.01em; color: var(--ink-1); margin-bottom: 4px; }
+  .meal .head .time { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+  .meal .items { display: grid; gap: 6px; }
+  .meal .item { display: grid; grid-template-columns: 1fr auto auto auto; gap: 14px; align-items: center; font-size: 12px; padding: 4px 0; border-bottom: 1px dashed var(--rule-1); }
+  .meal .item:last-child { border-bottom: none; }
+  .meal .item .nm { color: var(--ink-1); }
+  .meal .item .nm .by { color: var(--ink-3); font-size: 10px; margin-left: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .meal .item .qty { color: var(--ink-2); font-size: 11px; }
+  .meal .item .kcal { color: var(--ink-1); font-size: 12px; }
+  .meal .item .src { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--rule-2); padding: 2px 6px; }
+  .meal .item .src.ai { color: var(--sig); border-color: var(--sig); }
+  .meal .tot { text-align: right; }
+  .meal .tot .big { font-family: var(--sans); font-weight: 500; font-size: 24px; letter-spacing: -0.02em; }
+  .meal .tot .lbl { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
+  .meal.empty .items { color: var(--ink-3); font-size: 11px; padding: 6px 0; }
+  .meal.empty .items::before { content: "— NO ENTRIES —"; letter-spacing: 0.18em; }
+
+  /* --- Micronutrients panel --- */
+  .micros {
+    margin-top: 20px;
+    border-top: 1px solid var(--rule-2);
+    padding-top: 18px;
+  }
+  .micro-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 760px){ .micro-grid { grid-template-columns: repeat(2, 1fr);} }
+  .micro {
+    border: 1px solid var(--rule-2);
+    padding: 10px;
+    background: var(--bg-2);
+    position: relative;
+  }
+  .micro .k { font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+  .micro .v { font-family: var(--sans); font-weight: 500; font-size: 18px; letter-spacing: -0.01em; color: var(--ink-1); }
+  .micro .sub { font-size: 9px; color: var(--ink-3); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
+  .micro .meter { margin-top: 8px; height: 3px; background: var(--bg-3); position: relative; overflow: hidden; }
+  .micro .meter i { position:absolute; left:0; top:0; bottom:0; background: var(--v3); }
+  .micro .meter i.low { background: var(--err); }
+  .micro .meter i.mid { background: var(--warn); }
+
+  /* --- Weekly AI insight --- */
+  .insight {
+    margin-top: 18px;
+    border: 1px solid var(--rule-2);
+    background:
+      linear-gradient(var(--bg-2), var(--bg-2)) padding-box,
+      linear-gradient(180deg, var(--sig) 0%, var(--rule-2) 40%) border-box;
+    border-left: 2px solid var(--sig);
+    padding: 16px 18px;
+  }
+  .insight .hd { display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
+  .insight .hd .t { color: var(--sig); }
+  .insight p { margin: 0; font-family: var(--sans); font-size: 15px; line-height: 1.55; letter-spacing: -0.005em; color: var(--ink-1); }
+  .insight p em { color: var(--sig); font-style: normal; background: var(--sig-4); padding: 0 3px; }
+  .insight .footer { margin-top: 10px; display:flex; justify-content: space-between; font-size: 10px; color: var(--ink-3); letter-spacing: 0.14em; text-transform: uppercase; }
+
+  /* ==================== LOG CONFIRMATION ==================== */
+  .log-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 24px; }
+  @media (max-width: 1000px){ .log-grid { grid-template-columns: 1fr; } }
+
+  .input-strip {
+    border: 1px solid var(--rule-2);
+    padding: 14px 16px;
+    background: var(--bg-2);
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .input-strip .icon { width: 18px; height: 18px; border: 1px solid var(--rule-3); display:flex; align-items:center; justify-content:center; font-size: 10px; color: var(--sig); }
+  .input-strip .q { font-family: var(--mono); color: var(--ink-1); font-size: 14px; }
+  .input-strip .q .cursor { display:inline-block; width:8px; height:16px; background: var(--sig); vertical-align: -2px; margin-left: 2px; animation: blink 1.1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .input-strip .state { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sig); }
+
+  .item-row {
+    border: 1px solid var(--rule-2);
+    background: var(--bg-1);
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 14px;
+    align-items: center;
+    border-top: none;
+  }
+  .item-row:first-of-type { border-top: 1px solid var(--rule-2); }
+  .item-row .nm { font-family: var(--sans); font-size: 15px; letter-spacing: -0.01em; color: var(--ink-1); }
+  .item-row .nm b { display:block; font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 2px; font-weight: 400; }
+  .item-row .step { display: grid; grid-template-columns: 28px 56px 28px; align-items: stretch; border: 1px solid var(--rule-2); height: 30px; }
+  .item-row .step button {
+    background: var(--bg-2); border: none; color: var(--ink-1); cursor: pointer; font-family: var(--mono); font-size: 14px;
+    border-right: 1px solid var(--rule-2);
+  }
+  .item-row .step button:last-child { border-right: none; border-left: 1px solid var(--rule-2); }
+  .item-row .step button:hover { color: var(--sig); }
+  .item-row .step .num { display:flex; align-items:center; justify-content:center; font-size: 12px; color: var(--ink-1); background: var(--bg-1); }
+  .item-row .unit { font-size: 10px; color: var(--ink-3); letter-spacing: 0.16em; text-transform: uppercase; }
+  .item-row .kcal { font-family: var(--sans); font-weight: 500; font-size: 20px; letter-spacing: -0.01em; min-width: 80px; text-align: right; }
+  .item-row .kcal b { font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: 0.14em; text-transform: uppercase; display:block; margin-top: 2px; font-weight: 400; }
+
+  .why {
+    margin-top: 12px;
+    border: 1px solid var(--rule-2);
+    background: var(--bg-1);
+  }
+  .why summary {
+    list-style: none; cursor: pointer;
+    padding: 12px 16px;
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-2);
+    display:flex; justify-content: space-between; align-items: center;
+  }
+  .why summary::-webkit-details-marker { display: none; }
+  .why summary .plus { color: var(--sig); font-size: 14px; }
+  .why[open] { background: var(--bg-2); }
+  .why[open] summary { border-bottom: 1px solid var(--rule-2); color: var(--ink-1); }
+  .why[open] summary .plus::before { content: "−"; }
+  .why:not([open]) summary .plus::before { content: "+"; }
+  .why .body { padding: 16px; font-family: var(--mono); font-size: 12px; color: var(--ink-2); line-height: 1.7; }
+  .why .body .table {
+    display: grid; grid-template-columns: 180px 1fr 80px;
+    border-top: 1px solid var(--rule-2);
+  }
+  .why .body .table > div {
+    border-bottom: 1px dashed var(--rule-1);
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  .why .body .table > div:nth-child(3n+1) { color: var(--ink-3); letter-spacing: 0.14em; text-transform: uppercase; font-size: 10px; }
+  .why .body .table > div:nth-child(3n+3) { text-align: right; color: var(--ink-1); }
+
+  .library-save {
+    margin-top: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--rule-2);
+    background: var(--bg-1);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px; align-items: center;
+  }
+  .library-save .t { font-size: 12px; color: var(--ink-1); }
+  .library-save .t b { color: var(--ink-3); font-weight: 400; display: block; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; margin-top: 2px; }
+  .toggle { position: relative; width: 52px; height: 24px; background: var(--bg-3); border: 1px solid var(--rule-2); cursor: pointer; }
+  .toggle::after { content: ""; position: absolute; width: 18px; top: 2px; bottom: 2px; left: 2px; background: var(--ink-3); transition: all .15s; }
+  .toggle.on { background: var(--sig-3); border-color: var(--sig); }
+  .toggle.on::after { left: calc(100% - 20px); background: var(--sig); }
+
+  .commit-row {
+    display: grid; grid-template-columns: 1fr auto auto;
+    gap: 10px; margin-top: 16px;
+  }
+  .btn {
+    display:inline-flex; align-items: center; gap: 8px; padding: 12px 18px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+    background: var(--bg-2); color: var(--ink-1); border: 1px solid var(--rule-2); cursor: pointer;
+  }
+  .btn:hover { border-color: var(--sig); color: var(--sig); }
+  .btn.primary { background: var(--sig); color: #1a0c00; border-color: var(--sig); }
+  .btn.primary:hover { background: var(--sig-2); border-color: var(--sig-2); color: #1a0c00; }
+  .btn .kbd { font-size: 9px; padding: 2px 5px; border: 1px solid var(--rule-3); color: var(--ink-3); margin-left: 6px; letter-spacing: 0.1em; }
+  .btn.primary .kbd { border-color: rgba(0,0,0,.3); color: rgba(0,0,0,.6); }
+
+  /* Side: summary card (right rail in log) */
+  .log-side .panel-body { padding: 0; }
+  .summary-table { width: 100%; border-collapse: collapse; }
+  .summary-table tr { border-bottom: 1px dashed var(--rule-1); }
+  .summary-table tr:last-child { border-bottom: none; }
+  .summary-table td { padding: 10px 16px; font-size: 12px; }
+  .summary-table td:first-child { color: var(--ink-3); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; width: 50%; }
+  .summary-table td:last-child { text-align: right; color: var(--ink-1); }
+  .summary-table .delta { color: var(--sig); font-size: 10px; margin-left: 6px; letter-spacing: 0.12em; }
+  .summary-table .delta.neg { color: var(--err); }
+
+  /* ==================== LIBRARY ==================== */
+  .lib-controls {
+    display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 10px;
+    margin-bottom: 20px;
+  }
+  .search {
+    position: relative;
+    border: 1px solid var(--rule-2); background: var(--bg-1); padding: 10px 14px 10px 40px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-1);
+    display:flex; align-items:center;
+  }
+  .search::before {
+    content: "⌕"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--sig); font-size: 16px;
+  }
+  .search .q { color: var(--ink-1); }
+  .search .q::after { content: "_"; color: var(--sig); animation: blink 1.1s steps(2) infinite; }
+
+  .chip {
+    padding: 10px 14px; border: 1px solid var(--rule-2); background: var(--bg-1);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-2);
+    cursor: pointer;
+  }
+  .chip.active { color: var(--sig); border-color: var(--sig); background: var(--sig-4); }
+  .chip .arrow { color: var(--ink-3); margin-left: 8px; }
+
+  .grid-lib {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+    border: 1px solid var(--rule-2);
+  }
+  @media (max-width: 1100px){ .grid-lib { grid-template-columns: repeat(3,1fr); } }
+  @media (max-width: 680px){ .grid-lib { grid-template-columns: repeat(2,1fr); } }
+
+  .card-food {
+    background: var(--bg-1);
+    border-right: 1px solid var(--rule-2);
+    border-bottom: 1px solid var(--rule-2);
+    padding: 14px;
+    position: relative;
+    display: grid;
+    grid-template-rows: 96px auto auto auto;
+    gap: 10px;
+  }
+  .card-food:last-child { border-right: none; }
+  .card-food .thumb {
+    background: var(--bg-2);
+    border: 1px solid var(--rule-2);
+    position: relative;
+    overflow: hidden;
+    background-image:
+      linear-gradient(var(--rule-1) 1px, transparent 1px),
+      linear-gradient(90deg, var(--rule-1) 1px, transparent 1px);
+    background-size: 12px 12px;
+  }
+  .card-food .thumb .id {
+    position: absolute; top: 6px; left: 6px; font-size: 9px; letter-spacing: 0.16em; color: var(--ink-3);
+  }
+  .card-food .thumb .count {
+    position: absolute; top: 6px; right: 6px; font-size: 9px; letter-spacing: 0.16em;
+    border: 1px solid var(--rule-3); padding: 2px 6px; color: var(--ink-2);
+    background: var(--bg-1);
+  }
+  .card-food .thumb svg { position: absolute; inset: 0; }
+  .card-food .nm { font-family: var(--sans); font-size: 14px; letter-spacing: -0.01em; color: var(--ink-1); }
+  .card-food .meta { display:flex; justify-content: space-between; font-size: 10px; color: var(--ink-3); letter-spacing: 0.14em; text-transform: uppercase; }
+  .card-food .kcal { font-family: var(--sans); font-weight: 500; font-size: 22px; letter-spacing: -0.02em; display:flex; align-items: baseline; gap: 6px; }
+  .card-food .kcal b { font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: 0.14em; text-transform: uppercase; font-weight: 400; }
+
+  /* ==================== PROGRESS ==================== */
+  .prog-toolbar {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 14px;
+    margin-bottom: 20px; align-items: center;
+  }
+  .seg {
+    display: inline-grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--rule-2);
+  }
+  .seg button {
+    background: var(--bg-1); color: var(--ink-2);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    padding: 10px 18px; border: none; border-right: 1px solid var(--rule-2); cursor: pointer;
+  }
+  .seg button:last-child { border-right: none; }
+  .seg button.active { background: var(--sig); color: #1a0c00; }
+
+  .prog-grid {
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px;
+  }
+  @media (max-width: 1000px){ .prog-grid { grid-template-columns: 1fr; } }
+
+  .chart-block { border: 1px solid var(--rule-2); background: var(--bg-1); }
+  .chart-block .panel-head { justify-content: space-between; }
+
+  /* Heatmap — thermographic readout */
+  .heatmap-block { grid-column: 1 / -1; }
+  .heatmap {
+    display: grid;
+    grid-template-columns: 120px 1fr 40px;
+    gap: 0;
+  }
+  .heatmap .ylabels, .heatmap .ylegend {
+    display: grid; grid-template-rows: repeat(7, 36px);
+  }
+  .heatmap .ylabels div {
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2);
+    display:flex; align-items: center; padding: 0 12px;
+    border-bottom: 1px solid var(--rule-2);
+    border-right: 1px solid var(--rule-2);
+  }
+  .heatmap .ylabels div:first-child { border-top: 1px solid var(--rule-2); }
+  .heatmap .ylabels div b { display:block; color: var(--ink-3); font-weight:400; font-size: 9px; letter-spacing: 0.12em; margin-top: 1px;}
+  .heatmap .cells {
+    display: grid;
+    grid-template-columns: repeat(30, 1fr);
+    grid-template-rows: repeat(7, 36px);
+    border-top: 1px solid var(--rule-2);
+  }
+  .heatmap .cells .c {
+    border-right: 1px solid var(--rule-1);
+    border-bottom: 1px solid var(--rule-2);
+    position: relative;
+  }
+  .heatmap .cells .c::after {
+    content: attr(data-v);
+    position: absolute;
+    inset: 0;
+    font-size: 8px; color: rgba(255,255,255,.45);
+    display: none; align-items: center; justify-content: center;
+    font-family: var(--mono); letter-spacing: 0.04em;
+  }
+  .heatmap .cells .c:hover::after { display: flex; }
+  .heatmap .cells .c:hover { outline: 1px solid var(--sig); z-index: 2; }
+  .heatmap .xaxis {
+    grid-column: 2 / 3;
+    display: grid; grid-template-columns: repeat(30, 1fr);
+    font-size: 8px; color: var(--ink-3); letter-spacing: 0.1em;
+    padding-top: 4px;
+  }
+  .heatmap .xaxis div { border-right: 1px solid transparent; text-align: center; }
+  .heatmap .xaxis div.major { color: var(--ink-2); }
+  .heatmap .ylegend div {
+    writing-mode: vertical-rl; transform: rotate(180deg);
+    font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3);
+    display:flex; align-items: center; justify-content:center;
+    border-bottom: 1px solid var(--rule-2);
+    border-left: 1px solid var(--rule-2);
+  }
+  .heatmap .ylegend div:first-child { border-top: 1px solid var(--rule-2); }
+
+  .heatmap-scale {
+    margin-top: 12px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+    font-size: 10px; color: var(--ink-3); letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .heatmap-scale .bar {
+    height: 10px;
+    background: linear-gradient(90deg,
+      #2B1B0E 0%, #4A2410 14%, #7A3716 28%, #A34618 42%, #C65519 56%, #E36418 70%, #FF7A1F 84%, #FFC78A 100%);
+    border: 1px solid var(--rule-2);
+    position: relative;
+  }
+  .heatmap-scale .bar::after {
+    content: ""; position: absolute; inset: 0;
+    background-image: linear-gradient(90deg, rgba(255,255,255,.15) 1px, transparent 1px);
+    background-size: 10% 100%;
+  }
+
+  /* ==================== FOOTER ==================== */
+  footer {
+    padding: 30px 20px 60px;
+    display: grid; grid-template-columns: 1fr auto auto; gap: 24px;
+    border-top: 1px solid var(--rule-2);
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-3);
+  }
+  footer .mono-lock { display:flex; gap:14px; align-items:center; }
+  footer .mono-lock .dot { width: 6px; height: 6px; background: var(--sig); }
+
+  /* Utility */
+  .divider-dashed { border-top: 1px dashed var(--rule-2); }
+  .kv-line { display:flex; justify-content: space-between; font-size: 11px; padding: 6px 0; border-bottom: 1px dashed var(--rule-1); }
+  .kv-line:last-child { border-bottom: none; }
+  .kv-line .k { color: var(--ink-3); letter-spacing: 0.14em; text-transform: uppercase; font-size: 10px; }
+  .kv-line .v { color: var(--ink-1); }
+
+  @media (max-width: 760px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .sec-head h2 { font-size: 24px; }
+    .lib-controls { grid-template-columns: 1fr 1fr; }
+    .log-grid, .dash, .prog-grid { grid-template-columns: 1fr !important; }
+    .meal { grid-template-columns: 1fr; gap: 10px; }
+    .meal .tot { text-align: left; }
+    .heatmap { grid-template-columns: 88px 1fr 24px; }
+    .heatmap .ylabels div { padding: 0 6px; font-size: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== TOP BAR ==================== -->
+<header class="topbar">
+  <div class="mark">
+    <span class="dot"></span>
+    KALORI
+  </div>
+  <nav class="crumb">
+    DASHBOARD <span>/</span> LOG <span>/</span> LIBRARY <span>/</span> PROGRESS <span>/</span> PROFILE
+  </nav>
+  <div class="meta">
+    <span>v0.4.2 · BUILD 1187</span>
+    <span class="live">LIVE</span>
+  </div>
+</header>
+
+<div class="shell">
+
+<!-- ==================== HERO ==================== -->
+<section class="hero">
+  <div class="hero-grid">
+    <div>
+      <div class="eyebrow" style="margin-bottom: 24px;">
+        <b>APPARATUS</b> · PERSONAL NUTRITION INSTRUMENT · SERIES 02 · INDUSTRIAL
+      </div>
+      <h1 class="sans">Kalori<sup>02</sup></h1>
+      <p class="tagline">
+        <b>A precision instrument for everyday intake.</b>
+        Natural-language capture, AI inference, a personal library that grows with use.
+        Engineered, not decorative.
+      </p>
+    </div>
+    <div class="spec-block reg">
+      <div class="row"><span class="k">MODEL</span><span class="v">K-02.APX</span></div>
+      <div class="row"><span class="k">MODE</span><span class="v sig">AUTONOMOUS</span></div>
+      <div class="row"><span class="k">ENGINE</span><span class="v">GEMINI · v2.5</span></div>
+      <div class="row"><span class="k">STATUS</span><span class="v">ONLINE</span></div>
+      <div class="row"><span class="k">PRECISION</span><span class="v">±3 kcal</span></div>
+      <div class="row"><span class="k">TARGET</span><span class="v">2 240 kcal</span></div>
+      <div class="row"><span class="k">LIBRARY</span><span class="v">427 items</span></div>
+      <div class="row"><span class="k">STREAK</span><span class="v">41 days</span></div>
+    </div>
+  </div>
+
+  <div class="ruler">
+    <div class="tick lg" style="left:0%"><span>00</span></div>
+    <div class="tick" style="left:10%"></div>
+    <div class="tick" style="left:20%"></div>
+    <div class="tick lg" style="left:25%"><span>25</span></div>
+    <div class="tick" style="left:30%"></div>
+    <div class="tick" style="left:40%"></div>
+    <div class="tick lg" style="left:50%"><span>50</span></div>
+    <div class="tick" style="left:60%"></div>
+    <div class="tick" style="left:70%"></div>
+    <div class="tick lg" style="left:75%"><span>75</span></div>
+    <div class="tick" style="left:80%"></div>
+    <div class="tick" style="left:90%"></div>
+    <div class="tick lg" style="left:99.5%"><span>100</span></div>
+  </div>
+</section>
+
+<!-- ==================== DASHBOARD ==================== -->
+<section class="apparatus">
+  <div class="sec-head">
+    <div class="num">§01</div>
+    <h2 class="sans">Dashboard — Today</h2>
+    <div class="side">THU · 18 APR 2026 · 14:32 GMT+2</div>
+  </div>
+
+  <div class="dash">
+    <!-- Left: main gauge panel -->
+    <div>
+      <div class="panel reg">
+        <div class="panel-head">
+          <span>INTAKE · DAILY METER · <span class="id">CH/01</span></span>
+          <span>kcal · tabular</span>
+        </div>
+        <div class="panel-body">
+
+          <!-- Gauge replacement: horizontal precision meter -->
+          <div class="gauge-wrap">
+            <div class="gauge">
+              <svg viewBox="0 0 600 220" width="100%" height="220" aria-label="Daily intake gauge">
+                <defs>
+                  <pattern id="grid-bg" width="20" height="20" patternUnits="userSpaceOnUse">
+                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#24272B" stroke-width="0.5"/>
+                  </pattern>
+                </defs>
+
+                <!-- Scale frame -->
+                <rect x="20" y="100" width="560" height="50" fill="#181A1D" stroke="#2E3238" stroke-width="1"/>
+                <rect x="20" y="100" width="560" height="50" fill="url(#grid-bg)"/>
+
+                <!-- Zones -->
+                <rect x="20" y="100" width="224" height="50" fill="rgba(126,184,142,.06)"/>
+                <rect x="468" y="100" width="112" height="50" fill="rgba(230,180,80,.07)"/>
+                <rect x="540" y="100" width="40" height="50" fill="rgba(209,84,91,.1)"/>
+
+                <!-- Fill: consumed (1 486 / 2 240 = 66.3%) -->
+                <rect x="20" y="100" width="371" height="50" fill="#FF5A1F"/>
+                <!-- Hatching on remaining -->
+                <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                  <line x1="0" y1="0" x2="0" y2="6" stroke="#24272B" stroke-width="2"/>
+                </pattern>
+                <rect x="391" y="100" width="149" height="50" fill="url(#hatch)"/>
+
+                <!-- Pointer at current -->
+                <line x1="391" y1="76" x2="391" y2="174" stroke="#EFEEE9" stroke-width="1"/>
+                <polygon points="391,70 386,76 396,76" fill="#EFEEE9"/>
+                <text x="391" y="62" text-anchor="middle" font-family="Inter" font-size="18" font-weight="500" fill="#EFEEE9" letter-spacing="-0.5">1 486</text>
+                <text x="391" y="48" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#9FA2A6" letter-spacing="2">CURRENT</text>
+
+                <!-- Target marker -->
+                <line x1="540" y1="90" x2="540" y2="160" stroke="#FF5A1F" stroke-width="1" stroke-dasharray="2 3"/>
+                <text x="540" y="84" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#FF5A1F" letter-spacing="2">TGT 2 240</text>
+
+                <!-- Ticks along scale -->
+                <g font-family="JetBrains Mono" font-size="9" fill="#656870" letter-spacing="1">
+                  <line x1="20"  y1="150" x2="20"  y2="162" stroke="#3A3F46"/>
+                  <line x1="132" y1="150" x2="132" y2="158" stroke="#3A3F46"/>
+                  <line x1="244" y1="150" x2="244" y2="162" stroke="#3A3F46"/>
+                  <line x1="356" y1="150" x2="356" y2="158" stroke="#3A3F46"/>
+                  <line x1="468" y1="150" x2="468" y2="162" stroke="#3A3F46"/>
+                  <line x1="580" y1="150" x2="580" y2="162" stroke="#3A3F46"/>
+                  <text x="20"  y="176" text-anchor="middle">0</text>
+                  <text x="132" y="176" text-anchor="middle">500</text>
+                  <text x="244" y="176" text-anchor="middle">1 000</text>
+                  <text x="356" y="176" text-anchor="middle">1 500</text>
+                  <text x="468" y="176" text-anchor="middle">2 000</text>
+                  <text x="580" y="176" text-anchor="middle">2 500</text>
+                </g>
+
+                <!-- Minor ticks -->
+                <g stroke="#3A3F46">
+                  <line x1="76"  y1="150" x2="76"  y2="156"/>
+                  <line x1="188" y1="150" x2="188" y2="156"/>
+                  <line x1="300" y1="150" x2="300" y2="156"/>
+                  <line x1="412" y1="150" x2="412" y2="156"/>
+                  <line x1="524" y1="150" x2="524" y2="156"/>
+                </g>
+
+                <!-- Unit corner brackets -->
+                <g stroke="#3A3F46">
+                  <path d="M 10 90 L 10 100 L 20 100" fill="none"/>
+                  <path d="M 580 100 L 590 100 L 590 90" fill="none"/>
+                  <path d="M 10 160 L 10 150 L 20 150" fill="none"/>
+                  <path d="M 580 150 L 590 150 L 590 160" fill="none"/>
+                </g>
+
+                <!-- Left & right tick labels -->
+                <text x="6" y="96" font-family="JetBrains Mono" font-size="8" fill="#656870" letter-spacing="1">kcal</text>
+                <text x="574" y="204" text-anchor="end" font-family="JetBrains Mono" font-size="8" fill="#656870" letter-spacing="1">SCALE · 1:1</text>
+                <text x="20" y="204" font-family="JetBrains Mono" font-size="8" fill="#656870" letter-spacing="1">READ · LINEAR</text>
+              </svg>
+            </div>
+
+            <div class="gauge-legend">
+              <div class="stat">
+                <div>
+                  <div class="k">CONSUMED</div>
+                  <div class="v tnum">1 486</div>
+                </div>
+                <div class="sub">66.3% of target</div>
+              </div>
+              <div class="stat">
+                <div>
+                  <div class="k">REMAINING</div>
+                  <div class="v sig tnum">754</div>
+                </div>
+                <div class="sub">± 3 kcal confidence</div>
+              </div>
+              <div class="stat">
+                <div>
+                  <div class="k">PROJECTED EOD</div>
+                  <div class="v tnum">2 118</div>
+                </div>
+                <div class="sub">pace: −122 vs target</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Macro bars -->
+          <div class="macros">
+            <div class="label" style="margin-bottom:6px;">MACRONUTRIENT DISTRIBUTION</div>
+            <div class="macro">
+              <div class="k">PROTEIN <b>g · 128 target</b></div>
+              <div class="bar"><div class="ticks"></div><div class="fill" style="width:72.5%"></div></div>
+              <div class="v tnum">92.7<b>/128g</b></div>
+            </div>
+            <div class="macro">
+              <div class="k">CARBOHYDRATE <b>g · 260 target</b></div>
+              <div class="bar"><div class="ticks"></div><div class="fill v2" style="width:58%"></div></div>
+              <div class="v tnum">150.8<b>/260g</b></div>
+            </div>
+            <div class="macro">
+              <div class="k">FAT <b>g · 72 target</b></div>
+              <div class="bar"><div class="ticks"></div><div class="fill v4" style="width:83%"></div></div>
+              <div class="v tnum">59.8<b>/72g</b></div>
+            </div>
+            <div class="macro">
+              <div class="k">FIBER <b>g · 35 target</b></div>
+              <div class="bar"><div class="ticks"></div><div class="fill v3" style="width:48%"></div></div>
+              <div class="v tnum">16.8<b>/35g</b></div>
+            </div>
+          </div>
+
+          <!-- Water tracker -->
+          <div class="water">
+            <div>
+              <div class="lbl">HYDRATION · H₂O · UNIT · 250 ml</div>
+              <div class="val tnum">1.50 L <span style="color:var(--ink-3); font-size:11px;letter-spacing:.14em;">/ 2.50 L</span></div>
+            </div>
+            <div class="btns">
+              <button>+ GLASS<span style="color:var(--ink-3);margin-left:6px;">250</span></button>
+              <button>+ BOTTLE<span style="color:var(--ink-3);margin-left:6px;">500</span></button>
+            </div>
+            <div class="bar">
+              <i class="on"></i><i class="on"></i><i class="on"></i>
+              <i class="on"></i><i class="on"></i><i class="on"></i>
+              <i></i><i></i><i></i><i></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meals panel -->
+      <div class="panel reg" style="margin-top:24px;">
+        <div class="panel-head">
+          <span>MEAL LEDGER · <span class="id">CH/02</span></span>
+          <span>entries: 09 · session: 14:32</span>
+        </div>
+        <div class="panel-body">
+          <div class="meals">
+            <div class="meal">
+              <div class="head">
+                <div class="name">Breakfast</div>
+                <div class="time">07:42 · SLOT 01</div>
+              </div>
+              <div class="items">
+                <div class="item">
+                  <div class="nm">Steel-cut oats, whole milk <span class="by">A · 60g + 200ml</span></div>
+                  <div class="qty tnum">1 bowl</div>
+                  <div class="kcal tnum">342 kcal</div>
+                  <div class="src">LIB</div>
+                </div>
+                <div class="item">
+                  <div class="nm">Blueberries, fresh <span class="by">B · 80g</span></div>
+                  <div class="qty tnum">½ cup</div>
+                  <div class="kcal tnum">46 kcal</div>
+                  <div class="src ai">AI</div>
+                </div>
+                <div class="item">
+                  <div class="nm">Double espresso, no sugar <span class="by">C · 60ml</span></div>
+                  <div class="qty tnum">2 shots</div>
+                  <div class="kcal tnum">4 kcal</div>
+                  <div class="src">LIB</div>
+                </div>
+              </div>
+              <div class="tot">
+                <div class="big tnum">392</div>
+                <div class="lbl">kcal · SUM</div>
+              </div>
+            </div>
+
+            <div class="meal">
+              <div class="head">
+                <div class="name">Snack · AM</div>
+                <div class="time">10:28 · SLOT 02</div>
+              </div>
+              <div class="items">
+                <div class="item">
+                  <div class="nm">Greek yogurt 2%, honey <span class="by">D · 170g + 12g</span></div>
+                  <div class="qty tnum">1 cup</div>
+                  <div class="kcal tnum">148 kcal</div>
+                  <div class="src ai">AI</div>
+                </div>
+              </div>
+              <div class="tot">
+                <div class="big tnum">148</div>
+                <div class="lbl">kcal · SUM</div>
+              </div>
+            </div>
+
+            <div class="meal">
+              <div class="head">
+                <div class="name">Lunch</div>
+                <div class="time">12:58 · SLOT 03</div>
+              </div>
+              <div class="items">
+                <div class="item">
+                  <div class="nm">Sourdough toast, avocado <span class="by">E · 2 sl + 80g</span></div>
+                  <div class="qty tnum">2 slices</div>
+                  <div class="kcal tnum">386 kcal</div>
+                  <div class="src ai">AI</div>
+                </div>
+                <div class="item">
+                  <div class="nm">Soft-poached egg <span class="by">F · 55g × 2</span></div>
+                  <div class="qty tnum">2 ea</div>
+                  <div class="kcal tnum">156 kcal</div>
+                  <div class="src">LIB</div>
+                </div>
+                <div class="item">
+                  <div class="nm">Pickled chilli, mixed greens <span class="by">G · 40g</span></div>
+                  <div class="qty tnum">handful</div>
+                  <div class="kcal tnum">28 kcal</div>
+                  <div class="src ai">AI</div>
+                </div>
+              </div>
+              <div class="tot">
+                <div class="big tnum">570</div>
+                <div class="lbl">kcal · SUM</div>
+              </div>
+            </div>
+
+            <div class="meal">
+              <div class="head">
+                <div class="name">Snack · PM</div>
+                <div class="time">15:10 · SLOT 04</div>
+              </div>
+              <div class="items">
+                <div class="item">
+                  <div class="nm">Dark chocolate 80% <span class="by">H · 24g</span></div>
+                  <div class="qty tnum">2 squares</div>
+                  <div class="kcal tnum">128 kcal</div>
+                  <div class="src">LIB</div>
+                </div>
+                <div class="item">
+                  <div class="nm">Almonds, raw <span class="by">I · 28g</span></div>
+                  <div class="qty tnum">1 palm</div>
+                  <div class="kcal tnum">163 kcal</div>
+                  <div class="src">LIB</div>
+                </div>
+              </div>
+              <div class="tot">
+                <div class="big tnum">291</div>
+                <div class="lbl">kcal · SUM</div>
+              </div>
+            </div>
+
+            <div class="meal">
+              <div class="head">
+                <div class="name">Dinner</div>
+                <div class="time">— · SLOT 05</div>
+              </div>
+              <div class="items"></div>
+              <div class="tot">
+                <div class="big tnum" style="color:var(--ink-3)">0</div>
+                <div class="lbl">kcal · SUM</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Micronutrient panel -->
+          <div class="micros">
+            <div class="label" style="margin-bottom:10px;">MICRONUTRIENT READOUT · 24H ROLLING</div>
+            <div class="micro-grid">
+              <div class="micro">
+                <div class="k">FIBER</div>
+                <div class="v tnum">16.8<span style="color:var(--ink-3);font-size:11px;">g</span></div>
+                <div class="sub">48 % · target 35g</div>
+                <div class="meter"><i class="mid" style="width:48%"></i></div>
+              </div>
+              <div class="micro">
+                <div class="k">IRON</div>
+                <div class="v tnum">11.2<span style="color:var(--ink-3);font-size:11px;">mg</span></div>
+                <div class="sub">62 % · RDA</div>
+                <div class="meter"><i class="mid" style="width:62%"></i></div>
+              </div>
+              <div class="micro">
+                <div class="k">SODIUM</div>
+                <div class="v tnum">1 420<span style="color:var(--ink-3);font-size:11px;">mg</span></div>
+                <div class="sub">71 % · limit 2g</div>
+                <div class="meter"><i style="width:71%"></i></div>
+              </div>
+              <div class="micro">
+                <div class="k">CALCIUM</div>
+                <div class="v tnum">640<span style="color:var(--ink-3);font-size:11px;">mg</span></div>
+                <div class="sub">64 % · RDA</div>
+                <div class="meter"><i class="mid" style="width:64%"></i></div>
+              </div>
+              <div class="micro">
+                <div class="k">VITAMIN D</div>
+                <div class="v tnum">3.1<span style="color:var(--ink-3);font-size:11px;">µg</span></div>
+                <div class="sub">21 % · low</div>
+                <div class="meter"><i class="low" style="width:21%"></i></div>
+              </div>
+              <div class="micro">
+                <div class="k">MAGNESIUM</div>
+                <div class="v tnum">248<span style="color:var(--ink-3);font-size:11px;">mg</span></div>
+                <div class="sub">59 % · RDA</div>
+                <div class="meter"><i class="mid" style="width:59%"></i></div>
+              </div>
+              <div class="micro">
+                <div class="k">POTASSIUM</div>
+                <div class="v tnum">2 180<span style="color:var(--ink-3);font-size:11px;">mg</span></div>
+                <div class="sub">62 % · RDA</div>
+                <div class="meter"><i class="mid" style="width:62%"></i></div>
+              </div>
+              <div class="micro">
+                <div class="k">SATURATED</div>
+                <div class="v tnum">18.4<span style="color:var(--ink-3);font-size:11px;">g</span></div>
+                <div class="sub">92 % · limit 20g</div>
+                <div class="meter"><i class="low" style="width:92%"></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column -->
+    <div>
+      <div class="panel reg">
+        <div class="panel-head">
+          <span>WEEKLY INSIGHT · <span class="id">AI/07</span></span>
+          <span>GENERATED · 14:12 · GEMINI</span>
+        </div>
+        <div class="panel-body">
+          <div class="insight">
+            <div class="hd">
+              <span class="t">PATTERN · W16 / 2026</span>
+              <span>CONFIDENCE · 84%</span>
+            </div>
+            <p>
+              Your evening protein intake dropped <em>−22 % vs. 4-week baseline</em> on days following gym sessions. Projection: adding a 30 g post-workout source would recover <em>96 % of your weekly protein target</em> without raising kcal.
+            </p>
+            <div class="footer">
+              <span>SAMPLE · 14d</span>
+              <span>SEEN · 0</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 18px;">
+            <div class="label" style="margin-bottom: 10px;">TODAY · AT A GLANCE</div>
+            <div class="kv-line"><span class="k">Fasting window</span><span class="v tnum">13h 12m</span></div>
+            <div class="kv-line"><span class="k">Avg meal spacing</span><span class="v tnum">02h 48m</span></div>
+            <div class="kv-line"><span class="k">Largest entry</span><span class="v">Sourdough + avocado</span></div>
+            <div class="kv-line"><span class="k">Fastest log</span><span class="v tnum">02.4 s</span></div>
+            <div class="kv-line"><span class="k">Library hits</span><span class="v tnum">5 / 9</span></div>
+            <div class="kv-line"><span class="k">AI inferred</span><span class="v tnum">4 / 9</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel reg" style="margin-top: 24px;">
+        <div class="panel-head">
+          <span>ENERGY FLOW · 24H · <span class="id">CH/03</span></span>
+          <span>by hour · kcal</span>
+        </div>
+        <div class="panel-body" style="padding: 14px 18px 20px;">
+          <svg viewBox="0 0 480 180" width="100%" height="180" aria-label="24h energy flow">
+            <!-- Grid -->
+            <g stroke="#24272B" stroke-width="0.5">
+              <line x1="20" y1="20" x2="460" y2="20"/>
+              <line x1="20" y1="60" x2="460" y2="60"/>
+              <line x1="20" y1="100" x2="460" y2="100"/>
+              <line x1="20" y1="140" x2="460" y2="140"/>
+            </g>
+            <!-- X ticks -->
+            <g stroke="#2E3238" stroke-width="1">
+              <line x1="20"  y1="140" x2="20"  y2="145"/>
+              <line x1="90"  y1="140" x2="90"  y2="145"/>
+              <line x1="165" y1="140" x2="165" y2="145"/>
+              <line x1="240" y1="140" x2="240" y2="145"/>
+              <line x1="310" y1="140" x2="310" y2="145"/>
+              <line x1="385" y1="140" x2="385" y2="145"/>
+              <line x1="460" y1="140" x2="460" y2="145"/>
+            </g>
+            <g font-family="JetBrains Mono" font-size="8" fill="#656870" letter-spacing="1">
+              <text x="20"  y="158" text-anchor="middle">00</text>
+              <text x="90"  y="158" text-anchor="middle">04</text>
+              <text x="165" y="158" text-anchor="middle">08</text>
+              <text x="240" y="158" text-anchor="middle">12</text>
+              <text x="310" y="158" text-anchor="middle">16</text>
+              <text x="385" y="158" text-anchor="middle">20</text>
+              <text x="460" y="158" text-anchor="middle">24</text>
+            </g>
+            <!-- Cumulative area -->
+            <path d="M 20 140 L 130 140 L 135 110 L 170 106 L 200 100 L 220 98 L 240 70 L 270 66 L 300 58 L 310 40 L 320 40 L 460 40 L 460 140 Z"
+                  fill="rgba(255,90,31,.12)" stroke="none"/>
+            <path d="M 20 140 L 130 140 L 135 110 L 170 106 L 200 100 L 220 98 L 240 70 L 270 66 L 300 58 L 310 40 L 320 40 L 460 40"
+                  fill="none" stroke="#FF5A1F" stroke-width="1.5"/>
+            <!-- Meal markers -->
+            <g>
+              <line x1="135" y1="20" x2="135" y2="140" stroke="#3A3F46" stroke-dasharray="2 3"/>
+              <line x1="200" y1="20" x2="200" y2="140" stroke="#3A3F46" stroke-dasharray="2 3"/>
+              <line x1="240" y1="20" x2="240" y2="140" stroke="#3A3F46" stroke-dasharray="2 3"/>
+              <line x1="310" y1="20" x2="310" y2="140" stroke="#3A3F46" stroke-dasharray="2 3"/>
+            </g>
+            <g font-family="JetBrains Mono" font-size="7" fill="#9FA2A6" letter-spacing="1">
+              <text x="135" y="18" text-anchor="middle">BFAST</text>
+              <text x="200" y="18" text-anchor="middle">AM</text>
+              <text x="240" y="18" text-anchor="middle">LUN</text>
+              <text x="310" y="18" text-anchor="middle">PM</text>
+            </g>
+            <!-- Y labels -->
+            <g font-family="JetBrains Mono" font-size="8" fill="#656870" letter-spacing="1">
+              <text x="14" y="22" text-anchor="end">2 500</text>
+              <text x="14" y="62" text-anchor="end">1 500</text>
+              <text x="14" y="102" text-anchor="end">500</text>
+              <text x="14" y="142" text-anchor="end">0</text>
+            </g>
+            <!-- Target line -->
+            <line x1="20" y1="30" x2="460" y2="30" stroke="#FF5A1F" stroke-width="0.7" stroke-dasharray="3 3"/>
+            <text x="456" y="28" text-anchor="end" font-family="JetBrains Mono" font-size="7" fill="#FF5A1F" letter-spacing="1">TGT 2 240</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="panel reg" style="margin-top: 24px;">
+        <div class="panel-head">
+          <span>STREAK · <span class="id">41 d</span></span>
+          <span>consecutive logs</span>
+        </div>
+        <div class="panel-body" style="padding: 14px;">
+          <svg viewBox="0 0 420 60" width="100%" height="60" aria-label="Streak strip">
+            <g>
+              <!-- 41 ticks -->
+              <g fill="#FF5A1F">
+                <!-- generate 41 bars -->
+                <!-- 10-unit major ticks -->
+              </g>
+            </g>
+            <g>
+              <!-- programmatic bars -->
+            </g>
+            <!-- manually drawn 41 -->
+            <g>
+              <g fill="#FF5A1F">
+                <rect x="4" y="20" width="6" height="30"/>
+                <rect x="14" y="20" width="6" height="30"/>
+                <rect x="24" y="20" width="6" height="30"/>
+                <rect x="34" y="20" width="6" height="30"/>
+                <rect x="44" y="20" width="6" height="30"/>
+                <rect x="54" y="20" width="6" height="30"/>
+                <rect x="64" y="20" width="6" height="30"/>
+                <rect x="74" y="20" width="6" height="30"/>
+                <rect x="84" y="20" width="6" height="30"/>
+                <rect x="94" y="20" width="6" height="30"/>
+                <rect x="104" y="20" width="6" height="30"/>
+                <rect x="114" y="20" width="6" height="30"/>
+                <rect x="124" y="20" width="6" height="30"/>
+                <rect x="134" y="20" width="6" height="30"/>
+                <rect x="144" y="20" width="6" height="30"/>
+                <rect x="154" y="20" width="6" height="30"/>
+                <rect x="164" y="20" width="6" height="30"/>
+                <rect x="174" y="20" width="6" height="30"/>
+                <rect x="184" y="20" width="6" height="30"/>
+                <rect x="194" y="20" width="6" height="30"/>
+                <rect x="204" y="20" width="6" height="30"/>
+                <rect x="214" y="20" width="6" height="30"/>
+                <rect x="224" y="20" width="6" height="30"/>
+                <rect x="234" y="20" width="6" height="30"/>
+                <rect x="244" y="20" width="6" height="30"/>
+                <rect x="254" y="20" width="6" height="30"/>
+                <rect x="264" y="20" width="6" height="30"/>
+                <rect x="274" y="20" width="6" height="30"/>
+                <rect x="284" y="20" width="6" height="30"/>
+                <rect x="294" y="20" width="6" height="30"/>
+                <rect x="304" y="20" width="6" height="30"/>
+                <rect x="314" y="20" width="6" height="30"/>
+                <rect x="324" y="20" width="6" height="30"/>
+                <rect x="334" y="20" width="6" height="30"/>
+                <rect x="344" y="20" width="6" height="30"/>
+                <rect x="354" y="20" width="6" height="30"/>
+                <rect x="364" y="20" width="6" height="30"/>
+                <rect x="374" y="20" width="6" height="30"/>
+                <rect x="384" y="20" width="6" height="30"/>
+                <rect x="394" y="20" width="6" height="30"/>
+                <rect x="404" y="20" width="6" height="30"/>
+              </g>
+              <!-- future pending -->
+              <g fill="#24272B">
+                <rect x="414" y="20" width="6" height="30"/>
+              </g>
+            </g>
+            <g font-family="JetBrains Mono" font-size="8" fill="#656870" letter-spacing="1">
+              <text x="4" y="14">D-41</text>
+              <text x="412" y="14" text-anchor="end">TODAY</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== LOG CONFIRMATION ==================== -->
+<section class="apparatus">
+  <div class="sec-head">
+    <div class="num">§02</div>
+    <h2 class="sans">Log — Confirmation</h2>
+    <div class="side">NLP · AI PARSE · PENDING COMMIT</div>
+  </div>
+
+  <div class="log-grid">
+    <div>
+      <div class="input-strip">
+        <div class="icon">▸</div>
+        <div class="q">“had two chicken tacos with guac and a mango lassi”<span class="cursor"></span></div>
+        <div class="state">PARSED · 312 ms</div>
+        <div class="label">[ ESC ] CANCEL</div>
+      </div>
+
+      <div class="label" style="margin-bottom:8px;">DETECTED · 3 ITEMS · CONFIDENCE 92%</div>
+
+      <div class="item-row">
+        <div class="nm">Chicken taco, corn tortilla <b>item 01 · detected qty 2</b></div>
+        <div class="step">
+          <button>−</button>
+          <div class="num tnum">2</div>
+          <button>+</button>
+        </div>
+        <div class="unit">EA</div>
+        <div class="kcal tnum">412<b>kcal · 206 ea</b></div>
+      </div>
+      <div class="item-row">
+        <div class="nm">Guacamole, table-side <b>item 02 · estimated 40g</b></div>
+        <div class="step">
+          <button>−</button>
+          <div class="num tnum">40</div>
+          <button>+</button>
+        </div>
+        <div class="unit">G</div>
+        <div class="kcal tnum">66<b>kcal · 1.65/g</b></div>
+      </div>
+      <div class="item-row">
+        <div class="nm">Mango lassi, yogurt base <b>item 03 · estimated 320ml</b></div>
+        <div class="step">
+          <button>−</button>
+          <div class="num tnum">320</div>
+          <button>+</button>
+        </div>
+        <div class="unit">ML</div>
+        <div class="kcal tnum">248<b>kcal · 0.78/ml</b></div>
+      </div>
+
+      <details class="why" open>
+        <summary>
+          <span>▾ WHY THESE NUMBERS? · REASONING TRACE</span>
+          <span class="plus">−</span>
+        </summary>
+        <div class="body">
+          <div style="margin-bottom: 10px; color: var(--ink-2);">
+            Inference chain below. Values assembled from USDA reference set and prior personal library entries.
+            Uncertainty expressed as <span style="color:var(--sig)">±%</span>; corrections overwrite library weighting.
+          </div>
+          <div class="table">
+            <div>SOURCE</div><div>BASIS</div><div>Δ kcal</div>
+            <div>USDA · FDC</div><div>Chicken thigh, grilled · 100 g · 209 kcal</div><div class="tnum">+209</div>
+            <div>USDA · FDC</div><div>Corn tortilla, 6" · 1 ea · 58 kcal</div><div class="tnum">+58</div>
+            <div>LIBRARY · 18×</div><div>Your avg guac entry · 1.65 kcal/g</div><div class="tnum">+66</div>
+            <div>GEMINI · INFER</div><div>Mango lassi · sweetened · 0.78 kcal/ml</div><div class="tnum">+248</div>
+            <div>ADJUST</div><div>Portion language "two tacos" → 2 × tortilla + fill</div><div class="tnum">+12</div>
+            <div style="color:var(--sig)">TOTAL · ±5 %</div><div style="color:var(--sig)">—</div><div class="tnum" style="color:var(--sig)">+726</div>
+          </div>
+        </div>
+      </details>
+
+      <div class="library-save">
+        <div class="t">SAVE COMBO TO LIBRARY
+          <b>Recall as "tacos + lassi" in one tap</b>
+        </div>
+        <div class="toggle on" aria-label="save to library toggle"></div>
+      </div>
+
+      <div class="commit-row">
+        <span></span>
+        <button class="btn">DISCARD <span class="kbd">ESC</span></button>
+        <button class="btn primary">COMMIT ENTRY <span class="kbd">↵</span></button>
+      </div>
+    </div>
+
+    <div class="log-side">
+      <div class="panel reg">
+        <div class="panel-head">
+          <span>ENTRY SUMMARY · <span class="id">LOG/A9F2</span></span>
+          <span>kcal · g · ml</span>
+        </div>
+        <div class="panel-body">
+          <table class="summary-table">
+            <tr><td>ENERGY</td><td class="tnum">726 kcal <span class="delta">+32 % DAY</span></td></tr>
+            <tr><td>PROTEIN</td><td class="tnum">38.4 g <span class="delta">+30 %</span></td></tr>
+            <tr><td>CARB</td><td class="tnum">82.1 g <span class="delta">+54 %</span></td></tr>
+            <tr><td>FAT</td><td class="tnum">26.4 g <span class="delta">+44 %</span></td></tr>
+            <tr><td>FIBER</td><td class="tnum">6.2 g <span class="delta">+37 %</span></td></tr>
+            <tr><td>SODIUM</td><td class="tnum">612 mg <span class="delta neg">+43 %</span></td></tr>
+            <tr><td>SUGAR</td><td class="tnum">42.0 g <span class="delta neg">+58 %</span></td></tr>
+            <tr><td>POST-LOG TOTAL</td><td class="tnum"><b style="color:var(--sig)">2 212</b> / 2 240</td></tr>
+            <tr><td>DISTANCE TO TGT</td><td class="tnum" style="color:var(--ok)">−28 kcal · OK</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel reg" style="margin-top: 20px;">
+        <div class="panel-head">
+          <span>LOGGING TELEMETRY</span>
+          <span>THIS SESSION</span>
+        </div>
+        <div class="panel-body" style="padding: 14px 18px;">
+          <div class="kv-line"><span class="k">Capture method</span><span class="v">TEXT · NATURAL</span></div>
+          <div class="kv-line"><span class="k">Parse latency</span><span class="v tnum">312 ms</span></div>
+          <div class="kv-line"><span class="k">Tokens in/out</span><span class="v tnum">48 / 216</span></div>
+          <div class="kv-line"><span class="k">Source split</span><span class="v tnum">2 USDA · 1 LIB · 3 INFER</span></div>
+          <div class="kv-line"><span class="k">Overall conf.</span><span class="v" style="color:var(--ok)">0.92</span></div>
+          <div class="kv-line"><span class="k">Corrections</span><span class="v tnum">0 · accepted</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== LIBRARY ==================== -->
+<section class="apparatus">
+  <div class="sec-head">
+    <div class="num">§03</div>
+    <h2 class="sans">Library — Personal Index</h2>
+    <div class="side">427 ITEMS · SORTED BY USE · DESC</div>
+  </div>
+
+  <div class="lib-controls">
+    <div class="search">
+      <span class="q">chicken th</span>
+    </div>
+    <div class="chip active">ALL</div>
+    <div class="chip">BREAKFAST</div>
+    <div class="chip">LUNCH</div>
+    <div class="chip">SORT · USE <span class="arrow">▾</span></div>
+  </div>
+
+  <div class="grid-lib">
+    <!-- Card 1 -->
+    <div class="card-food">
+      <div class="thumb">
+        <span class="id">K-001</span>
+        <span class="count">× 94</span>
+        <svg viewBox="0 0 120 96" width="100%" height="100%">
+          <rect x="22" y="32" width="76" height="40" fill="none" stroke="#FF5A1F" stroke-width="1"/>
+          <path d="M 22 32 L 40 20 L 116 20 L 98 32" fill="none" stroke="#FF5A1F" stroke-width="1"/>
+          <path d="M 116 20 L 116 60 L 98 72" fill="none" stroke="#FF5A1F" stroke-width="1"/>
+          <line x1="22" y1="52" x2="98" y2="52" stroke="#FF5A1F" stroke-width="0.5" stroke-dasharray="2 2"/>
+          <text x="8" y="92" font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">FRONT ELEV</text>
+        </svg>
+      </div>
+      <div class="nm">Chicken thigh, grilled</div>
+      <div class="meta"><span>PER 100G · LIB</span><span>LAST 2D</span></div>
+      <div class="kcal"><span class="tnum">209</span><b>kcal</b></div>
+    </div>
+
+    <div class="card-food">
+      <div class="thumb">
+        <span class="id">K-002</span>
+        <span class="count">× 72</span>
+        <svg viewBox="0 0 120 96" width="100%" height="100%">
+          <circle cx="60" cy="48" r="26" fill="none" stroke="#FF5A1F" stroke-width="1"/>
+          <circle cx="60" cy="48" r="14" fill="none" stroke="#FF5A1F" stroke-width="0.5" stroke-dasharray="2 2"/>
+          <line x1="34" y1="48" x2="86" y2="48" stroke="#FF5A1F" stroke-width="0.5"/>
+          <line x1="60" y1="22" x2="60" y2="74" stroke="#FF5A1F" stroke-width="0.5"/>
+          <text x="8" y="92" font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">TOP VIEW · Ø60</text>
+        </svg>
+      </div>
+      <div class="nm">Sourdough slice</div>
+      <div class="meta"><span>1 SLICE · 60G</span><span>LAST 4H</span></div>
+      <div class="kcal"><span class="tnum">152</span><b>kcal</b></div>
+    </div>
+
+    <div class="card-food">
+      <div class="thumb">
+        <span class="id">K-003</span>
+        <span class="count">× 58</span>
+        <svg viewBox="0 0 120 96" width="100%" height="100%">
+          <path d="M 30 70 Q 60 20 90 70" fill="none" stroke="#FF5A1F" stroke-width="1"/>
+          <line x1="30" y1="70" x2="90" y2="70" stroke="#FF5A1F" stroke-width="1"/>
+          <circle cx="60" cy="54" r="3" fill="#FF5A1F"/>
+          <line x1="30" y1="80" x2="90" y2="80" stroke="#FF5A1F" stroke-width="0.5" stroke-dasharray="2 2"/>
+          <text x="8" y="92" font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">SECT A-A</text>
+        </svg>
+      </div>
+      <div class="nm">Soft-poached egg</div>
+      <div class="meta"><span>1 EA · 55G</span><span>LAST 1D</span></div>
+      <div class="kcal"><span class="tnum">78</span><b>kcal</b></div>
+    </div>
+
+    <div class="card-food">
+      <div class="thumb">
+        <span class="id">K-004</span>
+        <span class="count">× 51</span>
+        <svg viewBox="0 0 120 96" width="100%" height="100%">
+          <rect x="30" y="20" width="60" height="56" fill="none" stroke="#FF5A1F" stroke-width="1"/>
+          <path d="M 30 20 L 90 76 M 90 20 L 30 76" stroke="#FF5A1F" stroke-width="0.5"/>
+          <text x="8" y="92" font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">ORTHO</text>
+        </svg>
+      </div>
+      <div class="nm">Greek yogurt 2 %</div>
+      <div class="meta"><span>170G CUP</span><span>LAST 4H</span></div>
+      <div class="kcal"><span class="tnum">122</span><b>kcal</b></div>
+    </div>
+
+    <div class="card-food">
+      <div class="thumb">
+        <span class="id">K-005</span>
+        <span class="count">× 47</span>
+        <svg viewBox="0 0 120 96" width="100%" height="100%">
+          <ellipse cx="60" cy="50" rx="30" ry="18" fill="none" stroke="#FF5A1F" stroke-width="1"/>
+          <line x1="30" y1="50" x2="90" y2="50" stroke="#FF5A1F" stroke-width="0.5" stroke-dasharray="2 2"/>
+          <line x1="60" y1="32" x2="60" y2="68" stroke="#FF5A1F" stroke-width="0.5"/>
+          <text x="8" y="92" font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">BEAN · Ø28</text>
+        </svg>
+      </div>
+      <div class="nm">Avocado, ripe</div>
+      <div class="meta"><span>½ EA · 80G</span><span>LAST 2H</span></div>
+      <div class="kcal"><span class="tnum">128</span><b>kcal</b></div>
+    </div>
+
+    <div class="card-food">
+      <div class="thumb">
+        <span class="id">K-006</span>
+        <span class="count">× 43</span>
+        <svg viewBox="0 0 120 96" width="100%" height="100%">
+          <rect x="20" y="30" width="80" height="40" fill="none" stroke="#FF5A1F" stroke-width="1"/>
+          <rect x="28" y="38" width="64" height="24" fill="none" stroke="#FF5A1F" stroke-width="0.5" stroke-dasharray="2 2"/>
+          <text x="8" y="92" font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">TRAY · 80×40</text>
+        </svg>
+      </div>
+      <div class="nm">Steel-cut oats</div>
+      <div class="meta"><span>60G DRY</span><span>LAST 7H</span></div>
+      <div class="kcal"><span class="tnum">228</span><b>kcal</b></div>
+    </div>
+
+    <div class="card-food">
+      <div class="thumb">
+        <span class="id">K-007</span>
+        <span class="count">× 39</span>
+        <svg viewBox="0 0 120 96" width="100%" height="100%">
+          <circle cx="40" cy="54" r="10" fill="none" stroke="#FF5A1F" stroke-width="0.8"/>
+          <circle cx="62" cy="48" r="8" fill="none" stroke="#FF5A1F" stroke-width="0.8"/>
+          <circle cx="78" cy="56" r="9" fill="none" stroke="#FF5A1F" stroke-width="0.8"/>
+          <circle cx="56" cy="62" r="6" fill="none" stroke="#FF5A1F" stroke-width="0.8"/>
+          <text x="8" y="92" font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">CLUSTER</text>
+        </svg>
+      </div>
+      <div class="nm">Blueberries, fresh</div>
+      <div class="meta"><span>80G · ½ CUP</span><span>LAST 7H</span></div>
+      <div class="kcal"><span class="tnum">46</span><b>kcal</b></div>
+    </div>
+
+    <div class="card-food">
+      <div class="thumb">
+        <span class="id">K-008</span>
+        <span class="count">× 34</span>
+        <svg viewBox="0 0 120 96" width="100%" height="100%">
+          <rect x="36" y="24" width="48" height="52" fill="none" stroke="#FF5A1F" stroke-width="1"/>
+          <line x1="36" y1="36" x2="84" y2="36" stroke="#FF5A1F" stroke-width="0.5"/>
+          <line x1="36" y1="48" x2="84" y2="48" stroke="#FF5A1F" stroke-width="0.5"/>
+          <line x1="36" y1="60" x2="84" y2="60" stroke="#FF5A1F" stroke-width="0.5"/>
+          <text x="8" y="92" font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">BAR · 48×52</text>
+        </svg>
+      </div>
+      <div class="nm">Dark chocolate 80 %</div>
+      <div class="meta"><span>1 SQ · 12G</span><span>LAST 1D</span></div>
+      <div class="kcal"><span class="tnum">64</span><b>kcal</b></div>
+    </div>
+
+    <div class="card-food">
+      <div class="thumb">
+        <span class="id">K-009</span>
+        <span class="count">× 29</span>
+        <svg viewBox="0 0 120 96" width="100%" height="100%">
+          <path d="M 40 30 L 80 30 L 88 60 L 80 72 L 40 72 L 32 60 Z" fill="none" stroke="#FF5A1F" stroke-width="1"/>
+          <line x1="40" y1="30" x2="32" y2="60" stroke="#FF5A1F" stroke-width="0.5" stroke-dasharray="2 2"/>
+          <line x1="80" y1="30" x2="88" y2="60" stroke="#FF5A1F" stroke-width="0.5" stroke-dasharray="2 2"/>
+          <text x="8" y="92" font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">FRUIT · SECT</text>
+        </svg>
+      </div>
+      <div class="nm">Mango, ripe</div>
+      <div class="meta"><span>½ EA · 140G</span><span>LAST 3D</span></div>
+      <div class="kcal"><span class="tnum">84</span><b>kcal</b></div>
+    </div>
+
+    <div class="card-food">
+      <div class="thumb">
+        <span class="id">K-010</span>
+        <span class="count">× 26</span>
+        <svg viewBox="0 0 120 96" width="100%" height="100%">
+          <path d="M 30 72 C 30 40 60 20 60 20 C 60 20 90 40 90 72 Z" fill="none" stroke="#FF5A1F" stroke-width="1"/>
+          <line x1="44" y1="72" x2="44" y2="40" stroke="#FF5A1F" stroke-width="0.5" stroke-dasharray="2 2"/>
+          <line x1="76" y1="72" x2="76" y2="40" stroke="#FF5A1F" stroke-width="0.5" stroke-dasharray="2 2"/>
+          <text x="8" y="92" font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">GLASS · 320ml</text>
+        </svg>
+      </div>
+      <div class="nm">Espresso, double</div>
+      <div class="meta"><span>60ML · 2 SHOT</span><span>LAST 7H</span></div>
+      <div class="kcal"><span class="tnum">4</span><b>kcal</b></div>
+    </div>
+  </div>
+
+  <div style="margin-top: 16px; display:flex; justify-content: space-between; font-size: 10px; color: var(--ink-3); letter-spacing: 0.16em; text-transform: uppercase;">
+    <span>PAGE 01 / 43 · 10 OF 427 SHOWN</span>
+    <span>IDX: K-001 → K-010</span>
+    <span>◂ PREV | NEXT ▸</span>
+  </div>
+</section>
+
+<!-- ==================== PROGRESS ==================== -->
+<section class="apparatus">
+  <div class="sec-head">
+    <div class="num">§04</div>
+    <h2 class="sans">Progress — Readout</h2>
+    <div class="side">30-DAY · ROLLING · SAMPLE 28 / 30</div>
+  </div>
+
+  <div class="prog-toolbar">
+    <div class="seg">
+      <button>DAY</button>
+      <button class="active">WEEK</button>
+      <button>MONTH</button>
+    </div>
+    <div style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); text-align:center;">
+      RANGE · 20 MAR 26 → 18 APR 26 · ΔT 30 D
+    </div>
+    <div style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sig);">EXPORT · CSV / PNG</div>
+  </div>
+
+  <div class="prog-grid">
+    <!-- Adherence bars -->
+    <div class="chart-block">
+      <div class="panel-head">
+        <span>CAL. ADHERENCE · <span style="color:var(--sig)">CH/11</span></span>
+        <span>% of daily target · 30d</span>
+      </div>
+      <div class="panel-body" style="padding: 14px 18px 8px;">
+        <svg viewBox="0 0 480 200" width="100%" height="200" aria-label="Calorie adherence">
+          <!-- y grid -->
+          <g stroke="#24272B" stroke-width="0.5">
+            <line x1="28" y1="20"  x2="478" y2="20"/>
+            <line x1="28" y1="60"  x2="478" y2="60"/>
+            <line x1="28" y1="100" x2="478" y2="100"/>
+            <line x1="28" y1="140" x2="478" y2="140"/>
+            <line x1="28" y1="180" x2="478" y2="180"/>
+          </g>
+          <!-- Target band (90-110%) -->
+          <rect x="28" y="40" width="450" height="40" fill="rgba(126,184,142,.08)"/>
+          <line x1="28" y1="60" x2="478" y2="60" stroke="#7EB88E" stroke-width="0.6" stroke-dasharray="3 3"/>
+          <text x="476" y="38" text-anchor="end" font-family="JetBrains Mono" font-size="7" fill="#7EB88E" letter-spacing="1">TARGET BAND · 90→110 %</text>
+
+          <!-- bars (30 days) -->
+          <g>
+            <!-- each bar 13 wide + 2 gap, starts x=30 -->
+          </g>
+
+          <!-- bars -->
+          <g>
+            <!-- use a series: adherence % mapped to y -->
+          </g>
+          <g>
+            <rect x="30"  y="58" width="13" height="122" fill="#FF5A1F"/>
+            <rect x="45"  y="70" width="13" height="110" fill="#FF5A1F"/>
+            <rect x="60"  y="92" width="13" height="88"  fill="#FF5A1F"/>
+            <rect x="75"  y="50" width="13" height="130" fill="#FF5A1F"/>
+            <rect x="90"  y="62" width="13" height="118" fill="#FF5A1F"/>
+            <rect x="105" y="84" width="13" height="96"  fill="#FF5A1F"/>
+            <rect x="120" y="48" width="13" height="132" fill="#FF5A1F"/>
+            <rect x="135" y="56" width="13" height="124" fill="#FF5A1F"/>
+            <rect x="150" y="72" width="13" height="108" fill="#FF5A1F"/>
+            <rect x="165" y="82" width="13" height="98"  fill="#FF5A1F"/>
+            <rect x="180" y="30" width="13" height="150" fill="#E6B450"/><!-- over -->
+            <rect x="195" y="60" width="13" height="120" fill="#FF5A1F"/>
+            <rect x="210" y="76" width="13" height="104" fill="#FF5A1F"/>
+            <rect x="225" y="54" width="13" height="126" fill="#FF5A1F"/>
+            <rect x="240" y="46" width="13" height="134" fill="#FF5A1F"/>
+            <rect x="255" y="64" width="13" height="116" fill="#FF5A1F"/>
+            <rect x="270" y="128" width="13" height="52" fill="#D1545B"/><!-- under -->
+            <rect x="285" y="100" width="13" height="80"  fill="#FF5A1F"/>
+            <rect x="300" y="42" width="13" height="138" fill="#FF5A1F"/>
+            <rect x="315" y="58" width="13" height="122" fill="#FF5A1F"/>
+            <rect x="330" y="68" width="13" height="112" fill="#FF5A1F"/>
+            <rect x="345" y="90" width="13" height="90"  fill="#FF5A1F"/>
+            <rect x="360" y="52" width="13" height="128" fill="#FF5A1F"/>
+            <rect x="375" y="44" width="13" height="136" fill="#FF5A1F"/>
+            <rect x="390" y="36" width="13" height="144" fill="#E6B450"/>
+            <rect x="405" y="62" width="13" height="118" fill="#FF5A1F"/>
+            <rect x="420" y="56" width="13" height="124" fill="#FF5A1F"/>
+            <rect x="435" y="74" width="13" height="106" fill="#FF5A1F"/>
+            <rect x="450" y="58" width="13" height="122" fill="#FF5A1F"/>
+            <rect x="465" y="68" width="13" height="112" fill="#FF5A1F"/>
+          </g>
+
+          <!-- y labels -->
+          <g font-family="JetBrains Mono" font-size="8" fill="#656870" letter-spacing="1">
+            <text x="24" y="22" text-anchor="end">120%</text>
+            <text x="24" y="62" text-anchor="end">100%</text>
+            <text x="24" y="102" text-anchor="end">80%</text>
+            <text x="24" y="142" text-anchor="end">60%</text>
+            <text x="24" y="182" text-anchor="end">40%</text>
+          </g>
+          <line x1="28" y1="20" x2="28" y2="180" stroke="#3A3F46"/>
+          <line x1="28" y1="180" x2="478" y2="180" stroke="#3A3F46"/>
+
+          <!-- x labels -->
+          <g font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">
+            <text x="36" y="196">D-30</text>
+            <text x="186" y="196">D-20</text>
+            <text x="336" y="196">D-10</text>
+            <text x="476" y="196" text-anchor="end">TODAY</text>
+          </g>
+        </svg>
+        <div style="display:flex; gap: 16px; padding: 6px 0 12px; font-size: 9px; color: var(--ink-3); letter-spacing: 0.16em;">
+          <span><i style="display:inline-block;width:8px;height:8px;background:var(--sig);margin-right:4px;"></i> IN BAND</span>
+          <span><i style="display:inline-block;width:8px;height:8px;background:var(--warn);margin-right:4px;"></i> OVER</span>
+          <span><i style="display:inline-block;width:8px;height:8px;background:var(--err);margin-right:4px;"></i> UNDER</span>
+          <span style="margin-left:auto;">ADHERENCE · 27 / 30 D</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weight trajectory -->
+    <div class="chart-block">
+      <div class="panel-head">
+        <span>WEIGHT · 30 D + PROJECTION · <span style="color:var(--sig)">CH/12</span></span>
+        <span>kg · ±0.1</span>
+      </div>
+      <div class="panel-body" style="padding: 14px 18px 8px;">
+        <svg viewBox="0 0 480 200" width="100%" height="200" aria-label="Weight trajectory">
+          <g stroke="#24272B" stroke-width="0.5">
+            <line x1="28" y1="20" x2="478" y2="20"/>
+            <line x1="28" y1="60" x2="478" y2="60"/>
+            <line x1="28" y1="100" x2="478" y2="100"/>
+            <line x1="28" y1="140" x2="478" y2="140"/>
+            <line x1="28" y1="180" x2="478" y2="180"/>
+          </g>
+          <line x1="28" y1="20" x2="28" y2="180" stroke="#3A3F46"/>
+          <line x1="28" y1="180" x2="478" y2="180" stroke="#3A3F46"/>
+
+          <!-- Goal line -->
+          <line x1="28" y1="120" x2="478" y2="120" stroke="#7EB88E" stroke-width="0.7" stroke-dasharray="3 3"/>
+          <text x="476" y="116" text-anchor="end" font-family="JetBrains Mono" font-size="7" fill="#7EB88E" letter-spacing="1">GOAL · 76.0 kg</text>
+
+          <!-- Raw scatter -->
+          <g fill="#9FA2A6">
+            <circle cx="36" cy="40" r="1.8"/>
+            <circle cx="50" cy="48" r="1.8"/>
+            <circle cx="64" cy="42" r="1.8"/>
+            <circle cx="78" cy="54" r="1.8"/>
+            <circle cx="92" cy="50" r="1.8"/>
+            <circle cx="106" cy="58" r="1.8"/>
+            <circle cx="120" cy="52" r="1.8"/>
+            <circle cx="134" cy="64" r="1.8"/>
+            <circle cx="148" cy="60" r="1.8"/>
+            <circle cx="162" cy="66" r="1.8"/>
+            <circle cx="176" cy="58" r="1.8"/>
+            <circle cx="190" cy="70" r="1.8"/>
+            <circle cx="204" cy="64" r="1.8"/>
+            <circle cx="218" cy="76" r="1.8"/>
+            <circle cx="232" cy="68" r="1.8"/>
+            <circle cx="246" cy="78" r="1.8"/>
+            <circle cx="260" cy="70" r="1.8"/>
+            <circle cx="274" cy="82" r="1.8"/>
+            <circle cx="288" cy="76" r="1.8"/>
+            <circle cx="302" cy="86" r="1.8"/>
+            <circle cx="316" cy="80" r="1.8"/>
+            <circle cx="330" cy="88" r="1.8"/>
+          </g>
+
+          <!-- Smoothed trend -->
+          <path d="M 36 46 C 110 56, 180 70, 260 80 L 330 86"
+                fill="none" stroke="#FF5A1F" stroke-width="1.8"/>
+
+          <!-- Projection (dashed forward) -->
+          <path d="M 330 86 C 380 96, 420 108, 478 120"
+                fill="none" stroke="#FF5A1F" stroke-width="1.4" stroke-dasharray="4 3"/>
+
+          <!-- Projection band -->
+          <path d="M 330 80 C 380 88, 420 100, 478 110 L 478 130 C 420 118, 380 108, 330 92 Z"
+                fill="rgba(255,90,31,.08)" stroke="none"/>
+
+          <!-- Today marker -->
+          <line x1="330" y1="20" x2="330" y2="180" stroke="#3A3F46" stroke-dasharray="2 3"/>
+          <text x="334" y="30" font-family="JetBrains Mono" font-size="7" fill="#9FA2A6" letter-spacing="1">TODAY</text>
+          <circle cx="330" cy="86" r="3" fill="#FF5A1F"/>
+          <text x="334" y="80" font-family="JetBrains Mono" font-size="9" fill="#EFEEE9" letter-spacing="1">78.3 kg</text>
+
+          <!-- y labels -->
+          <g font-family="JetBrains Mono" font-size="8" fill="#656870" letter-spacing="1">
+            <text x="24" y="22" text-anchor="end">80.5</text>
+            <text x="24" y="62" text-anchor="end">79.0</text>
+            <text x="24" y="102" text-anchor="end">77.5</text>
+            <text x="24" y="142" text-anchor="end">76.0</text>
+            <text x="24" y="182" text-anchor="end">74.5</text>
+          </g>
+          <g font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">
+            <text x="36" y="196">D-30</text>
+            <text x="186" y="196">D-15</text>
+            <text x="330" y="196">D-0</text>
+            <text x="476" y="196" text-anchor="end">+15D</text>
+          </g>
+        </svg>
+        <div style="display:flex; gap: 16px; padding: 6px 0 12px; font-size: 9px; color: var(--ink-3); letter-spacing: 0.16em;">
+          <span>Δ 30D · <span style="color:var(--sig)">−2.2 kg</span></span>
+          <span>RATE · <span style="color:var(--ink-1)">0.52 kg / wk</span></span>
+          <span>GOAL ETA · <span style="color:var(--ink-1)">05 MAY 26</span></span>
+          <span style="margin-left:auto;">CONFIDENCE · 0.78</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Macro stacked area -->
+    <div class="chart-block">
+      <div class="panel-head">
+        <span>MACRO DISTRIBUTION · 30D · <span style="color:var(--sig)">CH/13</span></span>
+        <span>% of kcal</span>
+      </div>
+      <div class="panel-body" style="padding: 14px 18px 8px;">
+        <svg viewBox="0 0 480 180" width="100%" height="180" aria-label="Macro area">
+          <!-- Stacked area (Prot 30 / Carb 45 / Fat 25 avg) -->
+          <defs>
+            <pattern id="h-p" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="4" stroke="#FF5A1F" stroke-width="2"/>
+            </pattern>
+            <pattern id="h-c" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+              <line x1="0" y1="0" x2="0" y2="4" stroke="#6C94B5" stroke-width="2"/>
+            </pattern>
+            <pattern id="h-f" width="5" height="5" patternUnits="userSpaceOnUse">
+              <circle cx="2.5" cy="2.5" r="0.7" fill="#E6B450"/>
+            </pattern>
+          </defs>
+
+          <!-- Grid -->
+          <g stroke="#24272B" stroke-width="0.5">
+            <line x1="28" y1="20" x2="478" y2="20"/>
+            <line x1="28" y1="60" x2="478" y2="60"/>
+            <line x1="28" y1="100" x2="478" y2="100"/>
+            <line x1="28" y1="140" x2="478" y2="140"/>
+          </g>
+          <line x1="28" y1="20" x2="28" y2="160" stroke="#3A3F46"/>
+          <line x1="28" y1="160" x2="478" y2="160" stroke="#3A3F46"/>
+
+          <!-- Protein 0-30% (top layer = 0-30%) -->
+          <path d="M 28 20 L 60 24 L 100 22 L 140 28 L 180 20 L 220 26 L 260 30 L 300 22 L 340 26 L 380 24 L 420 20 L 478 22
+                   L 478 160 L 28 160 Z" fill="#181A1D" stroke="none"/>
+
+          <!-- Carb layer 30-75% -->
+          <path d="M 28 82 L 60 78 L 100 86 L 140 76 L 180 80 L 220 86 L 260 82 L 300 78 L 340 84 L 380 80 L 420 76 L 478 80
+                   L 478 160 L 28 160 Z" fill="url(#h-c)" stroke="none"/>
+          <path d="M 28 82 L 60 78 L 100 86 L 140 76 L 180 80 L 220 86 L 260 82 L 300 78 L 340 84 L 380 80 L 420 76 L 478 80"
+                fill="none" stroke="#6C94B5" stroke-width="1"/>
+
+          <!-- Fat 75-100% -->
+          <path d="M 28 120 L 60 118 L 100 124 L 140 116 L 180 122 L 220 128 L 260 120 L 300 118 L 340 124 L 380 120 L 420 116 L 478 118
+                   L 478 160 L 28 160 Z" fill="url(#h-f)" stroke="none"/>
+          <path d="M 28 120 L 60 118 L 100 124 L 140 116 L 180 122 L 220 128 L 260 120 L 300 118 L 340 124 L 380 120 L 420 116 L 478 118"
+                fill="none" stroke="#E6B450" stroke-width="1"/>
+
+          <!-- Protein top line -->
+          <path d="M 28 20 L 60 24 L 100 22 L 140 28 L 180 20 L 220 26 L 260 30 L 300 22 L 340 26 L 380 24 L 420 20 L 478 22"
+                fill="none" stroke="#FF5A1F" stroke-width="1.2"/>
+
+          <!-- labels -->
+          <g font-family="JetBrains Mono" font-size="7" fill="#656870" letter-spacing="1">
+            <text x="24" y="22" text-anchor="end">100%</text>
+            <text x="24" y="62" text-anchor="end">75%</text>
+            <text x="24" y="102" text-anchor="end">50%</text>
+            <text x="24" y="142" text-anchor="end">25%</text>
+            <text x="24" y="162" text-anchor="end">0%</text>
+          </g>
+          <g font-family="JetBrains Mono" font-size="7" fill="#EFEEE9" letter-spacing="1">
+            <text x="468" y="22" text-anchor="end" fill="#FF5A1F">PROT · 27 %</text>
+            <text x="468" y="82" text-anchor="end" fill="#6C94B5">CARB · 49 %</text>
+            <text x="468" y="120" text-anchor="end" fill="#E6B450">FAT · 24 %</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- KPI strip -->
+    <div class="chart-block">
+      <div class="panel-head">
+        <span>KEY READINGS · <span style="color:var(--sig)">CH/14</span></span>
+        <span>30D · AVG</span>
+      </div>
+      <div class="panel-body" style="padding: 0;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0;">
+          <div style="padding: 18px; border-right: 1px solid var(--rule-2); border-bottom: 1px solid var(--rule-2);">
+            <div class="label">AVG INTAKE</div>
+            <div style="font-family: var(--sans); font-weight: 500; font-size: 30px; letter-spacing: -0.02em;" class="tnum">2 168</div>
+            <div class="label" style="color:var(--ok); margin-top: 4px;">−72 vs TARGET</div>
+          </div>
+          <div style="padding: 18px; border-bottom: 1px solid var(--rule-2);">
+            <div class="label">LOGGING RATE</div>
+            <div style="font-family: var(--sans); font-weight: 500; font-size: 30px; letter-spacing: -0.02em;" class="tnum">93 %</div>
+            <div class="label" style="color:var(--ink-3); margin-top: 4px;">28 of 30 days</div>
+          </div>
+          <div style="padding: 18px; border-right: 1px solid var(--rule-2);">
+            <div class="label">MEDIAN Δ TGT</div>
+            <div style="font-family: var(--sans); font-weight: 500; font-size: 30px; letter-spacing: -0.02em;" class="tnum">−4.1 %</div>
+            <div class="label" style="color:var(--ok); margin-top: 4px;">IN RANGE</div>
+          </div>
+          <div style="padding: 18px;">
+            <div class="label">LONGEST STREAK</div>
+            <div style="font-family: var(--sans); font-weight: 500; font-size: 30px; letter-spacing: -0.02em;" class="tnum">41 d</div>
+            <div class="label" style="color:var(--sig); margin-top: 4px;">ACTIVE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="chart-block heatmap-block">
+      <div class="panel-head">
+        <span>MICRONUTRIENT THERMOGRAPH · <span style="color:var(--sig)">SIG · CH/15</span></span>
+        <span>% OF TARGET · 30 D × 7 N</span>
+      </div>
+      <div class="panel-body" style="padding: 18px;">
+
+        <div class="heatmap">
+          <div class="ylabels">
+            <div>FIBER<b>g · tgt 35</b></div>
+            <div>IRON<b>mg · tgt 18</b></div>
+            <div>CALCIUM<b>mg · tgt 1000</b></div>
+            <div>VIT D<b>µg · tgt 15</b></div>
+            <div>MAGNES.<b>mg · tgt 420</b></div>
+            <div>POTAS.<b>mg · tgt 3500</b></div>
+            <div>OMEGA-3<b>g · tgt 1.6</b></div>
+          </div>
+
+          <!-- 7 rows × 30 cols, cells colored by % target -->
+          <div class="cells">
+            <!-- row 1: fiber -->
+            <div class="c" style="background:#4A2410" data-v="42%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#A34618" data-v="71%"></div>
+            <div class="c" style="background:#FF7A1F" data-v="102%"></div>
+            <div class="c" style="background:#FFC78A" data-v="118%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="56%"></div>
+            <div class="c" style="background:#4A2410" data-v="39%"></div>
+            <div class="c" style="background:#7A3716" data-v="59%"></div>
+            <div class="c" style="background:#A34618" data-v="74%"></div>
+            <div class="c" style="background:#C65519" data-v="88%"></div>
+            <div class="c" style="background:#FF7A1F" data-v="105%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="54%"></div>
+            <div class="c" style="background:#4A2410" data-v="38%"></div>
+            <div class="c" style="background:#7A3716" data-v="62%"></div>
+            <div class="c" style="background:#A34618" data-v="74%"></div>
+            <div class="c" style="background:#C65519" data-v="88%"></div>
+            <div class="c" style="background:#FF7A1F" data-v="104%"></div>
+            <div class="c" style="background:#FFC78A" data-v="121%"></div>
+            <div class="c" style="background:#A34618" data-v="74%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#4A2410" data-v="41%"></div>
+            <div class="c" style="background:#7A3716" data-v="62%"></div>
+            <div class="c" style="background:#A34618" data-v="78%"></div>
+            <div class="c" style="background:#C65519" data-v="90%"></div>
+            <div class="c" style="background:#FF7A1F" data-v="108%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="56%"></div>
+            <div class="c" style="background:#4A2410" data-v="48%"></div>
+
+            <!-- row 2: iron -->
+            <div class="c" style="background:#2B1B0E" data-v="28%"></div>
+            <div class="c" style="background:#4A2410" data-v="42%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#A34618" data-v="74%"></div>
+            <div class="c" style="background:#7A3716" data-v="56%"></div>
+            <div class="c" style="background:#4A2410" data-v="40%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="26%"></div>
+            <div class="c" style="background:#4A2410" data-v="44%"></div>
+            <div class="c" style="background:#7A3716" data-v="62%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#C65519" data-v="88%"></div>
+            <div class="c" style="background:#7A3716" data-v="60%"></div>
+            <div class="c" style="background:#4A2410" data-v="42%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="30%"></div>
+            <div class="c" style="background:#4A2410" data-v="46%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#C65519" data-v="86%"></div>
+            <div class="c" style="background:#FF7A1F" data-v="98%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#4A2410" data-v="40%"></div>
+            <div class="c" style="background:#7A3716" data-v="56%"></div>
+            <div class="c" style="background:#A34618" data-v="70%"></div>
+            <div class="c" style="background:#C65519" data-v="84%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#4A2410" data-v="42%"></div>
+            <div class="c" style="background:#7A3716" data-v="62%"></div>
+
+            <!-- row 3: calcium -->
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#C65519" data-v="86%"></div>
+            <div class="c" style="background:#FF7A1F" data-v="102%"></div>
+            <div class="c" style="background:#C65519" data-v="88%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#4A2410" data-v="44%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#C65519" data-v="86%"></div>
+            <div class="c" style="background:#E36418" data-v="96%"></div>
+            <div class="c" style="background:#C65519" data-v="88%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#A34618" data-v="70%"></div>
+            <div class="c" style="background:#C65519" data-v="86%"></div>
+            <div class="c" style="background:#E36418" data-v="94%"></div>
+            <div class="c" style="background:#FF7A1F" data-v="100%"></div>
+            <div class="c" style="background:#FFC78A" data-v="116%"></div>
+            <div class="c" style="background:#C65519" data-v="86%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="56%"></div>
+            <div class="c" style="background:#A34618" data-v="70%"></div>
+            <div class="c" style="background:#C65519" data-v="84%"></div>
+            <div class="c" style="background:#E36418" data-v="94%"></div>
+            <div class="c" style="background:#FF7A1F" data-v="102%"></div>
+            <div class="c" style="background:#C65519" data-v="88%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#C65519" data-v="88%"></div>
+
+            <!-- row 4: vit D (mostly low) -->
+            <div class="c" style="background:#1A0F06" data-v="14%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="22%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="28%"></div>
+            <div class="c" style="background:#4A2410" data-v="36%"></div>
+            <div class="c" style="background:#4A2410" data-v="42%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="26%"></div>
+            <div class="c" style="background:#1A0F06" data-v="18%"></div>
+            <div class="c" style="background:#1A0F06" data-v="12%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="24%"></div>
+            <div class="c" style="background:#4A2410" data-v="32%"></div>
+            <div class="c" style="background:#4A2410" data-v="44%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#4A2410" data-v="40%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="24%"></div>
+            <div class="c" style="background:#1A0F06" data-v="16%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="22%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="26%"></div>
+            <div class="c" style="background:#4A2410" data-v="34%"></div>
+            <div class="c" style="background:#7A3716" data-v="54%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#4A2410" data-v="40%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="24%"></div>
+            <div class="c" style="background:#1A0F06" data-v="14%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="22%"></div>
+            <div class="c" style="background:#4A2410" data-v="30%"></div>
+            <div class="c" style="background:#4A2410" data-v="42%"></div>
+            <div class="c" style="background:#7A3716" data-v="54%"></div>
+            <div class="c" style="background:#4A2410" data-v="34%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="22%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="21%"></div>
+
+            <!-- row 5: magnesium -->
+            <div class="c" style="background:#4A2410" data-v="42%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#C65519" data-v="86%"></div>
+            <div class="c" style="background:#C65519" data-v="88%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#4A2410" data-v="44%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#C65519" data-v="86%"></div>
+            <div class="c" style="background:#C65519" data-v="90%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="56%"></div>
+            <div class="c" style="background:#4A2410" data-v="42%"></div>
+            <div class="c" style="background:#7A3716" data-v="60%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#C65519" data-v="86%"></div>
+            <div class="c" style="background:#E36418" data-v="94%"></div>
+            <div class="c" style="background:#FF7A1F" data-v="102%"></div>
+            <div class="c" style="background:#C65519" data-v="86%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="56%"></div>
+            <div class="c" style="background:#A34618" data-v="70%"></div>
+            <div class="c" style="background:#C65519" data-v="84%"></div>
+            <div class="c" style="background:#E36418" data-v="94%"></div>
+            <div class="c" style="background:#FF7A1F" data-v="102%"></div>
+            <div class="c" style="background:#C65519" data-v="88%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#A34618" data-v="59%"></div>
+
+            <!-- row 6: potassium -->
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#A34618" data-v="70%"></div>
+            <div class="c" style="background:#C65519" data-v="84%"></div>
+            <div class="c" style="background:#E36418" data-v="94%"></div>
+            <div class="c" style="background:#C65519" data-v="86%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#4A2410" data-v="42%"></div>
+            <div class="c" style="background:#7A3716" data-v="56%"></div>
+            <div class="c" style="background:#A34618" data-v="70%"></div>
+            <div class="c" style="background:#C65519" data-v="84%"></div>
+            <div class="c" style="background:#E36418" data-v="94%"></div>
+            <div class="c" style="background:#C65519" data-v="88%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#C65519" data-v="84%"></div>
+            <div class="c" style="background:#E36418" data-v="94%"></div>
+            <div class="c" style="background:#FF7A1F" data-v="100%"></div>
+            <div class="c" style="background:#FFC78A" data-v="118%"></div>
+            <div class="c" style="background:#C65519" data-v="86%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#C65519" data-v="84%"></div>
+            <div class="c" style="background:#E36418" data-v="94%"></div>
+            <div class="c" style="background:#FF7A1F" data-v="102%"></div>
+            <div class="c" style="background:#C65519" data-v="88%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#C65519" data-v="62%"></div>
+
+            <!-- row 7: omega 3 -->
+            <div class="c" style="background:#2B1B0E" data-v="22%"></div>
+            <div class="c" style="background:#4A2410" data-v="38%"></div>
+            <div class="c" style="background:#7A3716" data-v="54%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#4A2410" data-v="40%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="26%"></div>
+            <div class="c" style="background:#1A0F06" data-v="16%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="26%"></div>
+            <div class="c" style="background:#4A2410" data-v="42%"></div>
+            <div class="c" style="background:#7A3716" data-v="56%"></div>
+            <div class="c" style="background:#A34618" data-v="72%"></div>
+            <div class="c" style="background:#7A3716" data-v="54%"></div>
+            <div class="c" style="background:#4A2410" data-v="38%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="24%"></div>
+            <div class="c" style="background:#4A2410" data-v="42%"></div>
+            <div class="c" style="background:#7A3716" data-v="56%"></div>
+            <div class="c" style="background:#A34618" data-v="70%"></div>
+            <div class="c" style="background:#C65519" data-v="84%"></div>
+            <div class="c" style="background:#E36418" data-v="94%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#4A2410" data-v="40%"></div>
+            <div class="c" style="background:#2B1B0E" data-v="24%"></div>
+            <div class="c" style="background:#4A2410" data-v="38%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#A34618" data-v="70%"></div>
+            <div class="c" style="background:#C65519" data-v="86%"></div>
+            <div class="c" style="background:#7A3716" data-v="58%"></div>
+            <div class="c" style="background:#4A2410" data-v="42%"></div>
+            <div class="c" style="background:#4A2410" data-v="41%"></div>
+          </div>
+
+          <div class="ylegend">
+            <div>0→150 %</div>
+            <div>0→150 %</div>
+            <div>0→150 %</div>
+            <div>0→150 %</div>
+            <div>0→150 %</div>
+            <div>0→150 %</div>
+            <div>0→150 %</div>
+          </div>
+        </div>
+
+        <div class="heatmap-scale">
+          <span>0 %</span>
+          <div class="bar"></div>
+          <span>150 % +</span>
+        </div>
+
+        <div style="display:flex; justify-content: space-between; margin-top: 12px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3);">
+          <span>READ · HOVER CELL FOR VALUE</span>
+          <span>AI NOTE · VIT D BELOW 40 % ON 21 / 30 D</span>
+          <span>EXPORT · <span style="color:var(--sig)">CSV</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer>
+  <div class="mono-lock">
+    <span class="dot"></span>
+    <span>KALORI · APPARATUS</span>
+    <span>·</span>
+    <span>BUILD 1187 · 18.04.26</span>
+  </div>
+  <div>PRECISION · ±3 kcal</div>
+  <div>MADE IN BUDAPEST</div>
+</footer>
+
+</div>
+
+</body>
+</html>

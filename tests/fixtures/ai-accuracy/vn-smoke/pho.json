@@ -1,0 +1,36 @@
+{
+  "name": "pho",
+  "tier": "critical",
+  "region": "vn",
+  "callType": "text-parse",
+  "input": "one big bowl of phở bò with brisket and rare steak, extra bean sprouts and basil",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "phở bò",
+        "portion": 1,
+        "unit": "bowl",
+        "kcal": 520,
+        "macros": {
+          "protein_g": 32,
+          "carbs_g": 65,
+          "fat_g": 14,
+          "fiber_g": 3
+        }
+      }
+    ],
+    "total": {
+      "kcal": 520,
+      "protein_g": 32,
+      "carbs_g": 65,
+      "fat_g": 14,
+      "fiber_g": 3
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.15,
+    "macro_pct": 0.2
+  },
+  "notes": "Ground truth reconciled from USDA FoodData Central (rice noodle + beef shank + bone broth aggregate) + Vietnamese Ministry of Health 2017 composition table for phở bò. Typical 'big bowl' ~700g serving, ~520 kcal ±10%. Rare steak + brisket combo adds ~4g fat vs plain."
+}

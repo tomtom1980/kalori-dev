@@ -1,0 +1,36 @@
+{
+  "name": "vn-nem-ran",
+  "tier": "advisory",
+  "region": "vn",
+  "callType": "text-parse",
+  "input": "four nem rán Hanoi-style fried spring rolls with pork and wood-ear mushroom",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "nem rán",
+        "portion": 4,
+        "unit": "rolls",
+        "kcal": 480,
+        "macros": {
+          "protein_g": 18,
+          "carbs_g": 38,
+          "fat_g": 28,
+          "fiber_g": 2
+        }
+      }
+    ],
+    "total": {
+      "kcal": 480,
+      "protein_g": 18,
+      "carbs_g": 38,
+      "fat_g": 28,
+      "fiber_g": 2
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Hanoi fried spring rolls (chả giò). USDA composite + VN MOH 2017: pork + glass noodle + wood-ear filling, deep-fried in palm oil. ~110–130 kcal per roll. Advisory tier — frying-fat absorption (10–20%) drives the macro spread."
+}

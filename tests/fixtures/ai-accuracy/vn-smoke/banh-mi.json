@@ -1,0 +1,36 @@
+{
+  "name": "banh-mi",
+  "tier": "critical",
+  "region": "vn",
+  "callType": "text-parse",
+  "input": "bánh mì thịt with pâté, cold cuts, đồ chua and cilantro",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "bánh mì thịt",
+        "portion": 1,
+        "unit": "sandwich",
+        "kcal": 480,
+        "macros": {
+          "protein_g": 22,
+          "carbs_g": 52,
+          "fat_g": 20,
+          "fiber_g": 3
+        }
+      }
+    ],
+    "total": {
+      "kcal": 480,
+      "protein_g": 22,
+      "carbs_g": 52,
+      "fat_g": 20,
+      "fiber_g": 3
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.15,
+    "macro_pct": 0.2
+  },
+  "notes": "Classic Saigon bánh mì với thịt nguội + pâté. ~100g roll + 40g pâté + 60g cold cuts + đồ chua (pickled vegetables) ~30g. USDA composite; matches Vietnam MOH 2017 Table B6 within ±8%."
+}

@@ -1,0 +1,586 @@
+{
+  "$schema": "kalori/seed-fixture/v1",
+  "devUserEmail": "dev-user@kalori.test",
+  "devUserPassword": "KaloriDevSeed!2026",
+  "targetDailyKcal": 2100,
+  "baselineWeightKg": 78.4,
+  "goalWeightKg": 72.0,
+  "days": [
+    {
+      "date": "2026-04-06",
+      "entries": [
+        {
+          "name": "oatmeal w/ banana",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 320,
+          "protein_g": 9,
+          "carbs_g": 56,
+          "fat_g": 6
+        },
+        {
+          "name": "phở bò",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 450,
+          "protein_g": 28,
+          "carbs_g": 60,
+          "fat_g": 10
+        },
+        {
+          "name": "grilled chicken salad",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 520,
+          "protein_g": 42,
+          "carbs_g": 12,
+          "fat_g": 28
+        }
+      ],
+      "water_ml": 2200,
+      "weight_kg": 78.4
+    },
+    {
+      "date": "2026-04-07",
+      "entries": [
+        {
+          "name": "eggs benedict",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 620,
+          "protein_g": 24,
+          "carbs_g": 40,
+          "fat_g": 36
+        },
+        {
+          "name": "bánh mì thịt",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "sandwich",
+          "kcal": 540,
+          "protein_g": 22,
+          "carbs_g": 58,
+          "fat_g": 22
+        },
+        {
+          "name": "Greek yogurt",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "cup",
+          "kcal": 180,
+          "protein_g": 17,
+          "carbs_g": 10,
+          "fat_g": 8
+        },
+        {
+          "name": "cơm tấm",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 760,
+          "protein_g": 35,
+          "carbs_g": 95,
+          "fat_g": 22
+        }
+      ],
+      "water_ml": 2500,
+      "weight_kg": 78.3
+    },
+    {
+      "date": "2026-04-08",
+      "entries": [
+        {
+          "name": "avocado toast",
+          "cuisine": "western",
+          "qty": 2,
+          "unit": "slice",
+          "kcal": 420,
+          "protein_g": 10,
+          "carbs_g": 32,
+          "fat_g": 28
+        },
+        {
+          "name": "bún chả",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 620,
+          "protein_g": 32,
+          "carbs_g": 68,
+          "fat_g": 20
+        },
+        {
+          "name": "chocolate protein bar",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "bar",
+          "kcal": 220,
+          "protein_g": 20,
+          "carbs_g": 18,
+          "fat_g": 8
+        }
+      ],
+      "water_ml": 2000,
+      "weight_kg": 78.2
+    },
+    {
+      "date": "2026-04-09",
+      "entries": [
+        {
+          "name": "scrambled eggs + toast",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 380,
+          "protein_g": 22,
+          "carbs_g": 30,
+          "fat_g": 18
+        },
+        {
+          "name": "phở gà",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 420,
+          "protein_g": 30,
+          "carbs_g": 58,
+          "fat_g": 8
+        },
+        {
+          "name": "caesar salad w/ chicken",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 640,
+          "protein_g": 42,
+          "carbs_g": 18,
+          "fat_g": 40
+        },
+        {
+          "name": "green tea",
+          "cuisine": "vietnamese",
+          "qty": 2,
+          "unit": "cup",
+          "kcal": 0,
+          "protein_g": 0,
+          "carbs_g": 0,
+          "fat_g": 0
+        }
+      ],
+      "water_ml": 2400,
+      "weight_kg": 78.1
+    },
+    {
+      "date": "2026-04-10",
+      "entries": [
+        {
+          "name": "smoothie bowl",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 440,
+          "protein_g": 18,
+          "carbs_g": 68,
+          "fat_g": 10
+        },
+        {
+          "name": "gỏi cuốn",
+          "cuisine": "vietnamese",
+          "qty": 3,
+          "unit": "roll",
+          "kcal": 360,
+          "protein_g": 20,
+          "carbs_g": 42,
+          "fat_g": 10
+        },
+        {
+          "name": "salmon + rice",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 720,
+          "protein_g": 45,
+          "carbs_g": 60,
+          "fat_g": 28
+        }
+      ],
+      "water_ml": 2600,
+      "weight_kg": 78.0
+    },
+    {
+      "date": "2026-04-11",
+      "entries": [
+        {
+          "name": "pancakes + syrup",
+          "cuisine": "western",
+          "qty": 3,
+          "unit": "pancake",
+          "kcal": 540,
+          "protein_g": 12,
+          "carbs_g": 82,
+          "fat_g": 18
+        },
+        {
+          "name": "bún bò Huế",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 540,
+          "protein_g": 28,
+          "carbs_g": 70,
+          "fat_g": 14
+        },
+        {
+          "name": "trail mix",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "handful",
+          "kcal": 260,
+          "protein_g": 8,
+          "carbs_g": 24,
+          "fat_g": 16
+        }
+      ],
+      "water_ml": 2100,
+      "weight_kg": 78.1
+    },
+    {
+      "date": "2026-04-12",
+      "entries": [
+        {
+          "name": "coffee + cream",
+          "cuisine": "western",
+          "qty": 2,
+          "unit": "cup",
+          "kcal": 160,
+          "protein_g": 4,
+          "carbs_g": 10,
+          "fat_g": 12
+        },
+        {
+          "name": "cá kho tộ",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 680,
+          "protein_g": 38,
+          "carbs_g": 60,
+          "fat_g": 26
+        },
+        {
+          "name": "burger + fries",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 980,
+          "protein_g": 42,
+          "carbs_g": 95,
+          "fat_g": 48
+        }
+      ],
+      "water_ml": 1800,
+      "weight_kg": 78.3
+    },
+    {
+      "date": "2026-04-13",
+      "entries": [
+        {
+          "name": "granola + milk",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 340,
+          "protein_g": 12,
+          "carbs_g": 58,
+          "fat_g": 8
+        },
+        {
+          "name": "mì quảng",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 580,
+          "protein_g": 32,
+          "carbs_g": 72,
+          "fat_g": 18
+        },
+        {
+          "name": "sushi platter",
+          "cuisine": "western",
+          "qty": 10,
+          "unit": "piece",
+          "kcal": 620,
+          "protein_g": 28,
+          "carbs_g": 92,
+          "fat_g": 12
+        }
+      ],
+      "water_ml": 2300,
+      "weight_kg": 78.2
+    },
+    {
+      "date": "2026-04-14",
+      "entries": [
+        {
+          "name": "bagel + cream cheese",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "bagel",
+          "kcal": 420,
+          "protein_g": 14,
+          "carbs_g": 58,
+          "fat_g": 16
+        },
+        {
+          "name": "hủ tiếu",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 460,
+          "protein_g": 26,
+          "carbs_g": 62,
+          "fat_g": 12
+        },
+        {
+          "name": "steak + veggies",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 780,
+          "protein_g": 55,
+          "carbs_g": 22,
+          "fat_g": 50
+        }
+      ],
+      "water_ml": 2500,
+      "weight_kg": 78.0
+    },
+    {
+      "date": "2026-04-15",
+      "entries": [
+        {
+          "name": "fruit smoothie",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "cup",
+          "kcal": 280,
+          "protein_g": 8,
+          "carbs_g": 52,
+          "fat_g": 4
+        },
+        {
+          "name": "chả giò",
+          "cuisine": "vietnamese",
+          "qty": 4,
+          "unit": "roll",
+          "kcal": 520,
+          "protein_g": 18,
+          "carbs_g": 48,
+          "fat_g": 28
+        },
+        {
+          "name": "pad thai (takeout)",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 720,
+          "protein_g": 32,
+          "carbs_g": 88,
+          "fat_g": 26
+        }
+      ],
+      "water_ml": 2200,
+      "weight_kg": 77.9
+    },
+    {
+      "date": "2026-04-16",
+      "entries": [
+        {
+          "name": "espresso + croissant",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 360,
+          "protein_g": 6,
+          "carbs_g": 40,
+          "fat_g": 20
+        },
+        {
+          "name": "canh chua",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 320,
+          "protein_g": 22,
+          "carbs_g": 24,
+          "fat_g": 14
+        },
+        {
+          "name": "pasta carbonara",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 820,
+          "protein_g": 32,
+          "carbs_g": 92,
+          "fat_g": 34
+        }
+      ],
+      "water_ml": 2100,
+      "weight_kg": 77.9
+    },
+    {
+      "date": "2026-04-17",
+      "entries": [
+        {
+          "name": "protein shake",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "shake",
+          "kcal": 220,
+          "protein_g": 30,
+          "carbs_g": 18,
+          "fat_g": 4
+        },
+        {
+          "name": "bánh xèo",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "crêpe",
+          "kcal": 620,
+          "protein_g": 28,
+          "carbs_g": 72,
+          "fat_g": 24
+        },
+        {
+          "name": "roast veg bowl",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 540,
+          "protein_g": 18,
+          "carbs_g": 72,
+          "fat_g": 18
+        }
+      ],
+      "water_ml": 2400,
+      "weight_kg": 77.8
+    },
+    {
+      "date": "2026-04-18",
+      "entries": [
+        {
+          "name": "breakfast burrito",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "burrito",
+          "kcal": 620,
+          "protein_g": 28,
+          "carbs_g": 62,
+          "fat_g": 28
+        },
+        {
+          "name": "phở bò (extra tendon)",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 520,
+          "protein_g": 32,
+          "carbs_g": 58,
+          "fat_g": 16
+        },
+        {
+          "name": "chicken wrap",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "wrap",
+          "kcal": 560,
+          "protein_g": 32,
+          "carbs_g": 52,
+          "fat_g": 22
+        }
+      ],
+      "water_ml": 2200,
+      "weight_kg": 77.7
+    },
+    {
+      "date": "2026-04-19",
+      "entries": [
+        {
+          "name": "acai bowl",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "bowl",
+          "kcal": 480,
+          "protein_g": 14,
+          "carbs_g": 72,
+          "fat_g": 12
+        },
+        {
+          "name": "gỏi đu đủ",
+          "cuisine": "vietnamese",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 280,
+          "protein_g": 12,
+          "carbs_g": 42,
+          "fat_g": 8
+        },
+        {
+          "name": "grilled salmon + quinoa",
+          "cuisine": "western",
+          "qty": 1,
+          "unit": "plate",
+          "kcal": 680,
+          "protein_g": 45,
+          "carbs_g": 52,
+          "fat_g": 26
+        }
+      ],
+      "water_ml": 2600,
+      "weight_kg": 77.6
+    }
+  ],
+  "library": [
+    {
+      "name": "phở bò",
+      "cuisine": "vietnamese",
+      "serving": "1 bowl",
+      "kcal": 450,
+      "protein_g": 28,
+      "carbs_g": 60,
+      "fat_g": 10
+    },
+    {
+      "name": "cơm tấm",
+      "cuisine": "vietnamese",
+      "serving": "1 plate",
+      "kcal": 760,
+      "protein_g": 35,
+      "carbs_g": 95,
+      "fat_g": 22
+    },
+    {
+      "name": "Greek yogurt",
+      "cuisine": "western",
+      "serving": "1 cup",
+      "kcal": 180,
+      "protein_g": 17,
+      "carbs_g": 10,
+      "fat_g": 8
+    },
+    {
+      "name": "chocolate protein bar",
+      "cuisine": "western",
+      "serving": "1 bar",
+      "kcal": 220,
+      "protein_g": 20,
+      "carbs_g": 18,
+      "fat_g": 8
+    }
+  ]
+}

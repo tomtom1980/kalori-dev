@@ -1,0 +1,36 @@
+{
+  "name": "western-rice-bowl",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "a chipotle-style chicken rice bowl with brown rice, black beans, salsa, and guacamole",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "chicken rice bowl",
+        "portion": 1,
+        "unit": "bowl",
+        "kcal": 720,
+        "macros": {
+          "protein_g": 38,
+          "carbs_g": 86,
+          "fat_g": 22,
+          "fiber_g": 12
+        }
+      }
+    ],
+    "total": {
+      "kcal": 720,
+      "protein_g": 38,
+      "carbs_g": 86,
+      "fat_g": 22,
+      "fiber_g": 12
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "USDA composite: 200g brown rice ~220 kcal, 130g chicken thigh ~225 kcal, 100g black beans ~130 kcal, 30g salsa ~10 kcal, 60g guacamole ~135 kcal. Advisory tier — guac portion + add-ons (cheese, sour cream omitted) drive variance."
+}

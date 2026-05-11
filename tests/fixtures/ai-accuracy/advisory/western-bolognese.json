@@ -1,0 +1,36 @@
+{
+  "name": "western-bolognese",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "a plate of spaghetti bolognese with ground beef, tomato sauce, and a sprinkle of parmesan",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "spaghetti bolognese",
+        "portion": 1,
+        "unit": "plate",
+        "kcal": 660,
+        "macros": {
+          "protein_g": 32,
+          "carbs_g": 80,
+          "fat_g": 22,
+          "fiber_g": 6
+        }
+      }
+    ],
+    "total": {
+      "kcal": 660,
+      "protein_g": 32,
+      "carbs_g": 80,
+      "fat_g": 22,
+      "fiber_g": 6
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "USDA composite: 100g dry spaghetti ~360 kcal, 100g ground beef 80/20 ~250 kcal, 100g tomato sauce ~30 kcal, 10g parmesan ~40 kcal. Advisory tier — beef:sauce ratio drives macro variance."
+}

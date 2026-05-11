@@ -1,0 +1,36 @@
+{
+  "name": "vn-banh-mi-wrapped",
+  "tier": "advisory",
+  "region": "vn",
+  "callType": "vision",
+  "input": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "bánh mì thịt",
+        "portion": 1,
+        "unit": "sandwich",
+        "kcal": 480,
+        "macros": {
+          "protein_g": 22,
+          "carbs_g": 52,
+          "fat_g": 20,
+          "fiber_g": 3
+        }
+      }
+    ],
+    "total": {
+      "kcal": 480,
+      "protein_g": 22,
+      "carbs_g": 52,
+      "fat_g": 20,
+      "fiber_g": 3
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Photo fixture — calibrated to vn-smoke/banh-mi.json. Wrapped in paper as commonly photographed. Path A: TINY_PNG_BASE64 input. ~480 kcal Saigon classic w/ pâté + cold cuts + đồ chua."
+}

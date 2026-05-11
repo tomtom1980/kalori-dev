@@ -1,0 +1,36 @@
+{
+  "name": "western-burger-fries",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "a quarter-pound cheeseburger with lettuce, tomato, and a small portion of fries",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "cheeseburger with fries",
+        "portion": 1,
+        "unit": "meal",
+        "kcal": 820,
+        "macros": {
+          "protein_g": 32,
+          "carbs_g": 78,
+          "fat_g": 42,
+          "fiber_g": 5
+        }
+      }
+    ],
+    "total": {
+      "kcal": 820,
+      "protein_g": 32,
+      "carbs_g": 78,
+      "fat_g": 42,
+      "fiber_g": 5
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "USDA composite: 113g (1/4 lb) ground beef patty 80/20 ~290 kcal, slice American cheese ~70 kcal, brioche bun ~230 kcal, condiments + veg ~30 kcal, small fries (~85g) ~270 kcal. Advisory tier — fry portion 'small' varies 70–100g."
+}

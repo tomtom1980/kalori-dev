@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Kalori — Nutrition, on purpose</title>
+<link rel="stylesheet" href="tokens.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Instrument+Serif:ital@0;1&family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  html, body, #root { height: 100%; overflow: hidden; }
+  body { overscroll-behavior: none; }
+</style>
+</head>
+<body>
+<div class="app-ambient"></div>
+<div id="root"></div>
+
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="dashboard.jsx"></script>
+<script type="text/babel" src="logflow.jsx"></script>
+<script type="text/babel" src="progress.jsx"></script>
+<script type="text/babel" src="library.jsx"></script>
+
+<script type="text/babel">
+const TWEAK_DEFAULS = /*EDITMODE-BEGIN*/{
+  "accentHue": "mint",
+  "glow": "hero",
+  "density": "comfortable",
+  "viewport": "desktop",
+  "fontPair": "editorial",
+  "showTweaks": false
+}/*EDITMODE-END*/;
+
+const FONTS = {
+  technical: { display: "'Geist', system-ui, sans-serif", body: "'Geist', system-ui, sans-serif", mono: "'Geist Mono', ui-monospace, monospace", feat: "'ss01', 'cv11', 'tnum'" },
+  editorial: { display: "'Fraunces', Georgia, serif", body: "'DM Sans', system-ui, sans-serif", mono: "'Geist Mono', ui-monospace, monospace", feat: "'ss01', 'tnum'" },
+  friendly:  { display: "'Fraunces', Georgia, serif", body: "'Nunito', system-ui, sans-serif", mono: "'Geist Mono', ui-monospace, monospace", feat: "'tnum'" },
+  playful:   { display: "'Instrument Serif', Georgia, serif", body: "'Nunito', system-ui, sans-serif", mono: "'Geist Mono', ui-monospace, monospace", feat: "'tnum'" },
+};
+
+const ACCENTS = {
+  lime:   { base: '#9EFF5A', soft: '#C9FF9A', deep: '#5FCC24', glow: 'rgba(158,255,90,0.35)', glowSoft: 'rgba(158,255,90,0.12)' },
+  mint:   { base: '#3DDC97', soft: '#7EEDC0', deep: '#1FA06B', glow: 'rgba(61,220,151,0.35)', glowSoft: 'rgba(61,220,151,0.12)' },
+  teal:   { base: '#4FD1C5', soft: '#88E3D9', deep: '#2A9C92', glow: 'rgba(79,209,197,0.35)', glowSoft: 'rgba(79,209,197,0.12)' },
+  neon:   { base: '#00FFA3', soft: '#7BFFCB', deep: '#00B574', glow: 'rgba(0,255,163,0.35)', glowSoft: 'rgba(0,255,163,0.12)' },
+};
+
+const GLOW = { off: 0, subtle: 0.5, hero: 1, max: 1.6 };
+const DENSITY = { comfortable: 1, compact: 0.85 };
+
+function applyTweaks(t) {
+  const a = ACCENTS[t.accentHue] || ACCENTS.lime;
+  const r = document.documentElement;
+  r.style.setProperty('--lime', a.base);
+  r.style.setProperty('--lime-soft', a.soft);
+  r.style.setProperty('--lime-deep', a.deep);
+  r.style.setProperty('--lime-glow', a.glow);
+  r.style.setProperty('--lime-glow-soft', a.glowSoft);
+  r.style.setProperty('--line-focus', a.glow);
+  r.style.setProperty('--dv-lime', a.base);
+  r.style.setProperty('--glow-mult', String(GLOW[t.glow] ?? 1));
+  r.style.setProperty('--density', String(DENSITY[t.density] ?? 1));
+  const f = FONTS[t.fontPair] || FONTS.editorial;
+  r.style.setProperty('--font-sans', f.body);
+  r.style.setProperty('--font-display', f.display);
+  r.style.setProperty('--font-mono', f.mono);
+  r.style.setProperty('--font-feat', f.feat);
+}
+
+// ── Mobile shell with device frame ─────────────────────────────────────────
+function MobileFrame({ children }) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      display: 'grid', placeItems: 'center',
+      padding: 20,
+    }}>
+      <div style={{
+        width: 390, height: 'min(844px, 94vh)',
+        borderRadius: 46,
+        border: '1px solid rgba(255,255,255,0.1)',
+        background: '#000',
+        padding: 10,
+        boxShadow: '0 40px 100px rgba(0,0,0,0.6), 0 0 0 2px rgba(255,255,255,0.03)',
+        position: 'relative',
+      }}>
+        <div style={{
+          width: '100%', height: '100%',
+          borderRadius: 38, overflow: 'hidden',
+          background: 'var(--bg-0)',
+          position: 'relative',
+        }}>
+          {/* status bar */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20,
+            height: 42, padding: '14px 28px 0',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, color: '#fff',
+            pointerEvents: 'none',
+          }}>
+            <span>8:42</span>
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <svg width="16" height="10" viewBox="0 0 16 10"><path d="M0 10h2V6H0zm4 0h2V4H4zm4 0h2V2H8zm4 0h2V0h-2z" fill="#fff"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0" y="0" width="19" height="11" rx="3" stroke="#fff" strokeOpacity="0.6"/><rect x="2" y="2" width="15" height="7" rx="1.5" fill="#fff"/><rect x="20" y="4" width="1.5" height="3" rx="0.5" fill="#fff" opacity="0.6"/></svg>
+            </div>
+          </div>
+          {/* dynamic island */}
+          <div style={{
+            position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
+            width: 120, height: 34, borderRadius: 20,
+            background: '#000', zIndex: 25,
+          }}/>
+          <div style={{ height: '100%', paddingTop: 46, position: 'relative' }}>
+            {children}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Tweaks panel ───────────────────────────────────────────────────────────
+function TweaksPanel({ tweaks, onChange, active }) {
+  if (!active) return null;
+  const row = (label, id, options) => (
+    <div style={{ marginBottom: 14 }}>
+      <div className="mono" style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{label}</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {options.map(o => (
+          <button key={o.v} onClick={() => onChange(id, o.v)} style={{
+            padding: '5px 10px', fontSize: 12,
+            background: tweaks[id] === o.v ? 'rgba(158,255,90,0.12)' : 'rgba(255,255,255,0.03)',
+            border: '1px solid ' + (tweaks[id] === o.v ? 'var(--line-focus)' : 'var(--line)'),
+            color: tweaks[id] === o.v ? 'var(--lime)' : 'var(--text-dim)',
+            borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+          }}>{o.l}</button>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <div style={{
+      position: 'fixed', bottom: 20, right: 20, zIndex: 500,
+      width: 260, padding: 18,
+      background: 'rgba(20,22,27,0.9)', backdropFilter: 'blur(20px)',
+      border: '1px solid var(--line-strong)', borderRadius: 16,
+      boxShadow: 'var(--shadow-float)',
+      fontFamily: 'var(--font-sans)',
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 14, letterSpacing: '-0.01em' }}>Tweaks</div>
+      {row('Accent', 'accentHue', [
+        { v: 'lime', l: 'Lime' }, { v: 'mint', l: 'Mint' }, { v: 'teal', l: 'Teal' }, { v: 'neon', l: 'Neon' },
+      ])}
+      {row('Glow', 'glow', [
+        { v: 'off', l: 'Off' }, { v: 'subtle', l: 'Subtle' }, { v: 'hero', l: 'Hero' }, { v: 'max', l: 'Max' },
+      ])}
+      {row('Density', 'density', [
+        { v: 'comfortable', l: 'Comfortable' }, { v: 'compact', l: 'Compact' },
+      ])}
+      {row('Viewport', 'viewport', [
+        { v: 'desktop', l: 'Desktop' }, { v: 'mobile', l: 'Mobile' },
+      ])}
+      {row('Type', 'fontPair', [
+        { v: 'editorial', l: 'Editorial' }, { v: 'friendly', l: 'Friendly' }, { v: 'playful', l: 'Playful' }, { v: 'technical', l: 'Technical' },
+      ])}
+    </div>
+  );
+}
+
+// ── Main App ───────────────────────────────────────────────────────────────
+function App() {
+  const [tweaks, setTweaks] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem('kalori:tweaks') || '') || TWEAK_DEFAULS; }
+    catch { return TWEAK_DEFAULS; }
+  });
+  const [tweaksActive, setTweaksActive] = React.useState(false);
+  const [screen, setScreen] = React.useState(() => localStorage.getItem('kalori:screen') || 'dashboard');
+  const [logOpen, setLogOpen] = React.useState(false);
+  const [logPreset, setLogPreset] = React.useState(null);
+  const [cmdOpen, setCmdOpen] = React.useState(false);
+  const [helpOpen, setHelpOpen] = React.useState(false);
+  const [detailFood, setDetailFood] = React.useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const [entries, setEntries] = React.useState(TODAYS_ENTRIES);
+  const [toasts, setToasts] = React.useState([]);
+  const [mountTrigger, setMountTrigger] = React.useState(0);
+
+  // persist
+  React.useEffect(() => { applyTweaks(tweaks); localStorage.setItem('kalori:tweaks', JSON.stringify(tweaks)); }, [tweaks]);
+  React.useEffect(() => { localStorage.setItem('kalori:screen', screen); setMountTrigger(t => t + 1); }, [screen]);
+
+  // Tweaks handshake
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      if (e.data?.type === '__activate_edit_mode') setTweaksActive(true);
+      if (e.data?.type === '__deactivate_edit_mode') setTweaksActive(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const updateTweak = (id, v) => {
+    const next = { ...tweaks, [id]: v };
+    setTweaks(next);
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [id]: v } }, '*');
+  };
+
+  // Keyboard shortcuts
+  React.useEffect(() => {
+    const onKey = (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+        if (e.key === 'Escape') { e.target.blur(); setCmdOpen(false); setHelpOpen(false); setLogOpen(false); setDetailFood(null); }
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setCmdOpen(true); return; }
+      if (e.key === 'Escape') { setCmdOpen(false); setHelpOpen(false); setLogOpen(false); setDetailFood(null); return; }
+      const k = e.key.toLowerCase();
+      if (k === 'n') { e.preventDefault(); setLogOpen(true); setLogPreset(null); }
+      if (k === 'd') { setScreen('dashboard'); }
+      if (k === 'l') { setScreen('library'); }
+      if (k === 'p') { setScreen('progress'); }
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) { setHelpOpen(true); }
+      if (e.key === '/') { e.preventDefault(); setScreen('library'); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Drag-anywhere photo upload
+  const [globalDrag, setGlobalDrag] = React.useState(false);
+  React.useEffect(() => {
+    let counter = 0;
+    const over = (e) => { e.preventDefault(); };
+    const enter = (e) => { e.preventDefault(); counter++; if (counter > 0) setGlobalDrag(true); };
+    const leave = (e) => { e.preventDefault(); counter--; if (counter <= 0) { setGlobalDrag(false); counter = 0; } };
+    const drop = (e) => { e.preventDefault(); counter = 0; setGlobalDrag(false); setLogOpen(true); };
+    window.addEventListener('dragover', over);
+    window.addEventListener('dragenter', enter);
+    window.addEventListener('dragleave', leave);
+    window.addEventListener('drop', drop);
+    return () => {
+      window.removeEventListener('dragover', over);
+      window.removeEventListener('dragenter', enter);
+      window.removeEventListener('dragleave', leave);
+      window.removeEventListener('drop', drop);
+    };
+  }, []);
+
+  const pushToast = (t) => {
+    const id = Date.now() + Math.random();
+    setToasts(s => [...s, { ...t, id }]);
+  };
+  const dismissToast = (id) => setToasts(s => s.filter(t => t.id !== id));
+
+  const handleLog = (newEntries) => {
+    setEntries(s => [...s, ...newEntries]);
+    const total = newEntries.reduce((acc, e) => acc + (getFood(e.foodId)?.kcal * e.qty || 0), 0);
+    pushToast({
+      tone: 'success',
+      title: `Logged ${newEntries.length === 1 ? getFood(newEntries[0].foodId)?.name : `${newEntries.length} items`}`,
+      sub: `+${Math.round(total)} kcal · ${newEntries[0].meal}`,
+    });
+  };
+
+  const handleDelete = (id) => setEntries(s => s.filter(e => e.id !== id));
+
+  const openLogWith = (preset) => { setLogPreset(typeof preset === 'string' ? preset : null); setLogOpen(true); };
+
+  const isMobile = tweaks.viewport === 'mobile';
+
+  // ── Desktop content ─────────────────────────────────────────────────
+  const mainContent = (
+    <>
+      {screen === 'dashboard' && (
+        <Dashboard key={mountTrigger} entries={entries}
+          onOpenLog={openLogWith}
+          onOpenCmd={() => setCmdOpen(true)}
+          onDelete={handleDelete}
+          onEntryClick={(e) => setDetailFood(getFood(e.foodId))}
+          trigger={mountTrigger}
+        />
+      )}
+      {screen === 'library' && (
+        <LibraryScreen onFoodClick={setDetailFood} onLog={(f) => { openLogWith(); }}/>
+      )}
+      {screen === 'progress' && (
+        <ProgressScreen key={mountTrigger}/>
+      )}
+      {screen === 'profile' && (
+        <div style={{ padding: 40, color: 'var(--text-dim)' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 8 }}>Profile</h1>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Out of scope for this prototype pass — covers goals, units, notifications, account.</p>
+        </div>
+      )}
+    </>
+  );
+
+  const desktopView = (
+    <div style={{ display: 'flex', height: '100%', position: 'relative' }}>
+      <Sidebar current={screen} onNav={setScreen} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} onOpenLog={() => openLogWith()}/>
+      <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+        {mainContent}
+      </main>
+    </div>
+  );
+
+  const mobileView = (
+    <MobileFrame>
+      {screen === 'dashboard' && (
+        <MobileDashboard key={mountTrigger} entries={entries}
+          onOpenLog={openLogWith}
+          onDelete={handleDelete}
+          onEntryClick={(e) => setDetailFood(getFood(e.foodId))}
+          trigger={mountTrigger}
+        />
+      )}
+      {screen === 'library' && (
+        <div style={{ height: '100%', overflowY: 'auto', padding: '18px 16px 110px' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', margin: '0 0 16px' }}>Library</h1>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {LIBRARY.slice(0, 10).map(f => (
+              <button key={f.id} onClick={() => setDetailFood(f)} style={{
+                padding: 12, background: 'rgba(255,255,255,0.02)',
+                border: '1px solid var(--line)', borderRadius: 12,
+                textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-sans)', color: 'var(--text)',
+                display: 'flex', flexDirection: 'column', gap: 8,
+              }}>
+                <FoodThumb food={f} size={44}/>
+                <div style={{ fontSize: 12, fontWeight: 500 }}>{f.name}</div>
+                <div className="mono" style={{ fontSize: 10, color: 'var(--text-muted)' }}>{f.kcal} kcal · ×{f.loggedCount}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {screen === 'progress' && (
+        <div style={{ height: '100%', overflowY: 'auto', padding: '18px 16px 110px' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', margin: '0 0 8px' }}>Progress</h1>
+          <div style={{ marginBottom: 14 }}>
+            <Segmented value="week" onChange={() => {}} size="sm" options={[{ value: 'day', label: 'D' }, { value: 'week', label: 'W' }, { value: 'month', label: 'M' }]}/>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <CalorieChart range="week"/>
+            <WeightChart range="week"/>
+            <StreakCalendar/>
+          </div>
+        </div>
+      )}
+      {screen === 'profile' && (
+        <div style={{ padding: 20, color: 'var(--text-dim)' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em' }}>Profile</h1>
+          <p style={{ fontSize: 13 }}>Settings, goals, account.</p>
+        </div>
+      )}
+      <MobileTabBar current={screen} onNav={setScreen} onOpenLog={() => openLogWith()}/>
+    </MobileFrame>
+  );
+
+  return (
+    <div style={{ position: 'relative', height: '100%' }}>
+      {isMobile ? mobileView : desktopView}
+
+      {/* Global drag overlay */}
+      {globalDrag && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 400,
+          background: 'rgba(5,6,8,0.8)', backdropFilter: 'blur(14px)',
+          display: 'grid', placeItems: 'center',
+          animation: 'pop 180ms ease',
+        }}>
+          <div style={{
+            width: 420, height: 260, borderRadius: 24,
+            border: '2px dashed var(--lime)',
+            background: 'rgba(158,255,90,0.04)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14,
+          }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: 20,
+              background: 'radial-gradient(closest-side, var(--lime-glow), transparent)',
+              display: 'grid', placeItems: 'center',
+              color: 'var(--lime)',
+              animation: 'pulseGlow 0.9s ease-in-out infinite',
+            }}>
+              <I.Upload size={32} stroke={1.5}/>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 500, letterSpacing: '-0.01em' }}>Drop to log</div>
+            <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>AI will identify and estimate</div>
+          </div>
+        </div>
+      )}
+
+      <LogFood open={logOpen} onClose={() => setLogOpen(false)} onLog={handleLog} preset={logPreset}/>
+      <FoodDetail food={detailFood} onClose={() => setDetailFood(null)} onLog={() => openLogWith()}/>
+      <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onNav={setScreen} onOpenLog={() => openLogWith()}/>
+      <ShortcutSheet open={helpOpen} onClose={() => setHelpOpen(false)}/>
+
+      {/* Toasts */}
+      <div style={{
+        position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+        zIndex: 300, display: 'flex', flexDirection: 'column', gap: 8,
+      }}>
+        {toasts.map(t => <Toast key={t.id} toast={t} onDismiss={() => dismissToast(t.id)}/>)}
+      </div>
+
+      <TweaksPanel tweaks={tweaks} onChange={updateTweak} active={tweaksActive}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

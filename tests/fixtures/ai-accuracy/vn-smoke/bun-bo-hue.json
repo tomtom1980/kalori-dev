@@ -1,0 +1,36 @@
+{
+  "name": "bun-bo-hue",
+  "tier": "critical",
+  "region": "vn",
+  "callType": "text-parse",
+  "input": "spicy bún bò Huế with beef shank, pork hock, and a slice of blood cake",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "bún bò Huế",
+        "portion": 1,
+        "unit": "bowl",
+        "kcal": 580,
+        "macros": {
+          "protein_g": 34,
+          "carbs_g": 62,
+          "fat_g": 19,
+          "fiber_g": 2
+        }
+      }
+    ],
+    "total": {
+      "kcal": 580,
+      "protein_g": 34,
+      "carbs_g": 62,
+      "fat_g": 19,
+      "fiber_g": 2
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.15,
+    "macro_pct": 0.2
+  },
+  "notes": "Central Vietnam spicy beef-noodle soup. Heavier on fat than phở (pork hock + annatto oil). Ground truth: USDA beef shank + pork hock + thick rice noodle + chili-lemongrass broth + blood cake (~40 kcal slice)."
+}

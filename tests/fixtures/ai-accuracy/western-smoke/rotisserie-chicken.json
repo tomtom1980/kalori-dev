@@ -1,0 +1,36 @@
+{
+  "name": "rotisserie-chicken",
+  "tier": "critical",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "a quarter of a rotisserie chicken with skin",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "rotisserie chicken quarter (with skin)",
+        "portion": 0.25,
+        "unit": "bird",
+        "kcal": 380,
+        "macros": {
+          "protein_g": 36,
+          "carbs_g": 0,
+          "fat_g": 26,
+          "fiber_g": 0
+        }
+      }
+    ],
+    "total": {
+      "kcal": 380,
+      "protein_g": 36,
+      "carbs_g": 0,
+      "fat_g": 26,
+      "fiber_g": 0
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.15,
+    "macro_pct": 0.2
+  },
+  "notes": "USDA FoodData Central #5152 (chicken, broiler/fryer, roasted, meat + skin): ~239 kcal per 100g. Quarter rotisserie ~160g cooked weight ≈ 380 kcal, P 36g, F 26g. Justification for critical-tier promotion: stable USDA reference, common Western dinner staple, zero carb/fiber tests divide-by-zero tolerance edge."
+}

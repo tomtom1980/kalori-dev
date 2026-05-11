@@ -1,0 +1,36 @@
+{
+  "name": "vn-bun-rieu",
+  "tier": "advisory",
+  "region": "vn",
+  "callType": "text-parse",
+  "input": "a bowl of bún riêu cua with crab paste, tomato broth, and tofu",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "bún riêu cua",
+        "portion": 1,
+        "unit": "bowl",
+        "kcal": 460,
+        "macros": {
+          "protein_g": 24,
+          "carbs_g": 60,
+          "fat_g": 12,
+          "fiber_g": 4
+        }
+      }
+    ],
+    "total": {
+      "kcal": 460,
+      "protein_g": 24,
+      "carbs_g": 60,
+      "fat_g": 12,
+      "fiber_g": 4
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Northern VN crab + tomato noodle soup. Ground truth: VN MOH 2017 composition table for bún riêu (per 700ml serving) + USDA blue swimming crab. Tomato broth + tofu adds protein variability — advisory tier per testing-strategy.md §3.1."
+}

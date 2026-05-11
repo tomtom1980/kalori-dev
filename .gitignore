@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build artifacts
+.next/
+dist/
+build/
+out/
+
+# Environment
+.env*
+!.env.example
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Testing
+coverage/
+.playwright/
+test-results/
+tests/results/
+playwright-report/
+tsconfig.tsbuildinfo
+
+# Claude Code
+.remember/
+.claude/local-tmp/
+.playwright-mcp/
+
+# Ephemeral smoke-test screenshots (evidence captured in sweep reports)
+/smoke-*.png
+
+# Mockup screenshots (regenerable from HTML)
+Design/mockups-brainstorm/*/screenshot.png
+
+# Vercel
+.vercel/
+
+# Secrets / API keys (local reference only — never commit)
+Planning/apikeys.txt
+Planning/devapikeys.txt
+Planning/*apikeys*.txt
+Planning/*secrets*.txt
+Planning/.tmp-*
+Planning/.tmp/

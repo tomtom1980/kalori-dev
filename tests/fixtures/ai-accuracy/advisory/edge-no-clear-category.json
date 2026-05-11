@@ -1,0 +1,36 @@
+{
+  "name": "edge-no-clear-category",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "leftovers from yesterday's dinner — some pasta, half a chicken thigh, and a bit of sauce",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "leftover pasta with chicken",
+        "portion": 1,
+        "unit": "plate",
+        "kcal": 480,
+        "macros": {
+          "protein_g": 28,
+          "carbs_g": 56,
+          "fat_g": 16,
+          "fiber_g": 4
+        }
+      }
+    ],
+    "total": {
+      "kcal": 480,
+      "protein_g": 28,
+      "carbs_g": 56,
+      "fat_g": 16,
+      "fiber_g": 4
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Edge: meal with no clear category — exercises Gemini's portion-default heuristic on under-specified composite. ~120g cooked pasta + ~80g chicken thigh + ~50g tomato/cream-based sauce composite. Advisory tier — wide reasonable kcal range (380–580)."
+}

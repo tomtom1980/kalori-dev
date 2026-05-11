@@ -1,0 +1,15 @@
+node_modules
+.next
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+Planning
+planning
+Design
+.remember
+next-env.d.ts
+.playwright-mcp
+.claude
+.github
+CLAUDE.md

@@ -1,0 +1,36 @@
+{
+  "name": "western-pasta-carbonara",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "a plate of spaghetti carbonara with pancetta, egg yolk, pecorino, and black pepper",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "spaghetti carbonara",
+        "portion": 1,
+        "unit": "plate",
+        "kcal": 720,
+        "macros": {
+          "protein_g": 28,
+          "carbs_g": 78,
+          "fat_g": 32,
+          "fiber_g": 3
+        }
+      }
+    ],
+    "total": {
+      "kcal": 720,
+      "protein_g": 28,
+      "carbs_g": 78,
+      "fat_g": 32,
+      "fiber_g": 3
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Roman pasta dish. USDA FoodData Central: 100g dry spaghetti (~360 kcal), 30g pancetta (~135 kcal), 1 egg yolk (~55 kcal), 25g pecorino (~95 kcal). ~700–750 kcal range typical. Advisory tier — pancetta:egg ratio varies."
+}

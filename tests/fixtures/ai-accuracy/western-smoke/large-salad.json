@@ -1,0 +1,36 @@
+{
+  "name": "large-salad",
+  "tier": "critical",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "a large mixed greens salad with grilled chicken breast, cucumber, tomato, and two tablespoons of ranch dressing",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "grilled chicken salad",
+        "portion": 1,
+        "unit": "bowl",
+        "kcal": 420,
+        "macros": {
+          "protein_g": 38,
+          "carbs_g": 14,
+          "fat_g": 24,
+          "fiber_g": 5
+        }
+      }
+    ],
+    "total": {
+      "kcal": 420,
+      "protein_g": 38,
+      "carbs_g": 14,
+      "fat_g": 24,
+      "fiber_g": 5
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.15,
+    "macro_pct": 0.2
+  },
+  "notes": "USDA FoodData Central composite: 150g grilled boneless chicken breast (~250 kcal, P 44g), 100g mixed greens + cucumber + tomato (~25 kcal, Fi 4g), 30ml ranch dressing (~145 kcal, F 15g). Justification for critical-tier promotion: high-prevalence Western lunch staple with stable macros across regional variants."
+}

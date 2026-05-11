@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# Local fast-CI mirror. Runs typecheck + unit tests only (~30-60s).
+# Full integration, e2e, build, and linters run in GitHub Actions.
+# Bypass for docs-only pushes with `git push --no-verify`.
+
+echo "pre-push: typecheck + unit tests (local fast-CI mirror)"
+pnpm typecheck || exit 1
+pnpm test:unit || exit 1
+echo "pre-push: ok. CI will run lint + format + integration + e2e + build."

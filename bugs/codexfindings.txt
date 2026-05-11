@@ -1,0 +1,643 @@
+I’ll look for your GitHub repo matching “calorie,” inspect the main app/design files I can access, then turn that into a dashboard mockup image you can download.
+
+Received app response
+
+I didn’t get a direct repo match from the installed GitHub search, so I’m going to inspect the available GitHub tool surface and try broader repository discovery rather than asking you to paste the link.
+
+Received app response
+
+I found the likely repo: tomtom1980/kalori (private, default branch main). I’ll inspect likely dashboard and design files now, then produce a redesigned dashboard mockup image.
+
+Received app response
+Received app response
+Received app response
+Thought for 1m 9s
+
+Done — I found the likely repo, tomtom1980/kalori, and created an updated dashboard design mockup image.
+
+I based it on the repo’s stated direction: AI-first calorie/nutrition tracker, PWA, dark-only, single-user, Next.js/React/Tailwind stack . The visual style follows the design docs’ selected “The Ledger” direction: near-black editorial layout, cream typography, oxblood accent, chronometer, five-column meal bulletin, micronutrient panel, water tracker, and weekly insight card . I also matched the actual dashboard component structure from the code: masthead, chronometer, macro bars, meals bulletin, water tracker, micronutrient panel, and weekly insight island .
+
+Download the mockup here:
+
+Download the updated Kalori dashboard design PNG 
+
+Can you check the code base only? Don't check the docs, just the code itself. Explain to me and describe exactly what this app is doing, what are the different functionalities, pages, and everything you know about it. 
+
+I’ll ignore the planning/design docs and inspect only source/config/test code. I’ll focus on route files, API handlers, components, Supabase migrations, and shared libraries so the description reflects what is actually implemented.
+
+Received app response
+
+The code confirms this is an authenticated app shell: middleware protects non-public routes, (app)/layout.tsx wraps post-login pages in NavShell, and the root layout loads the three visual fonts used across the UI.
+
+Received app response
+
+So far the implemented pages are broader than just dashboard: login, auth callback, onboarding, dashboard, log modal route, library list, library detail, progress, weight log, and a settings placeholder. Next I’m checking API handlers and data-layer code to describe what actions actually work.
+
+Received app response
+Received app response
+Thought for 2m 9s
+
+I checked only the code/source files, not the planning or design docs.
+
+What this app is
+
+Kalori is a private AI-assisted calorie and nutrition tracker built as a Next.js app. The package config describes it as an “AI-first calorie/nutrition tracker,” using Next.js, React, TypeScript, Tailwind, Supabase, Gemini, Vercel, and Sentry . The root layout loads three UI fonts — Newsreader, Inter, and JetBrains Mono — and sets the app metadata to “Kalori” / “AI-first calorie & nutrition tracker” .
+
+At a high level, the app lets a user:
+
+Sign in with magic link or Google.
+Complete onboarding to calculate nutrition targets.
+Log meals by typing, taking/uploading a photo, choosing from their personal library, or entering manually.
+Review/edit AI-parsed nutrition before saving.
+Track calories, macros, micronutrients, water, weight, and progress.
+Build a personal food library automatically.
+Get weekly AI review text when enough data exists.
+Authentication and routing
+
+The app uses Supabase Auth. Middleware protects private routes and redirects unauthenticated users to /login, while public routes are allowed through. Signed-in users visiting /login get redirected to /dashboard, unless the session has expired .
+
+The login page supports email magic link and Google OAuth. The server page resolves the origin and passes it to the client login form . The client form validates email input, calls supabase.auth.signInWithOtp, and also supports signInWithOAuth({ provider: 'google' }) .
+
+The /auth/callback handler exchanges the Supabase code for a session, then checks profiles.onboarding_completed_at. New/incomplete users go to /onboarding; completed users go to /dashboard or a safe same-origin redirect_to target .
+
+App shell and navigation
+
+All authenticated pages are wrapped by app/(app)/layout.tsx, which loads the current user ID and renders NavShell .
+
+NavShell provides the main app chrome: sidebar, top bar, mobile bottom tab bar, mobile log FAB, keyboard shortcut handling, a lazy-mounted log-flow modal, undo toast mount, screen-reader live regions, and a skip-to-main link .
+
+So the app is not just a set of pages; it has a persistent authenticated shell with a global “log food” modal available from multiple entry points.
+
+Pages and functionality
+/login
+
+Public sign-in page. It shows the Kalori masthead, email magic-link form, Google OAuth button, and error/success states. It does not sit inside the authenticated nav shell .
+
+/onboarding
+
+This is an authenticated 8-step wizard. The page verifies the Supabase user with auth.getUser(), redirects already-onboarded users to /dashboard, and renders WizardShell for new/incomplete users .
+
+The wizard steps are:
+
+Biological sex
+Age
+Height
+Current weight
+Goal weight
+Goal pace
+Activity level
+Results/finalize
+
+The wizard stores state in Zustand, validates each step with Zod schemas, saves each step to /api/profile/save, and on final success clears the local wizard store and routes to /dashboard .
+
+The profile save API computes derived nutrition values on finalization: BMR, TDEE, and calorie target. It validates the final payload strictly and writes the completion timestamp and derived fields together .
+
+/dashboard
+
+This is the main daily view. It verifies auth, checks onboarding completion, fetches the user profile and day snapshot, then renders:
+
+Masthead
+Optional target-updated nudge
+Chronometer calorie ring
+Macro bars
+Meals bulletin
+Water tracker
+Micronutrient panel
+Weekly insight card
+
+The dashboard page explicitly streams those UI “islands” and guards against users reaching it before onboarding is complete .
+
+The chronometer shows consumed calories, target, percent, fiber, entry count, and last logged time, with accessible meter/table fallback logic . Macro bars show protein, carbs, and fat against targets . The meals bulletin groups entries into breakfast, lunch, dinner, snack, and drink columns . Water tracking is interactive and posts optimistic quick-adds to /api/water/log . The micronutrient panel shows minor elements and supports overflow expansion through a client component .
+
+/log
+
+This route is not a normal full page. It is a thin route that opens the global log modal. It reads query parameters like ?tab=library&item=<id>&quantity=<n> and passes them to a client component . The client then seeds the log-flow store and opens the modal .
+
+The modal itself is globally lazy-mounted from the nav shell so the heavy log-flow bundle does not hit dashboard first paint . It uses Radix Dialog for the modal shell, focus trap, escape-to-close, dirty-draft discard confirmation, and a three-tab logging interface .
+
+The three log tabs are:
+
+Type: user types a meal; AI parses it.
+Snap: user submits an image; AI vision analyzes it.
+Library: user re-logs from saved personal food items.
+
+LogFlowTabs switches from the tabbed entry UI to a confirmation screen after parsing/analyzing succeeds .
+
+The confirmation screen lets the user edit parsed item names, portions, calories, meal category, and decide whether to save to the library. It also has “Why these numbers?” reasoning for AI sources, dedup preflight, save action, and undo toast integration .
+
+/library
+
+The library page is an authenticated server route. It fetches the user’s active library items, shows a masthead, renders an empty state if there are no items, or passes items into LibraryClient for interactivity .
+
+The client library UI supports:
+
+Search
+Filter
+Sort
+Select mode
+Bulk actions
+Optimistic delete
+Undo delete
+Merge duplicates
+Keyboard shortcuts like select all/delete
+SessionStorage persistence for filter/sort
+
+That behavior is implemented in LibraryClient .
+
+There is also a /library/[id] detail page. It verifies auth, fetches one library item and its five most recent entry rows, then renders a FoodDetail client island. Tombstoned/missing items return notFound() .
+
+/progress
+
+The progress page is a data-heavy analytics page. It reads ?range=D|W|M, defaults to weekly, validates auth/onboarding, derives macro targets from the calorie target, and renders multiple chart sections in Suspense boundaries .
+
+Implemented sections include:
+
+Calorie adherence
+Macro distribution stacked area
+Micronutrient heatmap
+Trend summary
+Logging consistency calendar
+Weight trajectory line
+Weekly AI review island
+
+The page also computes a 30-day weight trajectory window and fetches weight entries from weight_log for the chart .
+
+/weight
+
+This is a real implemented page, not just an API. It verifies auth/onboarding, loads unit preference, current weight, timezone, and recent weight history. It renders a quick-add weight form and a history list with deltas .
+
+The weight logging API enforces a 30-day backfill limit, validates weight range, inserts into weight_log, and can recalculate BMR/TDEE/calorie target when the profile is in auto mode and weight changes enough .
+
+/settings
+
+This page currently looks like a placeholder. The source file says it is a Task 1.2 placeholder, and the component only renders a heading and body from t.settings.* .
+
+AI features
+
+There are three main Gemini-backed AI routes.
+
+Text meal parsing
+
+POST /api/ai/text-parse accepts user text, validates it, authenticates, sanitizes it, computes a per-user cache key, checks cache, calls Gemini if needed, validates the AI response with Zod, writes cache/cost logs, and returns parsed nutrition. On AI failure, it returns a fallback payload so manual logging can continue .
+
+Vision/photo meal parsing
+
+POST /api/ai/vision mirrors the text route but accepts base64 image data, enforces a 500 KB decoded-size limit, supports image MIME types, hashes image content for cache, calls Gemini Vision, validates output, logs cost, and falls back safely on failure .
+
+Weekly review
+
+POST /api/ai/weekly-review generates or retrieves a weekly review. It requires a Monday week_start_on, rejects future weeks, aggregates food entries for the week, skips Gemini if there are fewer than three logged days, persists the review into weekly_reviews, and logs the AI call exactly once per logical request .
+
+Food entry saving and undo
+
+POST /api/entries/save is the core meal-save endpoint. It validates food items, meal category, source, optional library item, and AI reasoning. It enforces auth, prevents future timestamps, resolves the user’s timezone, checks ownership of referenced library items, implements idempotency via client_id, inserts the food entry, optionally creates a library item, and invalidates dashboard/progress cache tags .
+
+DELETE /api/entries/[id] deletes a user-owned entry, resolves the original user-timezone day for cache invalidation, and is used by the undo flow after a saved entry .
+
+Personal food library behavior
+
+The library has exact-name dedup preflight via POST /api/library/dedup-check, which checks the authenticated user’s own food_library_items for a matching normalized_name .
+
+Bulk delete is implemented as a tombstone/undo flow. POST /api/library/bulk-delete soft-deletes up to 100 items by setting deleted_at, then invalidates the library cache . POST /api/library/bulk-delete/undo clears deleted_at for matching original row client_ids if still within the undo window .
+
+Merging duplicates is implemented through POST /api/library/merge. It validates winner/loser IDs, prevents self-merge, calls a Postgres RPC library_merge_atomic, repoints entries from loser to winner, updates the winner, deletes the loser, and invalidates affected library/entry/progress caches .
+
+Water and weight tracking
+
+Water quick-add posts to POST /api/water/log, which validates glass, bottle, or ml, stores the row in water_log, uses client_id for idempotency, and invalidates the user’s day entry cache .
+
+Weight quick-add posts to POST /api/weight/log. It validates date/weight/note, rejects future or older-than-30-day dates, inserts into weight_log, and may update the profile’s BMR/TDEE/calorie target when auto recalculation is needed .
+
+Database model from migrations
+
+The code migrations show these main tables:
+
+profiles: user bio, height, weight, goals, activity, timezone, BMR/TDEE/calorie target, target mode, onboarding status, recalc fields
+food_library_items: personal foods, normalized names, display names, nutrition JSON, thumbnails, log counts
+food_entries: every logged meal/drink entry, including source, meal category, items JSON, AI reasoning, logged timestamp
+weight_log
+water_log
+ai_response_cache
+ai_call_log
+weekly_reviews
+
+The migrations enable RLS for user-owned tables and scope rows to auth.uid(), while AI cache/log tables are service-role-only by having RLS enabled with no user-facing policies .
+
+What appears unfinished or placeholder
+
+From the code I inspected:
+
+/settings is still a placeholder page, not a full settings/profile editor yet .
+/log itself is just a modal-opening route, not a standalone logging page .
+The main product flows are implemented around onboarding, dashboard, log modal, library, progress, water, weight, AI parsing, and weekly review.
+Okay, so now checking the current code of what we already accomplished and all these features we just described. Can you check if everything works as expected or if there are any issues? You can see and create me a full report for researching and checking everything use sub-agents. 
+
+I’ll do this as a multi-pass audit: build/CI surface, database/API contract, route/page behavior, client-state flows, and security/cache/idempotency. I can’t literally spawn Claude-style sub-agents from here, but I’ll structure the review as separate reviewer passes and cite the code evidence.
+
+Received app response
+
+I already found one likely real production bug: the API accepts source: "manual" for food entries, but the original DB migration’s food_entries.source check only allows text, photo, and library. I’m checking later migrations now to see whether that was fixed after the initial schema.
+
+Received app response
+Received app response
+
+Second likely issue: the library tab component still defaults to items = [] and LogFlowTabs mounts <LibraryTab /> without passing data. I’m tracing whether any other code fills the list or turns selected library items into a confirmation/save flow.
+
+Received app response
+Received app response
+Received app response
+Received app response
+Received app response
+Thought for 2m 38s
+
+Below is a static code audit report based only on the current codebase. I did not check planning/design docs. I also did not run the app locally or execute CI, so this is a source-code review, not a live runtime verification.
+
+Kalori Codebase Audit Report
+Executive summary
+
+The app is substantially implemented: auth, onboarding, dashboard, AI text/photo meal parsing, confirmation flow, food entries, water, weight, library, progress, and weekly review are all present in code. However, I found several issues that will likely break important user flows:
+
+Severity	Finding
+Critical	Manual fallback entries likely fail to save because the API accepts source: "manual" but the DB schema shown only allows text, photo, library.
+Critical	“Save to library” appears wired in the UI, but the confirmation payload does not send normalized_name, so the API condition for creating a library item is never met.
+High	The log modal’s Library tab appears incomplete: it defaults to an empty item list and is mounted without data, so /log?tab=library&item=... likely opens an empty library tab instead of letting the user re-log the item.
+High	Library tombstone/delete/update code relies on food_library_items.deleted_at, but the schema migration I inspected does not create that column. Verify whether a later migration exists/applied.
+High	AI replay/idempotency code expects ai_call_log.client_id, but the schema migration I inspected does not include that column. Verify whether a later migration exists/applied.
+Medium	Photo thumbnail upload likely fails often because the client compresses to 500 KB, while the thumbnail route rejects anything over 50 KB.
+Medium	Library dedup check does not filter out tombstoned/deleted items.
+Medium	Login email input likely loses keyboard focus outline because inline outline: none overrides the global focus style.
+Low	Settings page is still a placeholder.
+Sub-agent style review
+Reviewer A — Route/page coverage
+What looks implemented
+
+The authenticated app shell is real. app/(app)/layout.tsx loads the current Supabase user and wraps app pages in NavShell . NavShell includes the sidebar, top bar, mobile nav, FAB, global log modal mount, keyboard shortcut layer, undo toast, and screen-reader live regions .
+
+Implemented pages include:
+
+/login — magic link + Google OAuth
+/onboarding — auth-gated 8-step wizard
+/dashboard — main daily dashboard
+/log — opens the global log modal with query param hints
+/library — food library index
+/library/[id] — food detail page
+/progress — charts + weekly review page
+/weight — weight quick-add + history page
+/settings — placeholder only
+Issue A1 — Settings is still placeholder
+
+/settings only renders a heading and body. The source itself labels it a placeholder .
+
+Impact: Not a bug if expected, but settings/profile/preferences are not really implemented yet.
+
+Reviewer B — Database/API contract
+Critical issue B1 — Manual entries likely fail at DB level
+
+The confirmation flow can produce source: "manual" when manual fallback is submitted. LogFlowTabs converts manual fallback into a confirmation payload with source: 'manual' .
+
+The save API also accepts source: z.enum(['text', 'photo', 'library', 'manual']) in app/api/entries/save/route.ts .
+
+But the food_entries table migration shown defines the source check as only ('text','photo','library'), excluding manual .
+
+Expected failure: Manual fallback save reaches /api/entries/save, passes Zod, then DB insert fails with a check-constraint error and the route returns db_error.
+
+Fix options:
+
+Preferred:
+
+alter table public.food_entries
+drop constraint if exists food_entries_source_check;
+
+alter table public.food_entries
+add constraint food_entries_source_check
+check (source in ('text','photo','library','manual'));
+
+Alternative: do not use source: "manual"; map manual fallback to source: "text" or another existing DB value. I would not recommend that because you lose useful source information.
+
+Critical issue B2 — “Save to library” probably never creates a library item
+
+In ConfirmationScreen, the save body sets save_to_library = true when the toggle is enabled, but I do not see it sending normalized_name .
+
+The API only creates a food_library_items row if all of these are true:
+
+body.save_to_library
+body.source !== 'library'
+body.normalized_name
+
+That condition is in /api/entries/save .
+
+So the UI can show “save to library,” but the API condition is not satisfied because normalized_name is missing.
+
+Impact: New AI-parsed foods are saved as food entries, but they do not get added to the personal food library.
+
+Best fix: Compute normalized name on the server instead of trusting the client.
+
+In /api/entries/save, when save_to_library is true:
+
+const normalizedName =
+  body.normalized_name ?? normalizeName(body.items[0]?.name ?? '');
+
+Then insert if normalizedName is non-empty.
+
+Also include more complete nutrition when saving library items. Current insertion only stores { kcal }, which makes future library re-log/detail quality weaker .
+
+High issue B3 — Tombstone/delete code relies on deleted_at, but baseline schema lacks it
+
+Library fetch performs a lazy tombstone sweep using deleted_at, then selects only rows where deleted_at IS NULL .
+
+Single-item delete sets deleted_at . Bulk delete also sets deleted_at . Library update filters .is('deleted_at', null) .
+
+But the inspected food_library_items migration does not create deleted_at .
+
+Impact if no later migration exists/applied: Library page, update, delete, undo, and lazy sweep can fail with “column deleted_at does not exist.”
+
+Fix: Add migration:
+
+alter table public.food_library_items
+add column if not exists deleted_at timestamptz;
+
+create index if not exists food_library_items_user_deleted_idx
+on public.food_library_items (user_id, deleted_at);
+High issue B4 — AI idempotency expects ai_call_log.client_id, but baseline schema lacks it
+
+lib/ai/cost-log.ts writes client_id into ai_call_log when provided and uses findPriorCall() to query .eq('client_id', input.clientId) .
+
+The migration shown for ai_call_log contains id, user_id, call_type, input_hash, tokens, cost_estimate, latency_ms, cached_flag, and created_at, but no client_id .
+
+The code comments reference a later migration, but I could not confirm it from the inspected files.
+
+Impact if missing in the real DB:
+
+Replay detection fails.
+AI route retries can call Gemini again.
+logAICall() insert with client_id can error, but it swallows most insert errors after Sentry capture, so the user may not see this directly.
+
+Fix migration:
+
+alter table public.ai_call_log
+add column if not exists client_id uuid;
+
+create unique index if not exists ai_call_log_user_client_unique_idx
+on public.ai_call_log (user_id, client_id)
+where client_id is not null;
+Medium issue B5 — Dedup check does not ignore tombstoned rows
+
+/api/library/dedup-check selects matching food_library_items by user_id and normalized_name, but does not filter deleted_at IS NULL .
+
+Impact: If a user deletes a library item and then logs the same food before the lazy sweep hard-deletes it, the dedup prompt can suggest reusing a deleted item.
+
+Fix:
+
+.is('deleted_at', null)
+
+Add that to the dedup query.
+
+Reviewer C — Log flow / user flows
+High issue C1 — Library tab appears incomplete / not wired to data
+
+LogFlowTabs mounts <LibraryTab /> with no props .
+
+LibraryTab defaults items = [] and its own comment says it shipped scaffold-only and expects future data injection .
+
+/log parses query params and LogPageClient seeds librarySelection, but it does not fetch the selected item or enter confirmation; it only opens the modal .
+
+FoodDetail has a “Log this now” action that routes to /log?tab=library&item=<id>&quantity=<qty> . But because the Library tab has no item data and no confirmation producer, this likely opens an empty library tab instead of logging the item.
+
+Impact: Re-log from library and “Log this now” from food detail likely do not work.
+
+Fix direction:
+
+Implement one of these:
+
+Server/RSC fetch for library items and pass them into the modal/tab.
+Client API endpoint for library search/list and selected item hydration.
+Special direct-nav path: when /log?tab=library&item=id is present, fetch that item and immediately enter confirmation with source: "library".
+
+Also add a visible “Log selected” / “Continue” CTA in the Library tab that converts selected library rows into ParsedItemT[] and calls enterConfirmation().
+
+Medium issue C2 — Library-source save allows missing library_item_id
+
+The entry-save API accepts source: 'library' and has optional library_item_id .
+
+Impact: A client could save an entry marked as library but with no linked library item. That weakens history, log counts, and future detail analytics.
+
+Fix:
+
+Add a Zod refinement:
+
+.refine(
+  (v) => v.source !== 'library' || !!v.library_item_id,
+  { message: 'library_item_id required when source is library' }
+)
+Reviewer D — AI/photo/storage
+Medium issue D1 — Thumbnail upload likely fails for many photo logs
+
+SnapTab compresses the selected image once and checks that the compressed image is under 500 KB before calling the vision endpoint . The compression helper default is also 500 KB / 1600 px .
+
+Then SnapTab sends that same base64 to /api/storage/thumbnail .
+
+But /api/storage/thumbnail rejects anything over 50 KB .
+
+The upload failure is swallowed in SnapTab, so meal parsing still works, but thumbnails often will not be saved.
+
+Fix: Generate two outputs:
+
+Vision image: ≤500 KB, ≤1600 px
+Thumbnail image: ≤50 KB, ≤320 px, ideally WebP/JPEG
+
+Example direction:
+
+const visionImage = await compressImage(file, {
+  maxSizeBytes: 500 * 1024,
+  maxWidthOrHeight: 1600,
+});
+
+const thumbnailImage = await compressImage(file, {
+  maxSizeBytes: 50 * 1024,
+  maxWidthOrHeight: 320,
+  mimeType: 'image/webp',
+});
+
+Then send visionImage to Gemini and thumbnailImage to storage.
+
+Reviewer E — Accessibility / UI correctness
+Medium issue E1 — Login email input likely has no visible keyboard focus
+
+Global CSS defines a :focus-visible outline rule .
+
+But the login email input has inline outline: 'none' . Inline style usually wins over stylesheet focus rules, so keyboard users may not see focus on the login email field.
+
+Fix: Remove the inline outline: 'none', or add an explicit class with a :focus-visible style. Best:
+
+// remove outline: 'none'
+
+Then let the global :focus-visible rule apply.
+
+Reviewer F — Build/test readiness
+
+The project has good scripts for build, lint, typecheck, unit tests, Playwright E2E, axe accessibility, and bundle-budget checks .
+
+Recommended command sequence:
+
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm test:e2e
+pnpm test:a11y
+
+I could not run those from here, so the report above is based on static code inspection.
+
+Recommended test plan
+Must-have integration tests
+Manual fallback save
+Trigger manual fallback.
+Save item.
+Assert food_entries.source = 'manual'.
+Assert API returns 200.
+Save-to-library
+Use Type tab.
+Parse food.
+Keep “save to library” enabled.
+Save.
+Assert one food_entries row and one food_library_items row are created.
+Library re-log
+Seed one library item.
+Visit /log?tab=library&item=<id>&quantity=1.
+Assert modal opens with item selected.
+Assert user can continue to confirmation and save a source: 'library' entry with library_item_id.
+Library tombstone schema
+Run migrations on fresh DB.
+Assert food_library_items.deleted_at exists.
+Assert /library, delete, undo, and lazy sweep work.
+AI idempotency schema
+Run migrations on fresh DB.
+Assert ai_call_log.client_id exists.
+Send same AI client_id twice.
+Assert Gemini called once.
+Thumbnail storage
+Upload a normal phone photo.
+Assert storage route receives ≤50 KB thumbnail, not the 500 KB vision image.
+Dedup excludes deleted
+Create library item.
+Tombstone it.
+Run dedup check for same normalized name.
+Assert match: null.
+Login focus
+Keyboard-tab to email input.
+Assert visible focus indicator with axe/Playwright screenshot or computed style.
+Priority fix order
+Add/verify DB migrations for:
+food_entries.source includes manual
+food_library_items.deleted_at
+ai_call_log.client_id + unique replay index
+Fix save-to-library:
+Server-compute normalized_name
+Store full nutrition, not only kcal
+Finish Library tab:
+Fetch/hydrate library items
+Add continue/save flow
+Make /log?tab=library&item=... work
+Fix thumbnail generation:
+Separate 500 KB vision image from 50 KB thumbnail image
+Patch smaller correctness issues:
+Dedup excludes tombstones
+Login focus outline
+Require library_item_id for source: 'library'
+
+My overall assessment: the core architecture is solid and many flows are close, but I would not consider the app fully working yet until the schema-contract issues and Library tab wiring are fixed.
+
+
+• Overall Assessment
+
+  This is a solid, above-average early-stage codebase. The architecture is intentional, security-aware, and test-heavy.
+  I’d rate it roughly:
+
+  - Architecture: 7.5/10
+  - Modularity: 7/10
+  - Maintainability: 6.5-7/10
+  - Current implementation health: held back by a failing typecheck and a few oversized modules
+
+  Size
+
+  I counted source while excluding node_modules, .next, coverage, reports, test output, planning docs, and design
+  mockups.
+
+  | Area | Files | Lines |
+  |---|---:|---:|
+  | Production app: app, components, lib, middleware/instrumentation | 181 | 31,316 |
+  | Tests | 244 | 32,385 |
+  | Supabase migrations | 11 | 900 |
+  | Tooling/config/fixtures | 29 | 2,940 |
+  | Total code, excluding docs/design/generated | 455 | 66,328 |
+  | Including planning/design/docs | 624 | 120,745 |
+
+  Shape of the app:
+
+  - 19 API route handlers
+  - 11 pages
+  - 67 client-component files
+  - 224 test/spec files
+  - 23 production TS/TSX files over 300 lines
+
+  What’s Good
+
+  The codebase has a strong structure: Next App Router route groups, domain-ish lib/* modules, feature components,
+  Supabase migrations, custom ESLint rules, and a broad test suite. Security and data correctness get real attention:
+  RLS migrations, server-only Supabase helpers, AI prompt sanitization, idempotent client_id write contracts, cache-tag
+  constants, and auth refresh handling are all thoughtful.
+
+  The best architectural choices are the pure aggregation/nutrition/time modules, centralized auth fetch retry logic,
+  typed cache tag helpers, Zod validation at API boundaries, and the extensive integration/RLS/E2E coverage. This is not
+  a throwaway prototype.
+
+  Main Concerns
+
+  The current worktree does not typecheck:
+
+  - tests/integration/library-merge-cache-error-surfacing.test.ts:86: sentryArgs possibly undefined
+  - tests/integration/weight-page-imperial-conversion.test.tsx:111: "metric" passed where "imperial" is expected
+
+  Lint is mostly clean: pnpm lint reports 0 errors and 1 warning.
+
+  There is also a real schema/API mismatch: app/api/entries/save/route.ts:56 accepts source: 'manual', but supabase/
+  migrations/0003_food_schema.sql:92 only allows text, photo, and library. Manual fallback saves may fail against the
+  real DB unless another migration changes that constraint, and I did not find one.
+
+  The biggest maintainability issue is module size. Examples:
+
+  - app/globals.css: 3,444 lines
+  - lib/i18n/en.ts: 1,010 lines
+  - lib/aggregations/progress.ts: 955 lines
+  - app/(app)/log/_components/ConfirmationScreen.tsx: 901 lines
+  - components/dashboard/WeightQuickAdd.tsx: 674 lines
+
+  Those are manageable today, but they’re where future changes will get slower and riskier.
+
+  Overall
+
+  This is a serious codebase with good engineering instincts: strong tests, explicit invariants, careful auth/data
+  handling, and mostly clean boundaries. It is more complex than a typical solo MVP, but the complexity mostly comes
+  from real product concerns: auth, AI fallback, idempotency, optimistic UI, RLS, cache invalidation, and accessibility.
+
+  The next best improvements would be: fix typecheck, fix the manual source schema mismatch, split the largest client
+  components into hooks/reducers/subcomponents, introduce generated Supabase DB types instead of manual casts, and keep
+  architecture docs synced with actual implementation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

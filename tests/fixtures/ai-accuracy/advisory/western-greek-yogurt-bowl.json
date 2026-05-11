@@ -1,0 +1,36 @@
+{
+  "name": "western-greek-yogurt-bowl",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "a bowl of full-fat Greek yogurt with honey, berries, and granola",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "Greek yogurt bowl with granola",
+        "portion": 1,
+        "unit": "bowl",
+        "kcal": 380,
+        "macros": {
+          "protein_g": 18,
+          "carbs_g": 48,
+          "fat_g": 12,
+          "fiber_g": 4
+        }
+      }
+    ],
+    "total": {
+      "kcal": 380,
+      "protein_g": 18,
+      "carbs_g": 48,
+      "fat_g": 12,
+      "fiber_g": 4
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "USDA composite: 200g full-fat Greek yogurt ~190 kcal P 16g F 10g, 15ml honey ~45 kcal, 50g mixed berries ~30 kcal, 30g granola ~115 kcal. Advisory tier — granola brand variability dominates the macro spread."
+}

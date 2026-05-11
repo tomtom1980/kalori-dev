@@ -1,0 +1,256 @@
+---
+position: execution_in_progress
+timestamp: 2026-04-25
+skill: brainstorm-tomi
+project: Kalori
+manual_smoke_bugfix_status: complete_deployed_2026-05-11 (`7842c26` on GitHub main and Vercel production alias https://kalori-one.vercel.app; see Planning/continuation.md)
+manual_smoke_resume_pointer: Continue Task 5.4 manual smoke or next user-reported bugfix from `Planning/continuation.md` and latest `Planning/CHANGELOG.md` entries.
+complexity_tier: Complex
+phase_1_status: complete
+phase_2_status: complete (Tasks 2.1 ✅ + 2.2 ✅ + 2.3 ✅ + 2.4 ✅ — PHASE 2 GATE CLOSED)
+phase_3_status: complete (Tasks 3.1 + 3.2 + 3.3 + 3.4 + 3.5 + 3.6 + 3.7 ✅ — PHASE 3 GATE CLOSED on `c706d50`)
+phase_4_status: complete (Tasks 4.1 ✅ + 4.2 ✅ + 4.3a ✅ + 4.3b ✅ + 4.5 ✅ + 4.6 ✅ + 4.7 ✅ — PHASE 4 GATE CLOSED on `61564c1`; Pre-Phase 5 Audit + Fixes 4.7.1–4.7.7 closed 2026-04-25)
+phase_5_1_status: complete (Tasks 5.1.1 ✅ + 5.1.2 ✅ + 5.1.3 ✅ + 5.1.4 ✅ + 5.1.5 ✅ + 5.1.6 ✅ + 5.1.7 ✅ + 5.1.8 ✅ + 5.1.9 ✅ + 5.1.10 ✅ — parent Task 5.1 GATE CLOSED 2026-04-30 via aggregate Codex review at 5.1.10 returning 0 net new Critical / 0 Improvement / 0 Minor; 9 residuals re-confirmed; AC1 PASS; C9 runtime verification 18/18 ACs PASS)
+phase_5_2_status: complete (Task 5.2 ✅ — cross-tab undo + cross-tab sign-out + data export ZIP + account deletion cascade (I9) shipped 2026-05-01 across `dce246c..ea0c40e`; Phase 3 review 4C+5I auto-fixed; Codex Round 1 2C+1I auto-fixed + 1M deferred; C9 runtime ALL-GREEN: 1703/1703 vitest + 4/4 E2E + 6/6 axe)
+phase_5_3_status: complete (Task 5.3 ✅ — Phase 5 aggregate Codex review closed 2026-05-01 across `52214c8` (R1) + `0e7781f` (R2); R1 3C+2I auto-fixed [cross-tab signout deferred-marker; revoke EXECUTE on delete_user_data via mig 0015; profiles.deleting_at fence + 12 mutation routes 423 via mig 0016; order-stable export pagination; reduced-motion data-attr mirror]; R2 1C+1I+1 C3 coverage-gap auto-fixed [admin.rpc() service-role caller via mig 0017; FenceReadError fail-closed → 503; weekly-review route fenced]; 2-round cap honored; full suite 1720/1720 GREEN; R1 firewall preserved)
+phase_5_4_status: in_progress_step_11_manual_smoke (Steps 1-10 GREEN at 2026-05-01: Vitest 1720/1720 + branch coverage 70.85% ≥70 target; Playwright E2E + axe-core GREEN post `3fae2aa` weight-log fix; Visual regression 15/18 pre-known Windows platform-drift; Lighthouse mobile ≥0.91 all categories; AI accuracy 30/30; 5 followups deferred. Step 11 manual smoke USER-DRIVEN — Phase 5 + project closure pending user approval.)
+last_completed_task: Task 5.3 (Phase 5 Codex Adversarial Review — Polish + PWA; R1 3C+2I + R2 1C+1I+1C3-gap all resolved; commits `52214c8` + `0e7781f`). Task 5.4 sweep steps 1-10 autonomously verified at `3fae2aa`; Task 5.4 NOT closed (manual smoke pending). Production Readiness Audit COMPLETE 2026-05-01 (4 commits 045f6d5..7209888) — production verified end-to-end on https://kalori-one.vercel.app.
+next_executable_task: Task 5.4 — Step 11 Manual Final Smoke (USER-DRIVEN)
+pending_user_action: bug_fix_session_starting  # user reported bugs during manual smoke; new session will dispatch fixes
+last_updated: 2026-05-09 00:00 GMT+7
+active_fa_sprint: mvp-stabilization
+brownfield-folder: Planning/features/2026-05-01-mvp-stabilization/
+fa_sprint_progress: |
+  Phase A (Unblockers + Verify): ✅ Completed 7/7 (2026-05-07 20:30 GMT+7)
+  Phase B (P1 Patches): ✅ Completed 9/9 (2026-05-09 ~00:00 GMT+7) — PHASE B FULLY CLOSED
+    - B.1 ✅ 2026-05-07 (commit `bd33ce7`) — public landing for anon root
+    - B.2 ✅ 2026-05-07 (commit `3d507a6`) — TypeTab form-clear-after-save
+    - B.3 ✅ 2026-05-07 (commit `4a43f82`) — sidebar Navigation header semantic h2
+    - B.4 ✅ 2026-05-08 (commits `b489435..88f97e6`) — Progress weight quick-add + RSC refresh; Codex 2 rounds (3 + 2 in-scope auto-fixed) + 1 Critical deferred F-B4-DATE-CONTRACT-TZ-AWARE; C9 PASS; R1 firewall preserved
+    - B.5 ✅ 2026-05-08 — site-wide nav audit script + canonical 404 page; Codex 3 rounds (R3 user-authorized verify-pass, all findings auto-fixed); F-B5-AC2-EXPLICIT-KBD-SPEC followup; C9 PASS; R1 firewall preserved
+    - B.6 ✅ 2026-05-08 (commit `44cf361`) — Settings stub copy delete + real heading i18n key
+    - B.E2E ✅ 2026-05-08 (commit `8a7414f`) — Phase B bundled User Story E2E (US-STAB-B1..B6); 13 implemented PASS / 6 SCOPE-SKIP / 0 fail; F-B2-AC1-LISTENER-MOUNT-LIFECYCLE architectural finding logged
+    - B.SWEEP ✅ 2026-05-08 (commit `600eddf`) — Phase B Testing Sweep with 6 parallel fix sub-agents (A-F) resolving 5 originally-RED blockers
+    - B.CODEX ✅ 2026-05-09 (commits `ff2e3b6`, `3591248`) — Phase B Codex Adversarial Review; 2 rounds, 6 findings auto-fixed (R1: 3C+1H all fixed; R2: 1C+2H, 2 fixed + F-PB-R2-3 architectural deferred to schema migration task per CLAUDE.md R1 discipline); F-B2-AC1-LISTENER-MOUNT-LIFECYCLE RESOLVED by R1 fix A; R1 firewall preserved
+  Phase C (P1 Features): ⏳ Pending 0/7 — NEXT PHASE
+  Phase D (Hardening): ⏳ Pending 0/9
+  Phase E (Closure): ⏳ Pending 0/3
+  See `Planning/progress.md` for the full per-task table — this block is a state-pointer, not the source of truth.
+
+Task 5.1 split rationale: Complex parent task split into 10 sub-tasks (5.1.1–5.1.10) following Task 4.7 precedent. Decision made 2026-04-25 after Phase 1 design fragments revealed 9 distinct concern areas. Per-sub-task Codex review preferred over monolithic review at parent close. Phase 1 UI design fragments produced by 5 parallel sub-agents (design-lead, architecture, react-perf, ux-auditor, ux-specialist) — fragments at Planning/.tmp/task-5.1-ui-*.md. F-TEST-4 misdirected followups (already shipped at Task 4.1 commit aea1a66) folded into 5.1.10 cleanup queue. Three a11y red flags from ux-auditor (focus-ring oxblood→ivory standardization, width→scaleX refactor for Safari reduced-motion safety, replay success badge AAA contrast fix) added to 5.1.6 scope.
+---
+
+# Kalori — Brainstorm State
+
+## Active Feature Addition Sprint
+
+**Sprint:** `mvp-stabilization`
+**Folder:** `Planning/features/2026-05-01-mvp-stabilization/`
+**Created:** 2026-05-01
+**Status:** planning complete (brainstorm-tomi pipeline COMPLETE; sprint position `artifacts_complete`; awaiting user `start tasks` to begin Phase A execution via `superpowers-exec-tomi`)
+
+Refer to the sprint folder for the per-sprint `brainstorm-state.md`, `manifest.md`, `design-doc.md`, and the rest of the FA artifact set. Project Phase 5 / Task 5.4 remains `🔄 In Progress`; this sprint's Phase E will close both the sprint, Task 5.4, and Phase 5 in one motion. Sprint covers all 11 issuelog.txt bugs + 9 selected followups + verification-found bugs to soft-launch readiness; ~67 deferred items remain as future "post-MVP cleanup" tracker.
+
+## Current position
+
+`artifacts_complete` — all 7 Complex-tier planning artifacts exist in `Planning/`. Brainstorm Phase 1 is DONE across Steps 1 → 6.7.
+
+**Execution Phase 1 (Foundation) — COMPLETE (2026-04-20).** All 5 Phase 1 tasks ✅: Task 1.1 scaffold + 1.2 Supabase/auth shell/RLS harness/Ledger tokens/nav + 1.3 test harness/i18n/ESLint rules/seed + 1.4 Codex Adversarial Review (R1 0C+4I+2M auto-fixed in `7294469`; R2 verified) + 1.5 Phase Testing Sweep (117/117 local, CI run `24659082455` green 5/5 jobs, RLS harness EXECUTED on Linux 3289ms, axe zero serious/critical, coverage above all thresholds, 3 visual skips per F-TEST-1, no new residuals).
+
+**Execution Phase 2 (Auth + Onboarding) — ✅ COMPLETE (2026-04-21). PHASE 2 GATE CLOSED.** All 4 tasks ✅: Task 2.1 (8 commits `9731d2f..cce8b01`; 5 primary layers + 1 regression fix + 3 Codex rounds), Task 2.2 (11 commits `e0273d2..161484e`; 9 layer commits + 1 retroactive UI audit + 1 Phase 3 review fix + 1 Codex R1 fix), Task 2.3 (`5170e4a` R1 fix — 3 Improvements auto-fixed over aggregate diff `6f4ddc2..2fe71cc`: finalize read-compute-write race → single atomic `upsert`; `.maybeSingle()` error distinguished from null-data; `role="alert"` dropped from per-field spans; R2 verified all RESOLVED; F4 Minor deferred → `F-SEC-3`), Task 2.4 (`79e167b` force-dynamic fix on auth-gated pages — two-cycle sweep: first cycle on `38e857c` caught latent `Next build` regression from Task 2.1's `getServerSupabase()` guard being incompatible with static prerender; fix added `export const dynamic = 'force-dynamic'` to dashboard + onboarding pages + regression guard; re-sweep on `79e167b` 5/5 CI jobs green). Cumulative Phase 2 test delta: Vitest 117 → 318 (+201 new) + Playwright 12 new + 1 new integration file = 214 new tests across 53 Vitest files. Final Phase 2 coverage (CI Linux): Stmts 88.26% / Branches 75.77% / Funcs 91.88% / Lines 90.04% — all above 75/70/75/75 thresholds. Codex per-task gates: Task 2.1 → 3 rounds zero residual; Task 2.2 → 1 round (1H+2M auto-fixed); Task 2.3 → 2 rounds (3I auto-fixed, 1M deferred). Phase 2 Testing Sweep final verdict: GATE CLOSED ✅ with `profiles.test.ts` EXECUTED on Linux (14 tests, 8024ms real Supabase roundtrips — NOT silent skip), axe zero serious/critical at landing, Next build green, needs: chain terminus green. **⚠️ R1 hotspot DISCHARGED + TRIPLE-VERIFIED** — `lib/auth/refresh-interceptor.ts` canonical; finalize branch uses `FinalizeRequiredSchema` + atomic `upsert`; Task 2.2 `/api/profile/save` contract preserved; Task 2.3 Codex R2 confirmed no local refresh shims; Task 2.4 sweep exercised full F12 integration path. **Phase 2 followups added/retired:** F-SEC-1 + F-TEST-3 RETIRED (Task 2.1); F-TEST-4 ADDED (Task 2.1); F-SEC-3 ADDED (Task 2.3 R1 F4 deferral); zero added/retired by Tasks 2.2 + 2.4 (F-INFRA-1 was a transient sweep finding resolved in-cycle, not a deferred residual). **Phase 3 execution in progress (Tasks 3.1 + 3.2 + 3.3 + 3.4 ✅; Tasks 3.5–3.7 pending).** Task 3.3 closed 2026-04-21 with 577/577 tests (108 new). **Task 3.4 ✅ COMPLETE (2026-04-22)** — 9 commits `e6b756a..9878355` shipped backend save/delete/copy-yesterday/dedup-check routes + useUndoQueueStore + ConfirmationScreen compound + UndoToast + CopyYesterdayModal; Codex R1 single-round APPROVE WITH FOLLOW-UPS (0C + 8I auto-fixed + 5M deferred to F-UI-3.4-8..12; 2-round cap NOT hit); 691/691 green (+114 net); Design-doc §18.3 tiebreaker applied (2-way dedup); R1 mitigation contract verified CLEAN on 3rd downstream consumer (zero raw `fetch(` in new 3.4 code); Task 3.1 C1 cross-user `client_id` collision DISCHARGED. **Next executable task: Phase 3 Task 3.5** — Dashboard (masthead, chronometer ring, macros, meals bulletin, water, micronutrient panel). R1 mitigation contract stays in effect — Task 3.5 will be the 4th downstream consumer of `lib/auth/refresh-interceptor.ts` (dashboard read-through via PPR + cache tags; `cache-tag-roundtrip.test.ts` deferred from 3.4 → 3.5 per `testing-strategy.md` §213).
+
+**Mid-session skill update (2026-04-21):** `~/.claude/skills/superpowers-exec-tomi/` updated mid-Task-2.2 to mandate `ui-design` + `frontend-design` skill invocation for Phase 2/3 of the UI pipeline on all UI-tagged tasks. Triggered the Task 2.2 retroactive UI skill compliance audit (11 of 14 files clean + 3 minor fixes landed in commit `c087550`). Applies to all future UI-tagged tasks — the Phase 2 implementation sub-agent briefing now carries the mandatory skill-invocation block explicitly.
+
+**Summary of completed steps:**
+- Steps 1–4.5 — exploration, questioning (8 rounds), approaches, design presentation, mockup pipeline (4 directions; user selected "The Ledger" direction-1-editorial)
+- Step 4.6 — pre-design checkpoint (`01-pre-design.md`)
+- Step 5 — design-doc written
+- Step 5.5 — design Codex review (10 Critical + 20 Suggestion + 5 Minor — all applied) + pre-plan checkpoint (`02-pre-plan.md`)
+- Step 6 — tasks.md written (26 tasks, 5 phases, Canonical TDD mandate)
+- Step 6.5 — plan Codex review 2 rounds (Round 1: 2H+2M all auto-fixed; Round 2: 1H+2M mechanical fixed + R1 residual) + pre-artifacts checkpoint (`03-pre-artifacts.md`)
+- Step 6.6 — lessons appended to `~/.claude/lessonlearned.md` (Kalori entry)
+- Step 6.7 — 6 sequential artifacts created (tasks.md pre-existed from Step 6). `ui-design.md` used the two-pass multi-sub-agent pattern: Pass 1 (6 component-area opus agents) + Pass 2 (5 skill-persona opus agents invoking `frontend-design`, `ui-ux-pro-max`, `vercel-composition-patterns`, `vercel-react-best-practices`, `web-design-guidelines`). 22 conflicts reconciled during assembly with design-doc as authoritative tiebreaker.
+- Mid-session skill update — `~/.claude/skills/brainstorm-tomi/` updated to document the two-pass UI artifact production pattern and strengthen the mandatory skill-invocation block as a red-flag gate. Applies to future brainstorms.
+
+**Next action:** USER says **"start tasks"** to begin Phase 3 execution of `Planning/tasks.md` starting with Phase 1 Task 1.1. Do NOT auto-start execution.
+
+## Resume instructions
+
+In a new session, say:
+- **`start tasks`** — begins Phase 3 execution (routes via user's CLAUDE.md to the task orchestrator skill)
+- `resume brainstorm` — no-op at this state; returns artifacts_complete status
+
+The brainstorm-tomi skill's job is done. Phase 3 execution is handled by the user's task orchestrator (`skills/project-task/SKILL.md` if present, or `superpowers-exec-tomi` as fallback).
+
+## Context checkpoints
+
+| File | Purpose |
+|---|---|
+| `Planning/brainstorm-context/02-pre-plan.md` | Pre-plan handoff (Step 5.5) — compressed design + Step 6 instructions |
+| `Planning/brainstorm-context/03-pre-artifacts.md` | Pre-artifacts handoff (Step 6.5) — full Step 6.6 + 6.7 instructions |
+| `Planning/design-doc.md` | Canonical authoritative design doc — conflict tiebreaker for all downstream artifacts |
+| `Planning/tasks.md` | 26-task implementation plan — canonical task source for execution |
+
+## Decisions locked
+
+Locked across 8 brainstorm rounds + 2 rounds of plan review + 2 passes of UI artifact production. See `02-pre-plan.md` for the compressed architecture; `design-doc.md` for authoritative design; `ui-design.md` §13 for the reconciled-conflicts log.
+
+| Axis | Decision |
+|---|---|
+| Project | Kalori — AI-first calorie/nutrition tracker (PWA, dark-only, single-user) |
+| Complexity tier | Complex (7 planning artifacts) |
+| Architecture | Approach C Hybrid — Cache Components + PPR for data-heavy; client-interactive for flows; optimistic updates on 3 categories |
+| Design direction | "The Ledger" (Editorial/Archival) — oxblood `#8A2A1F` + ivory `#F4EBDC` on warm near-black `#0E0A08`; Newsreader serif + Inter + JetBrains Mono |
+| Stack | Next.js 16 + React 19 + TypeScript strict + Tailwind v4 + shadcn/ui + Supabase + Gemini + Vercel + Sentry |
+| Phasing | 5 phases linear; first-usable at end of Phase 3 (Task 3.7); final shippable at 5.4 |
+| Task count | 26 total (16 impl + 10 mandatory phase-gate) |
+| Testing | TDD behavior-complete + Vitest + Playwright + MSW + @axe-core/playwright; 10 test levels; 58 RLS assertions; 8 F12 integration tests; tiered AI accuracy gate |
+| AI accuracy gate | Task 3.2 5-VN smoke merge-blocking for Phase 3; Task 5.4 tiered (critical merge-blocking, advisory named sign-off) |
+| Auth refresh interceptor (F12) | Owned by Task 2.1; Phase 3/4 mutation tasks wrap via it |
+| Offline outbox idempotency (I11) | Owned by Task 5.1; replay preserves original `client_id` |
+| Navigation | Desktop persistent sidebar, tablet collapsed rail, mobile bottom-tab + center FAB (square, zero-radius exception) |
+| Fixture layout | `tests/fixtures/ai-accuracy/` canonical root; `critical.ts` registry single source of truth |
+| Focus ring color | `ivory` 2px outline with 2px offset (ux-auditor WCAG correction — NOT oxblood) |
+| Merge reversibility | NON-undoable per design-doc §18.3 |
+| Heatmap mobile cells | 24×24 minimum per WCAG 2.5.5 AA |
+| Component architecture | 9 primitives + 6 compound components + 4 headless primitives |
+| RSC / Client / Split | 27 / 38 / 14 components |
+| Server state | NOT in Zustand; stays on server via Cache Components + PPR |
+
+## Codex review results
+
+### Design doc (Step 5.5)
+
+- 10 Critical + 20 Suggestion + 5 Minor — ALL applied (commits `1610aee`, `1238906`)
+
+### Plan (Step 6.5)
+
+**Round 1** (commit `aa5634a`) — 2H + 2M, ALL auto-fixed: H1 offline replay, H2 auth refresh, M1 AI gate, M2 matrices.
+
+**Round 2** (commit `8a0075f`) — 1H + 2M — mechanical fixed + R1 residual logged: H1-R2 6 endpoint F12 tests, M1-R2 fixture path normalized, M2-R2 Task 2.1 density NOT split per user decision.
+
+**Round 3 not run** (2-round cap honored per brainstorm-tomi spec).
+
+### UI artifact (Step 6.7 Pass 2)
+
+NOT a Codex review — a skill-persona review via 5 opus agents invoking specialist skills. Produced 5 enrichment deltas reviewed during assembly. 22 conflicts reconciled in `ui-design.md` §13.
+
+## Known Residual Risks (unresolved)
+
+See `Planning/tasks.md` preamble "Known Residual Risks" section AND `Planning/progress.md` top-matter for full detail. Summary:
+
+- **R1 — Task 2.1 is a dense critical-path bottleneck.** Accepted. Not split. Mitigation: treat as longest Phase 2 task, allocate buffer, forbid local refresh shims in Phase 3/4, reactive 2.1.5 split available.
+
+## Artifacts in git
+
+### Pre-planning
+- `6179495` baseline — blueprint, design brief, 4 mockup directions, `.gitignore`
+
+### Design (Step 5 + 5.5)
+- `1610aee` design-doc Critical + Suggestion fixes + early brainstorm state
+- `1238906` design-doc Minor fixes (M1-M5)
+- `6b86801` pre-plan checkpoint (`02-pre-plan.md`) + state pointer
+
+### Plan (Step 6 + 6.5)
+- `80fe86d` Step 6 — tasks.md first draft (26 tasks, 5 phases)
+- `aa5634a` Step 6.5 Codex Round 1 auto-fixes
+- `8a0075f` Step 6.5 Codex Round 2 auto-fixes
+- `3236945` state transition to `plan_complete`
+- `0ef282f` pre-artifacts checkpoint (`03-pre-artifacts.md`) + state pointer
+
+### Step 6.6 + 6.7 (this session)
+- `a27f90c` Step 6.6 lessons + state → lessons_written
+- `f78b1cf` **Artifact #1: PRD.md** — 601 lines, 14 features
+- `264e71d` **Artifact #2: architecture.md** — 1731 lines, 8-table DDL, 24 RLS policies, 14 routes + 7 companion
+- `503b5a3` **Artifact #3: ui-design.md** — 3145 lines, two-pass synthesis (6 component-area Pass 1 + 5 skill-persona Pass 2), 22 conflicts reconciled
+- `dc127ba` **Artifact #5: testing-strategy.md** — 1662 lines, 10 test levels, 58 RLS assertions, 8 F12 tests, tiered AI accuracy gate
+- `f61e313` **Artifact #6: progress.md** — 751 lines, 26-task tracking template with R1 residual prominent
+- `97da931` **Artifact #7: CHANGELOG.md** — 166 lines, 15 planning-phase entries backfilled + phase placeholders
+- (this commit — pending): state → `artifacts_complete`
+
+### Skill updates (not in project git)
+
+Mid-session updates to `~/.claude/skills/brainstorm-tomi/` — not a git repo, persisted to disk:
+- `ui-design-team.md` — added "Two-Pass UI Artifact Production (Complex Tier)" section + mandatory skill-invocation verbatim block
+- `SKILL.md` — Step 6.7 references two-pass pattern + skill-authority-over-checkpoint rule
+- `artifacts.md` — dependency-order note updated for `ui-design.md` two-pass
+- `red-flags.md` — strengthened UI Design Team Violations (missing skill-invocation block = re-review required; single-pass-for-Complex = red flag; Pass 2 skip = red flag)
+
+Mid-Task-2.2 update (2026-04-21) to `~/.claude/skills/superpowers-exec-tomi/` — persisted to disk:
+- Phase 2 implementation sub-agent briefing now mandates `ui-design` + `frontend-design` skill invocation for all UI-tagged tasks
+- Retroactive UI skill compliance audit ran inline for Task 2.2 — 11/14 clean + 3 minor fixes in commit `c087550`
+
+## Phase 3 Progress (execution-time)
+
+| Task | Status | Commit range | Codex outcome | Notes |
+|---|---|---|---|---|
+| Task 4.1 | ✅ COMPLETE (2026-04-24) | `aea1a66..976cc6f` (8 commits: F-TEST-4 fixture + migrations 0007/0008/0009 + library server + /library UI + test matrix + keyboard-nav flake fix + Phase 3 UI review fix + Codex R1 fix) | Phase 3 UI review 8C + 7I auto-fixed in `32d9140`; Codex R1 single-round 1C + 3I auto-fixed in `976cc6f` (CF-1 self-merge guard via migration 0009 + 3-layer defense; IF-1 optimistic stale, IF-2 error UX, IF-3 bundle budget enforcement); 2-round cap NOT hit | Library grid + search + filter + sort + bulk delete + merge duplicates landed as 15 components + 5 API endpoints + 3 migrations (tombstone column, merge RPC `SECURITY INVOKER` with advisory xact lock, self-merge guard). WCAG AAA inverse-pill CTA pattern (8.86:1 — tiebreaker over design-doc's oxblood-dominant default). `<ul role="list">` + roving tabindex overrode §7.3.1 `role="grid"`. `useDeferredValue` overrode §7.3.2 150ms debounce. Tailwind v4 CSS keyframes only — AutoAnimate + Motion rejected (0 KB JS). Sessionstorage filter/sort persist (Q5). Tombstone lazy sweep on page load (Q6). /log LibraryTab CTA descoped (Q1). R1 mitigation contract CLEAN on 5th downstream consumer (zero raw `fetch(` in new code). 970/970 unit+integration + 14/14 E2E + 0 serious/critical axe + 24 visual baselines. 15 Minor/N-findings deferred to `followups.md` (N1-N7 perf cleanup, M1-M4 minor a11y, F3-F5 minor design, CTXMENU + PREVIEWCARD blocked on FoodDetail, BUNDLE-28KB blocked on Phase 4 vendor-sharing). |
+| Task 4.2 | ✅ COMPLETE (2026-04-24) | `32bb5e1..round-2-fix` (3 commits: impl + round-1 fix `07463f9` + round-2 fix) on baseline `976cc6f` | Round 1 (Phase 3 UI review + Codex R1) 4 Phase-3 critical + 4 Codex auto-fixed in `07463f9`; Round 2 Codex verified all R1 findings RESOLVED (0C + 5I + 1M); user chose Option β surgical (3 Improvements logged as followups + 1 RESOLVED); 2-round cap honored | Food detail page + edit + tombstone-delete + undo + LogFlow backfill. 1024 → 1041 suite (+70 net new across all rounds). R1 mitigation contract CLEAN on 6th downstream consumer (zero raw `fetch(` in new code). C1 cross-user write vector via `library_item_id` scope-crossed to `/api/entries/save` (logged `F-TASK-4.2-C1-SCOPE-CROSS`). C2 client-side merge contract (Path A) with tightened Zod `NutritionFull`. lucide-react `Trash` (Phosphor not in deps); `useState` + Zod-on-commit over RHF (~9 KB saved); colocated `FoodDetail/`. 3 followups: F-TASK-4.2-I2-UI-ROUNDTRIP, F-TASK-4.2-ESC-SCOPE, F-TASK-4.2-TOCTOU. F-TASK-4.2-M1-DELETE-SHAPE RESOLVED. |
+| Task 4.3a | ✅ COMPLETE (2026-04-24) | `cba7d9f..4a9be03` (3 commits: Phase 2 impl `cba7d9f` + Phase 3 review fix R1 `3c449d8` + Codex R1 fix `4a9be03`) on baseline `2c6ac13` | Phase 3 parallel compliance review (ux-specialist + react-perf + ux-auditor) auto-fixed single-round in `3c449d8` (heatmap ramp + 2D keyboard nav + cache tags + sticky toolbar + CSS animations + shared primitives + axe expansion); Codex R1 single-round clean: 3C + 3I + 1M auto-fixed in `4a9be03`; gate PASS; 2-round cap NOT hit | Progress D/W/M view + weekly AI review streaming island. 3-way D/W/M range toolbar (sticky + URL-synced), 5 chart sections (CalorieAdherenceBar + MacroDistributionStackedArea + MicronutrientHeatmap signature w/ APG Grid 2D keyboard nav + TrendSummary + LoggingConsistencyCalendar), weekly AI review PPR-ready Suspense island (`experimental.ppr` flag NOT enabled per Task 3.5 F-UI-3.5-10 deferral), sparse-data short-circuit writes `ai_call_log` marker (tokens=0 + cached=true) without Gemini call. TZ-aware aggregation supports non-integer-offset zones + DST-safe bucket counts. TAGS.userProgress union extended with `'24h' \| 'D'` members; `unstable_cache` wrapping with per-user cache keys; `revalidateTag` on 4 mutation routes × 3 range tags. Shared `EditorsNote` + `ChartTooltip` + `HeatmapInteractive` primitives extracted. Bespoke SVG charts (0 KB chart-library bundle). Suite 1113 → 1156 (+43 net: 16 Phase 2 impl + 16 Phase 3 fix + 11 Codex fix). Typecheck + lint + build CLEAN; `/progress` confirmed `ƒ` dynamic. Resolutions locked: #1 (5 charts per design-doc tiebreaker — Weight/Water dropped), #2 (3-way UI / 4-way TAGS), #3 (sparse-data `ai_call_log` marker honoring I2), #5 (task-card verbatim sparse copy), #6 ("M" = rolling 30d), #7 (dedicated Phase 1 UX sub-agent for LoggingConsistencyCalendar), #9 (PPR-ready topology without flag). 6 followups: F-UI-4.3a-LCC-2D-NAV, F-UI-4.3a-CHART-BAR-NAV, F-UI-4.3a-HEATMAP-RAMP-MATH, F-UI-4.3a-SPARSE-DATA-COLUMN, F-UI-4.3a-EDITORSNOTE-CONSOLIDATE, F-UI-4.3a-SHARED-TOOLTIP-ADOPTION. |
+| Phase 4 | ✅ GATE CLOSED (2026-04-25) | `61564c1` (post-Task-4.5 close commit) + Task 4.7 audit/fixes 2026-04-25 | Phase Testing Sweep verdict SWEEP PASS; Task 4.7 aggregate Codex review 0C / 3I (auto-fixed) / 3S (deferred) | All 6 Phase 4 tasks complete (4.1 + 4.2 + 4.3a + 4.3b + 4.5 + 4.6) plus Task 4.7 Pre-Phase 5 Audit + Fixes parent (sub-tasks 4.7.1–4.7.7 all ✅ — see progress.md). 1296/1296 Vitest; 0 typecheck errors; locked invariants intact (weight bounds [30, 350] kg, cache-tag set, replay-path zero-invalidation, lbToKg constant, revalidateAllProgressRanges helper, drop-cap singleton). Ready for Phase 5 (PWA + Polish) entry. |
+| Task 4.7 | ✅ COMPLETE (2026-04-25) | parent rollup; sub-tasks 4.7.1–4.7.7 across ~14 commits | Aggregate Codex review on full Task 4.7 series: 0 Critical / 3 Improvement (doc drift — all auto-fixed in close commit) / 3 Suggestion (deferred to existing followup entries) | Pre-Phase 5 Audit + Fixes parent. Sub-tasks 4.7.1 TC1 reconciliation (phantom blocker, no-op) / 4.7.2 'manual' source enum + tombstone dedup (migration 0012) / 4.7.3 save-to-library normalized_name + nutrition / 4.7.4 library tab wiring (hydration + Continue CTA + deep-link, closes F-UI-3.6-B-1-LIBRARY-CTA) / 4.7.5 D1 thumbnail dual-output / 4.7.6 vn-smoke runtime fallback I7 Path B (closes F-UI-3.6-A-4) / 4.7.7 cheap wins bundle. 1296/1296 tests pass; 0 typecheck errors. 5 followup entries added across 4.7.x for deferred work. Phase 4 → Phase 5 transition: GREEN. |
+| Task 4.6 | ✅ COMPLETE (2026-04-25) | sweep run on baseline `61564c1` | Sweep verdict PASS (no blocking-tier failures); 4 non-blocking findings → followups | Vitest 1247/1247 (matches Task 4.5 baseline); E2E 27 pass + 27 skipped + 1 non-blocking fail (auth-fixture gap on `weight-log.spec.ts` from Task 4.3b → F-TEST-4); Visual 4 pass + 6 deferred (no drift); Axe 2 pass + 7 deferred (zero serious/critical); Lighthouse mobile `/library` 86 + `/progress` 87 (login-redirect proxy — non-blocking; in-page CLS=0 / TBT 70-110ms shows no Phase 4 surface regression); Coverage Branches 73.7% / Lines 84.98% / Statements 83.43% / Functions 81.23% — all floors exceeded. **Locked invariants ALL verified:** weight bounds [30, 350] kg / cache-tag set ['24h','D','7d','30d','90d','1y'] / replay-path zero-invalidation / `lbToKg()` 0.45359237 / `revalidateAllProgressRanges` helper / drop-cap singleton. 4 non-blocking findings logged: (1) E2E auth-fixture gap on weight-log spec, (2) Lighthouse measures login-redirect proxy not Phase 4 UI, (3) library-keyboard-nav parallel-execution flake, (4) Lighthouse Windows EPERM cosmetic. Detailed sweep log: `Planning/.tmp/phase-4-testing.md`. |
+| Task 4.5 | ✅ COMPLETE (2026-04-25) | `ca9155f..037aa14..61564c1` (2 fix commits + 1 close-docs commit) on baseline `ba205a1` | 2-round cap REACHED. R1: 4 Critical + 5 Suggestion auto-fixed (Library: tombstone guard winner+loser, advisory lock keyed to client_id not user+pair, merge route partial progress invalidation, affectedDays cache invalidation swallows errors; Detail/Progress/Weight: WeightQuickAdd rollback skips optimistic mirror restoration, entries/save partial progress invalidation, ember pulse className concat, weight history kg displayed with lb suffix). R2 over R1 fix delta: 1 Critical + 3 Suggestion auto-fixed (migration version collision deploy-blocker → renamed `0010_*` to `0011_library_merge_hardening.sql` via `git mv`; imperial delta precision; rollback null-restoration type-narrow; helper not applied to sibling mutation sites). 0 deferred. | Phase 4 aggregate Codex review run in 2 splits (Pass 1 = Library Task 4.1 ~466 KB; Pass 2 = Detail/Edit + Progress + Weight Tasks 4.2 + 4.3a + 4.3b ~720 KB) due to ~1.16 MB diff size. New shared helper `lib/cache/revalidate-progress.ts:revalidateAllProgressRanges(userId)` consolidates canonical 6-tag invalidation across `library/merge`, `entries/save`, `entries/[id]` DELETE, `entries/copy-yesterday`. Migration `0011_library_merge_hardening.sql` adds tombstone guard + per-pair advisory lock keyed `(user_id_int, hashtext(min_pair || '|' || max_pair))` + P0003 error mapping. kalori-dev DB hardened state intact (verified via `pg_get_functiondef`). 1225 → 1241 → 1247 PASS (+22 net). R1 refresh-interceptor contract verified CLEAN across 7 mutation consumers. Migration on kalori-dev only; prod cutover at ship gate. |
+| Task 4.3b | ✅ COMPLETE (2026-04-24) | `c0b49c8..fefdf91` (4 commits: Phase 2 impl `c0b49c8` + Phase 3 review fix R1 `57682f4` + Codex R1 fix `ef9dc54` + Codex R2 fix `fefdf91`) on baseline `c774734` | Phase 3 UX specialist review single-round auto-fixed in `57682f4` (3 Critical + 7 Major; 6 Minor deferred — rollback-toast focus mgmt + aria-live quick-add status + aria-invalid weight input + howWeCalculatedNode slot + reduced-motion on ember-pulse + typography responsive + CTA letter-spacing + form padding); Codex 2 rounds: R1 4C+3I auto-fixed in `ef9dc54` (replay invalidation guard + nudge save body shape + imperial conversion + profile update error handling); R2 1C regressed + 1I partial auto-fixed in `fefdf91` (nudge error-propagation true boundary + imperial rollback toast display unit); 1 Minor deferred (F-UI-4.3b-VN-DECIMAL); 2-round cap honored | Weight log + auto-recalc pipeline + nudge card. 28 source+test files, 62 tests added, full suite 1225/1225 PASS (1163 → 1225). POST `/api/weight/log` with client_id idempotency (replay path zero invalidations/inserts/profile-updates), Mifflin → TDEE → target auto-recalc when target_mode='auto' + weight delta ≥ recalc_threshold_pct (default 2.0%), profile update error handling returns 500 + skips invalidation. Optimistic-with-rollback UX via `useWeightQuickAddStore` (authPost-only; R1 contract PASS on 7th downstream consumer — zero raw `fetch(` in new code); rollback toast portalled with ARIA-live polite + 7s auto-dismiss + pause-on-hover/focus + unit-aware kg/lb display + reduced-motion safe ember pulse. `TargetUpdatedNudge` card on dashboard when `last_target_recalc_at > last_dashboard_visit_at`; `/api/profile/save` PatchSchema extended to accept `last_dashboard_visit_at`. Bespoke SVG `WeightTrajectoryLine` embedded on /progress + /dashboard. Migration 0010 additive profile columns (idempotent with 0002 dev state). Imperial conversion lb→kg via `lbToKg()` (0.45359237) before validation. **Decisions:** (1) optimistic-with-rollback UX reconciled from ui-design.md §5.4; (2) migration 0010 additive columns (idempotent); (3) `TargetUpdatedNudgeWrapper` client-island split acceptable deviation; (4) Option (c) recalc ARIA-live (mount-time announcement sufficient); (5) Imperial: UI lb, internal kg; (6) Range `[30, 350]` + tags `24h/D/7d/30d/90d/1y` authoritative. 7 Minor followups deferred (6 Phase 3: F-UI-4.3b-CHART-TOOLTIP, -CHART-ARROW-NAV, -DATE-ERROR-COPY-TAIL, -WEIGHT-SECONDARY-HOW, -NUDGE-SOFTFADEIN, -TOAST-SWIPE-ESC; 1 Codex R2: F-UI-4.3b-VN-DECIMAL). 19 findings auto-fixed total (10 Phase 3 + 7 Codex R1 + 2 Codex R2). |
+| Phase 3 | ✅ GATE CLOSED | `c706d50` | Phase Testing Sweep GREEN | First-usable milestone reached. Ready for Phase 4 entry. |
+| Phase 1 | ✅ COMPLETE | `f259b0f..6f4ddc2` | R1 0C+4I+2M auto-fixed; R2 verified | 117/117 Vitest + CI green 5/5; F-SEC-2 + F-TEST-2 + F-TEST-3 added |
+| Task 2.1 | ✅ COMPLETE | `9731d2f..cce8b01` | 3 rounds; zero residual Critical/Improvement | R1 hotspot DISCHARGED (`lib/auth/refresh-interceptor.ts`); F-SEC-1 + F-TEST-3 RETIRED; F-TEST-4 ADDED |
+| Task 2.2 | ✅ COMPLETE | `e0273d2..161484e` | 1 round (1H+2M auto-fixed); Round 2 skipped per 2-round cap (phase boundary review in Task 2.3) | Retroactive UI skill audit clean + Phase 3 review 12 critical + 1 partial fixed; zero new followups |
+| Task 2.3 | ✅ COMPLETE | `5170e4a` (R1 fix) | R1 0C+3I+1M; R2 0C+0I+0M — all R1 Improvements RESOLVED | Phase Codex adversarial review over `6f4ddc2..2fe71cc` (77 files, ~449 KB). R1 auto-fixed F1 finalize race (pre-read eliminated → single atomic `upsert`), F2 `.maybeSingle()` error distinguished from null-data in callback + page gate, F3 `role="alert"` dropped from 4 per-field spans. F4 Minor deferred → `F-SEC-3`. Vitest 309→315 (+6). F12 R1 mitigation contract verified clean. 2-round cap honored. |
+| Task 2.4 | ✅ COMPLETE | `79e167b` (build fix) | First cycle GATE FAILED on Next build; fix cycle GATE CLOSED 5/5 CI jobs green | Phase Testing Sweep over `38e857c` caught latent build regression (Task 2.1 `getServerSupabase()` guard incompatible with Next 16 static prerender). Fix `79e167b` added `force-dynamic` to dashboard + onboarding pages + regression guard. Re-sweep CI `24688931338` 5/5 green, Vitest 315→318 (+3), coverage 88.26/75.77/91.88/90.04 CI vs 75/70/75/75 thresholds, RLS profiles on Linux 14 tests 8024ms real Supabase, axe zero serious/critical at landing, F-INFRA-1 RESOLVED in-cycle. **Phase 2 GATE CLOSED ✅.** |
+| Phase 2 | ✅ GATE CLOSED | 2026-04-21 | Phase Testing Sweep verdict GREEN on `79e167b` | Ready for Phase 3 entry. R1 mitigation contract stays in effect. |
+| Task 3.1 | ✅ COMPLETE (2026-04-21) | `3e24c94..1fb8fe4` (4 commits: RED specs + GREEN migrations + F-IMPL-2 + R1 fix) | R1 clean (5 fixed, 1 deferred): zero Critical, six Improvement; A2 + A3 + B1 + B2 + D1 auto-fixed; C1 cross-user `client_id` collision deferred to Task 3.4 prerequisite (logged in `Planning/followups.md`) | Landed Phase 3 schema foundation — 7 tables (5 user-owned + 2 service-role-only) + `food-thumbnails` private Storage bucket with 4 verb-specific path-based RLS policies (regex-guarded UUID cast). Single-column `client_id UNIQUE` per the 4 user-write tables = R1 refresh-interceptor DB-level foundation. Migrations applied to kalori-dev (ref `aaiohznsqlqchsoxaqkz`) only via Supabase Management API; prod untouched. Vitest 364→371 (+7 R1 additions); 47 task-3.1 assertions in total (28 RLS + 8 storage + 4 idempotency + 7 R1). Lint + typecheck clean. F-IMPL-2 closed (FixtureSchema declarative `weight_kg` + entries[] coverage). R1 mitigation contract continues for Phase 3/4 mutation tasks. |
+| Task 3.2 | ✅ COMPLETE (2026-04-21) | `33a7656..c588f0c` (4 commits: RED + GREEN + Codex R1 fix + Codex R2 fix) | 2 Codex rounds / 9 findings resolved (5C+4I) / 3 Minor deferred to F-AI-1/2/3 | Typed, cached, cost-logged, prompt-injection-resistant Gemini layer across three POST routes (`/api/ai/text-parse`, `/api/ai/vision`, `/api/ai/weekly-review`). F11 three-layer mitigation (sanitize + hardened prompt + Zod) with NFKC + Cf-strip + narrow Cyrillic homoglyph table on scan-view + offset-map pipeline (Vietnamese-safe). F8 per-user cache isolation via SHA-256 over (callType, userId, normalizedInput). F12/R1 compliance via `lib/auth/refresh-interceptor.ts` (three forced-401 tests per route; zero local retry logic). I2 weekly-review `logOnce` flag prevents double-write on `updateTag` failure. `persistWeeklyReview()` writes `weekly_reviews` DB row on all three return paths (happy / sparse / cache-hit). 89 new tests (RED 54 → R1 +22 → R2 +13; 460/460 pass, 371 baseline preserved). F-TEST-2 RETIRED (MSW stubs ParseResult-shaped). VN smoke (5 fixtures) wired MERGE-BLOCKING via `tests/unit/ai/vn-smoke.test.ts` + `tests/fixtures/ai-accuracy/critical.ts` registry. |
+| Task 3.3 | ✅ COMPLETE (2026-04-21) | `bc4e7ec..5794d62` (4 commits: GREEN + Phase 3 review fix + Codex R1 C+I + Codex R1 Minors) | Phase 3 reviews 100%/100%/94% (style 14C + perf 2C + a11y 3C) + Codex R1 single-round clean (4C + 7I + 5M all auto-fixed; 2-round cap NOT hit; 0 deferred) | 3-tab log flow modal (Type / Snap / Library) as chrome-level Radix Dialog (~24 KB gz pre-SnapTab, ~41-48 KB post — well under 65 KB budget; motion library REJECTED for bundle budget, inline `@keyframes` under `.kalori-log-*` class system instead). Global `n` hotkey with 5-rule IME guard (filters Vietnamese IME composition keys + modifier-chorded + editable targets + open-modal + route-level opt-out). Image compression via Web Worker + `browser-image-compression`. Thumbnail upload via `/api/storage/thumbnail` with magic-byte sniff (JPEG/PNG/WebP; closes I4 — client MIME ignored). AI integration via `authPost` through Task 3.2's text-parse + vision endpoints (F12/R1 clean: grep shows 0 raw `fetch(` in log-flow code; 3 forced-401 integration tests green). `<ManualEntryFallback>` pre-filled on 4 failure modes via shared `lib/log-flow/classify-error.ts`. IVORY focus ring (oxblood 2.28:1 fails WCAG 2.5.8); tonal bg-shift disabled state (NOT opacity). Library tab client-only + `use()` + Suspense documented but fetch deferred to Task 3.4. 108 new tests (469 → 577/577; 7 component + 7 integration + 2 unit files). |
+| Task 3.4 | ✅ COMPLETE (2026-04-22) | `e6b756a..close-out` (9 code commits + close-out: docs + backend + state + UI + E2E skeletons + P1/P2/P3 review fixes + AC7/AC10 closure + Codex R1 I1-I8 fix) | R1 single round (0C + 8I auto-fixed + 5M deferred to F-UI-3.4-8..12); 2-round cap NOT hit | Confirmation screen compound (Masthead/ItemList/Reasoning/MealSlot/SaveToLibraryToggle/ErrorBanner/SaveAction) + undo-toast LIFO 5s + copy-yesterday multi-select + 2-way dedup (REUSE + CREATE) per design-doc §18.3 Option A tiebreaker (tasks.md 3-way AC2 superseded → F-UI-3.4-7 RESOLVED; FK-repoint MERGE assigned to Task 4.1). I11 client_id idempotency enforced (row count = 1 after 2 POSTs; content-drift silent-drop documented + locked in test). I12 cache-tag invalidation fires on all save paths + copy-yesterday. I8 5s LIFO per-item timer with clearOnNav-preserves-timers (F6 cross-route undo); selector skips `dismissed` but preserves clearOnNav-only-hidden. F3 delete-recovery via revert-closure + `announcePolite()` helper with sr-only fallback. F12 reinforced with byte-equality + deep-JSON equality assertions. R1 mitigation contract CLEAN on 3rd downstream consumer (zero raw `fetch(` in new 3.4 code). C1 cross-user `client_id` collision (Task 3.1-deferred) DISCHARGED via `entries-save-cross-user-collision.test.ts`. 577 → 691 tests (+114 net: 7 integration + component + unit + 1 E2E skeleton). `cache-tag-roundtrip.test.ts` deferred to Task 3.5 per `testing-strategy.md` §213. |
+| Task 5.1.5 | ✅ COMPLETE (2026-04-30) | impl + Codex R1 fix on baseline atop `02309a8` (commits to be filled at close push) | Codex R1 single-round, verdict needs-attention pre-fix → 5/5 closed in Round 1 (2 HIGH F1 LWW direction + F2 lying CTAs; 3 MEDIUM F3 race + F4 fake per-row Retry + F5 live-region containment); ALL auto-fixed; 2-round cap NOT hit; 0 deferred Critical/Improvement (3 followups for proper client-wins / per-row retry / keep-offline branches deferred to API-side precondition-refresh) | Replay status badge + drawer + F10 conflict modal. New `lib/offline/conflict-resolver.ts` (table-driven F10 policy: silent-LWW for library kinds, fail-loud for entry/water/weight, prompt-user for goal-weight) + `components/pwa/{ReplayStatusBadge,ReplayDrawer,GoalWeightConflictModal}.tsx` + surgical edits to `components/offline/OfflineBar.tsx` (badge composition + live-region restructure to inner sr-only span — Codex R1 F5) + `app/(app)/layout.tsx` (mount modal host) + `lib/i18n/en.ts` (pwa namespaces). Codex R1 F1 caught a briefing-extracted policy inversion: design-doc §14.751 + §18.1 say client-wins for non-goal-weight, but briefing extracted server-wins; fix narrowed silent-LWW to library kinds only + added `'fail-loud'` policy for entry/water/weight (followup `F-OFFLINE-5.1.5-CLIENT-WINS-RESUBMIT` tracks proper client-wins re-submit when outbox manager supports refreshed preconditions). Codex R1 F2 caught lying CTAs (both buttons called `'use-current'`); fix removed lying CTA, kept "USE CURRENT VALUE" primary, added Cancel button (non-destructive ESC=Cancel). Codex R1 F4 removed per-row Retry button (was bulk-flush in disguise); footer Retry-all kept; followup `F-OFFLINE-5.1.5-PER-ROW-RETRY-PROPER` tracks real `retryRow(client_id)` impl. AC1/AC3/AC4/AC5/AC6 fully met; AC2 partial (per-row Discard works, per-row Retry deferred). 64 new tests (Phase 2: 59, Codex R1: +5 across conflict-resolver split + new fail-loud + R1 F3 regression) + 1 modified (offline-bar.test.tsx for R1 F5); full suite 1588/1588 GREEN; tsc + ESLint + vitest-axe clean. R1 firewall holds (no raw fetch); I11 client_id immutable through state-surface; R3 SSR-safe. 3 followups added: F-OFFLINE-5.1.5-CLIENT-WINS-RESUBMIT, F-OFFLINE-5.1.5-PER-ROW-RETRY-PROPER (renamed from -DEFERRED in R1), F-OFFLINE-5.1.5-KEEP-OFFLINE-DEFERRED. |
+| Task 5.3 | ✅ COMPLETE (2026-05-01) | `52214c8` (R1) + `0e7781f` (R2) on baseline `4f105fd` | Phase 5 aggregate Codex review (5.1.x + 5.2 baselines), 2 prompt groups (5.1-cross + 5.2). R1 — 3C+2I auto-fixed in `52214c8` (5.2-C1 cross-tab signout deferred-marker; 5.2-C2 revoke EXECUTE on `delete_user_data` via mig 0015; 5.2-C3 `profiles.deleting_at` fence + 12 mutation routes 423 via mig 0016; 5.2-I1 order-stable export pagination via `.order('id', asc)` before `.range()`; 5.1.6-I2 `html[data-reduce-motion='1']` mirrors for 4 reduced-motion blocks). R2 — 1 NEW Critical + 1 Improvement + 1 C3 coverage-gap auto-fixed in `0e7781f` (R2-C1 cascade caller broken by R1 C2 revoke → both Phase 0 + Phase 2 callers switched to `admin.rpc()` via mig 0017 service-role bypass; R2-I1 `lib/account/deleting-fence.ts` `FenceReadError` + `rejectIfDeletingOrUnavailable` wrapper → HTTP 503 fail-closed; R2-C3-gap `app/api/ai/weekly-review/route.ts` fence wired — R1 enumeration of 12 mutation routes missed). 2-round cap honored (R2 fixes are direct R1 fix-completion, not Round 3 scope). Verdict: 5.1-cross CLEAN; 5.2 was REGRESSION (now resolved). | Phase-level review gate over all Phase 5 changes. 53 files in R2 (+1249/-305). Full vitest suite 1720/1720 GREEN (R1 had 4 RLS auth-rate-limit flakes resolved in R2 run; tracked as F-TEST-RLS-PARALLEL-FLAKE for serial-vs-parallel hardening). 8 test mock files updated with `profiles.deleting_at` fence branch; 5 new test files (cross-tab-signout-deferred, delete-user-data-rpc-grant, set-account-deleting-rpc-grant, deleting-fence-mutation-routes, order-stable-pagination, reduced-motion-toggle-mirror). Migrations 0015/0016/0017 applied to kalori-dev via Management API status 201; production database NOT yet migrated (deferred to Task 5.4 final-shippable manual smoke). R1 firewall preserved (zero raw `fetch(` regressions in production mutation paths). 0 followups added (R2 cleaned all R1 residuals). **Next executable: Task 5.4 — Phase Testing Sweep — Polish + PWA (FINAL SHIPPABLE GATE; full suite + cumulative regression + tiered AI accuracy gate + manual smoke required).** |
+| Task 5.2 | ✅ COMPLETE (2026-05-01) | `dce246c..ea0c40e` (4 commits: `dce246c` Phase 2A backend + `ce3babb` Phase 2B UI + `7748933` Phase 3 review fix + `ea0c40e` Codex R1 fix) on baseline `c29672a` | Phase 3 parallel UI review (design-compliance + a11y) auto-fixed single-round in `7748933` (4C + 5I across focus-return, Step 4 `role=status`, banner force-close, Step 6 focus, slowWarning timer, glyph split, CANCEL focus retention, announceAssertive, 44pt touch target); Codex R1 single-round 2C + 1I auto-fixed + 1M deferred in `ea0c40e` (C1 export pagination via 1000-row .range loop + max-iter cap; C2 migration `0014_delete_user_data_definer.sql` SECURITY DEFINER + auth.uid() guard for AI-table cascade; I1 sessionStorage `kalori-pending-cross-tab-signout` flag leak via try/finally wrapper); 1 Minor deferred to F-MINOR-5.2-apply-migration-script (apply-migration scripts use undocumented Supabase pg-meta endpoint); 2-round cap NOT hit | Cross-tab undo (F6 cross-tab half) + cross-tab sign-out (F12 cross-tab half) + data export ZIP + account deletion cascade (I9). New `lib/broadcast/topics.ts` (verbatim 'kalori-undo' + 'kalori-auth' topic strings); `lib/auth/cross-tab-signout.ts` (BroadcastChannel listener sibling to `lib/auth/refresh-interceptor.ts`); additive `lib/stores/useUndoQueueStore.cross-tab.ts` (emit-only diff preserving 13 within-tab tests); `lib/account/delete.ts` (Storage-FIRST cascade with 100/page pagination + 1 retry + sequencing markers); migration 0013 invoker → 0014 SECURITY DEFINER + auth.uid() guard (Codex C2 fix — required because ai_call_log + ai_response_cache are RLS-locked service-only tables); paginated `lib/export/{csv,json}.ts` (1000-row .range() loop with defensive max-iteration cap, Codex C1 fix); `app/api/account/delete/route.ts` (POST) + `app/api/export/{csv,json,zip}/route.ts` (GET); chrome-level `components/auth/CrossTabSignOutListener.tsx` mounted at `app/(app)/layout.tsx` + `components/toast/UndoCrossTabBridge.tsx` mounted at `components/nav/nav-shell.tsx`; compound 6-state `components/settings/AccountDeleteFlow.tsx` (idle → step1 warning → step2 typed-confirm → step3 countdown → step4 in-flight → step5 success / step6 failure-recovery); `components/settings/{AccountDeleteTrigger,ExportModal,ExportTriggerButton}.tsx`; new RSC subsections `app/(app)/settings/_components/{DataSubsection,AccountSubsection}.tsx`; new i18n namespaces. **R1 firewall verified intact across 9 consumers** (every new mutation routes via authFetch/authPost; zero raw fetch in 5.2 surface). **8 user-owned tables enumerated** (food_entries + food_library_items + weight_log + water_log + weekly_reviews + ai_response_cache + ai_call_log + profiles — reconciles 7-vs-6 wording delta). **4 contrast escalations applied** (Step 3 ember title, DELETE link ember, ivory bullets, ember banner). **Editorial dust kicker escalation** (Phase 2B). **Email (case-insensitive) typed-confirm** (synthesis decision over briefing case-strict spec). **Cross-tab E2E coverage via integration tests** (Playwright multi-context BroadcastChannel realm isolation makes true cross-tab E2E impossible). **archiver v6+ over jszip/fflate** for ZIP per Quick-Pick Decision Table. C9 runtime ALL-GREEN: 1703/1703 vitest (+25 net) + 4/4 E2E + 6/6 axe + lint 0 + typecheck clean. Migrations 0013 + 0014 applied to kalori-dev only via `scripts/apply-migration-{0013,0014}.mjs`; kalori-prod cutover deferred to final ship gate (Task 5.4) per setup-state policy. F-IMPL-1 admin-import opt-out addressed via per-file justification comment at account/delete route. F-TEST-4 #1 closed inside scope (account-delete E2E adopts auth fixture pattern). 13 Phase 3 review residuals + 1 Codex Minor logged in followups.md as F-MINOR-5.2-* family. CI carry-forward (non-blocker): F-VISUAL-LIBRARY-E2E-MISSING-BASELINES + F-VISUAL-WEIGHT-TABLET-DRIFT-2026-05-01 + F-CI-UPDATE-SNAPSHOTS-MISSING-FLAG. **Next executable: Task 5.3 — Codex Adversarial Review — Polish + PWA (Phase 5 Codex gate; per-phase review).** |
+
+## Final deliverable manifest
+
+| File | Lines | Commit |
+|---|---|---|
+| `Planning/PRD.md` | 601 | `f78b1cf` |
+| `Planning/architecture.md` | 1731 | `264e71d` |
+| `Planning/ui-design.md` | 3145 | `503b5a3` |
+| `Planning/tasks.md` | ~3500 | `80fe86d`/`aa5634a`/`8a0075f` |
+| `Planning/testing-strategy.md` | 1662 | `dc127ba` |
+| `Planning/progress.md` | 751 | `f61e313` |
+| `Planning/CHANGELOG.md` | 166 | `97da931` |
+| `Planning/design-doc.md` | ~2200 | `1610aee`/`1238906` |
+| `Planning/kalori-project-blueprint.md` | — | `6179495` |
+| `Planning/brainstorm-context/02-pre-plan.md` | — | `6b86801` |
+| `Planning/brainstorm-context/03-pre-artifacts.md` | — | `0ef282f` |
+| `Planning/brainstorm-state.md` (this) | — | pending |
+| `Planning/ui-design-fragments/*` (11 files) | ~7800 | via `503b5a3` |
+| `Design/mockups-brainstorm/direction-1-editorial/` | — | `6179495` |
+| `~/.claude/lessonlearned.md` | +36 lines | not in project repo |
+
+Total planning output: ~13,500 lines across 7 planning artifacts + 2 context files + canonical design-doc + fragments.
+
+## Local HTTP server note
+
+A Python `http.server` was spawned on `127.0.0.1:8765` to render mockups for Playwright screenshots. May still be running; not critical for execution.
+
+## Execution hand-off
+
+When the user says **"start tasks"**:
+
+1. The task orchestrator skill kicks in per CLAUDE.md routing table
+2. First task: **Phase 1 Task 1.1** — Scaffold Next.js 16 + Tailwind v4 + shadcn + CI + Sentry
+3. Every task carries the Canonical TDD Mandate (verbatim in `Planning/tasks.md` preamble)
+4. Per-phase gates: end-of-phase Codex Adversarial Review + Testing Sweep — non-negotiable
+5. Per-task gates scale with complexity:
+   - Small → phase-level only
+   - Medium → per-task Codex + Unit+Integration
+   - Complex → per-task Codex + Unit+Integration+per-type-tag levels
+6. R1 residual mitigation contract must be honored: Phase 3/4 mutation tasks FORBIDDEN from local refresh shims — wait for Task 2.1's `lib/auth/refresh-interceptor.ts`
+
+## Post-MVP deferred items (carry forward)
+
+Not pre-lockable in artifacts; revisit during or after execution:
+- TanStack Query inclusion — Phase 3 decision. Default: Server Actions + updateTag. Add only if cross-component client cache coordination emerges.
+- Edition-number masthead computation — Phase 3 Task 3.5 (Dashboard)
+- Cold-start latency on Vercel free tier — Phase 5 polish revisit
+- Post-MVP features: light mode, Apple OAuth, command palette, meal templates, streak celebrations, household accounts, barcode scanning, exercise logging, Apple Health/Google Fit

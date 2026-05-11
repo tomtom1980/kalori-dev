@@ -1,0 +1,36 @@
+{
+  "name": "vn-cha-ca-la-vong",
+  "tier": "advisory",
+  "region": "vn",
+  "callType": "text-parse",
+  "input": "chả cá Lã Vọng with turmeric fish, dill, peanuts, and rice noodles",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "chả cá Lã Vọng",
+        "portion": 1,
+        "unit": "plate",
+        "kcal": 620,
+        "macros": {
+          "protein_g": 36,
+          "carbs_g": 58,
+          "fat_g": 24,
+          "fiber_g": 3
+        }
+      }
+    ],
+    "total": {
+      "kcal": 620,
+      "protein_g": 36,
+      "carbs_g": 58,
+      "fat_g": 24,
+      "fiber_g": 3
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Hanoi turmeric-fried fish (cá lăng) with dill + crushed peanuts + rice vermicelli. USDA pangasius/catfish ~150 kcal/100g + bún ~110 kcal/100g + 15g peanuts ~85 kcal. Advisory tier — ground truth varies by fish species (cá lăng vs swai)."
+}

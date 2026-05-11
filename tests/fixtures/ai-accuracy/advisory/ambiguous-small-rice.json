@@ -1,0 +1,36 @@
+{
+  "name": "ambiguous-small-rice",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "a small amount of rice",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "white rice",
+        "portion": 0.5,
+        "unit": "cup",
+        "kcal": 100,
+        "macros": {
+          "protein_g": 2,
+          "carbs_g": 22,
+          "fat_g": 0,
+          "fiber_g": 1
+        }
+      }
+    ],
+    "total": {
+      "kcal": 100,
+      "protein_g": 2,
+      "carbs_g": 22,
+      "fat_g": 0,
+      "fiber_g": 1
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Edge: ambiguous portion. 'Small amount' interpreted as ~½ cup cooked white rice (USDA ~100 kcal, C 22g). Advisory tier — exercises Gemini's portion-default heuristic + fat=0 divide-by-zero edge."
+}

@@ -1,0 +1,36 @@
+{
+  "name": "western-eggs-toast-overhead",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "vision",
+  "input": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "eggs on toast",
+        "portion": 1,
+        "unit": "plate",
+        "kcal": 530,
+        "macros": {
+          "protein_g": 26,
+          "carbs_g": 36,
+          "fat_g": 30,
+          "fiber_g": 3
+        }
+      }
+    ],
+    "total": {
+      "kcal": 530,
+      "protein_g": 26,
+      "carbs_g": 36,
+      "fat_g": 30,
+      "fiber_g": 3
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Photo fixture — calibrated to western-smoke/eggs-on-toast.json. Overhead breakfast shot common in food-log photography. Path A: TINY_PNG_BASE64 input. 3 fried eggs + 2 slices buttered sourdough."
+}

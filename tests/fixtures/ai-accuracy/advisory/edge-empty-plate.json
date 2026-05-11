@@ -1,0 +1,23 @@
+{
+  "name": "edge-empty-plate",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "I forgot to eat",
+  "expected": {
+    "itemCount": 0,
+    "items": [],
+    "total": {
+      "kcal": 0,
+      "protein_g": 0,
+      "carbs_g": 0,
+      "fat_g": 0,
+      "fiber_g": 0
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Edge: zero-item meal. Tests `expected.total.X = 0` divide-by-zero pattern in tolerance helper (per briefing §6.1). Stub returns empty items array; route should pass-through without inventing food. Advisory tier — itemCount fuzzy ±1 keeps the test stable if Gemini hallucinates a low-kcal plate."
+}

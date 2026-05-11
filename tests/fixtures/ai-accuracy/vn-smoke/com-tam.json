@@ -1,0 +1,36 @@
+{
+  "name": "com-tam",
+  "tier": "critical",
+  "region": "vn",
+  "callType": "text-parse",
+  "input": "cơm tấm with grilled pork chop, đồ chua on the side and a fried egg on top",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "cơm tấm sườn trứng",
+        "portion": 1,
+        "unit": "plate",
+        "kcal": 760,
+        "macros": {
+          "protein_g": 36,
+          "carbs_g": 85,
+          "fat_g": 28,
+          "fiber_g": 3
+        }
+      }
+    ],
+    "total": {
+      "kcal": 760,
+      "protein_g": 36,
+      "carbs_g": 85,
+      "fat_g": 28,
+      "fiber_g": 3
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.15,
+    "macro_pct": 0.2
+  },
+  "notes": "Broken-rice plate with grilled pork chop (sườn) + fried egg. USDA pork chop (bone-in grilled) + fried egg + 1.25 cup cooked broken rice. Saigon street portions run larger than northern equivalents."
+}

@@ -1,0 +1,36 @@
+{
+  "name": "edge-single-apple",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "a medium apple",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "apple",
+        "portion": 1,
+        "unit": "medium",
+        "kcal": 95,
+        "macros": {
+          "protein_g": 0,
+          "carbs_g": 25,
+          "fat_g": 0,
+          "fiber_g": 4
+        }
+      }
+    ],
+    "total": {
+      "kcal": 95,
+      "protein_g": 0,
+      "carbs_g": 25,
+      "fat_g": 0,
+      "fiber_g": 4
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Edge: single-ingredient meal. USDA FoodData Central #171688 (apples, raw, with skin): medium apple ~182g ~95 kcal, F 0g, P 0g (rounded). Tests protein=0 + fat=0 divide-by-zero edges. Advisory tier despite USDA precision because portion size 'medium' has 150–210g spread."
+}

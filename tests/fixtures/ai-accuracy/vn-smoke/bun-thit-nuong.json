@@ -1,0 +1,36 @@
+{
+  "name": "bun-thit-nuong",
+  "tier": "critical",
+  "region": "vn",
+  "callType": "text-parse",
+  "input": "a plate of bún thịt nướng with grilled pork, spring rolls, and nước chấm on the side",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "bún thịt nướng",
+        "portion": 1,
+        "unit": "plate",
+        "kcal": 640,
+        "macros": {
+          "protein_g": 30,
+          "carbs_g": 78,
+          "fat_g": 22,
+          "fiber_g": 4
+        }
+      }
+    ],
+    "total": {
+      "kcal": 640,
+      "protein_g": 30,
+      "carbs_g": 78,
+      "fat_g": 22,
+      "fiber_g": 4
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.15,
+    "macro_pct": 0.2
+  },
+  "notes": "Alias `bun-cha` — Hanoi grilled-pork noodle bowl family. Both variants within ±15% energy/±20% macros per testing-strategy.md §2.9.1 reconciliation. Ground truth: USDA rice vermicelli + grilled pork shoulder + 1 spring roll add-in; nước chấm contributes ~30 kcal (trace fiber)."
+}

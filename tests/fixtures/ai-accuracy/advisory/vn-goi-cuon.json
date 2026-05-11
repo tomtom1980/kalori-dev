@@ -1,0 +1,36 @@
+{
+  "name": "vn-goi-cuon",
+  "tier": "advisory",
+  "region": "vn",
+  "callType": "text-parse",
+  "input": "two gỏi cuốn fresh spring rolls with shrimp and pork, plus peanut sauce",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "gỏi cuốn (with peanut sauce)",
+        "portion": 2,
+        "unit": "rolls",
+        "kcal": 280,
+        "macros": {
+          "protein_g": 14,
+          "carbs_g": 32,
+          "fat_g": 11,
+          "fiber_g": 2
+        }
+      }
+    ],
+    "total": {
+      "kcal": 280,
+      "protein_g": 14,
+      "carbs_g": 32,
+      "fat_g": 11,
+      "fiber_g": 2
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Vietnamese fresh spring roll (rice paper, shrimp, pork, vermicelli, herbs) + peanut sauce. USDA composite: ~95–110 kcal per roll + ~70 kcal sauce. Advisory tier — sauce portion varies widely between street vendors and home prep."
+}

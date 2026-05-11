@@ -1,0 +1,36 @@
+{
+  "name": "eggs-on-toast",
+  "tier": "critical",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "three fried eggs on two slices of buttered sourdough toast",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "eggs on toast",
+        "portion": 1,
+        "unit": "plate",
+        "kcal": 530,
+        "macros": {
+          "protein_g": 26,
+          "carbs_g": 36,
+          "fat_g": 30,
+          "fiber_g": 3
+        }
+      }
+    ],
+    "total": {
+      "kcal": 530,
+      "protein_g": 26,
+      "carbs_g": 36,
+      "fat_g": 30,
+      "fiber_g": 3
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.15,
+    "macro_pct": 0.2
+  },
+  "notes": "Western breakfast staple. USDA FoodData Central: large fried egg ~90 kcal × 3 = 270 kcal (P 18g, F 21g); 2 slices sourdough ~160 kcal (C 30g, P 6g); ~10g butter ~70 kcal (F 8g). Composite ~500–550 kcal range. Justification for critical-tier promotion: high prevalence in Western breakfast logging + USDA-precise per-component data."
+}

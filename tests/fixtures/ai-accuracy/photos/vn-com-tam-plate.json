@@ -1,0 +1,36 @@
+{
+  "name": "vn-com-tam-plate",
+  "tier": "advisory",
+  "region": "vn",
+  "callType": "vision",
+  "input": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "cơm tấm sườn trứng",
+        "portion": 1,
+        "unit": "plate",
+        "kcal": 760,
+        "macros": {
+          "protein_g": 36,
+          "carbs_g": 85,
+          "fat_g": 28,
+          "fiber_g": 3
+        }
+      }
+    ],
+    "total": {
+      "kcal": 760,
+      "protein_g": 36,
+      "carbs_g": 85,
+      "fat_g": 28,
+      "fiber_g": 3
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Photo fixture — calibrated to vn-smoke/com-tam.json (broken rice + grilled pork chop + fried egg). Path A: TINY_PNG_BASE64 input; MSW stub returns calibrated nutrition. Saigon street-portion ~760 kcal."
+}

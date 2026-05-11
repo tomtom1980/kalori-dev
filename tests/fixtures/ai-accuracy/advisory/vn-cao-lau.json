@@ -1,0 +1,36 @@
+{
+  "name": "vn-cao-lau",
+  "tier": "advisory",
+  "region": "vn",
+  "callType": "text-parse",
+  "input": "a bowl of cao lầu with char siu pork, crispy noodles, and bean sprouts from Hội An",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "cao lầu",
+        "portion": 1,
+        "unit": "bowl",
+        "kcal": 560,
+        "macros": {
+          "protein_g": 28,
+          "carbs_g": 70,
+          "fat_g": 18,
+          "fiber_g": 3
+        }
+      }
+    ],
+    "total": {
+      "kcal": 560,
+      "protein_g": 28,
+      "carbs_g": 70,
+      "fat_g": 18,
+      "fiber_g": 3
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Central VN regional dish (Hội An). Thicker cao lầu noodles (lye-water treated) + char siu pork + crispy fried noodle topping. USDA pork loin + thick rice noodle composite. Advisory tier — niche regional dish with limited ground-truth references."
+}

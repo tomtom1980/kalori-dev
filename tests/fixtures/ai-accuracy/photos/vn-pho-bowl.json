@@ -1,0 +1,36 @@
+{
+  "name": "vn-pho-bowl",
+  "tier": "advisory",
+  "region": "vn",
+  "callType": "vision",
+  "input": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "phở bò",
+        "portion": 1,
+        "unit": "bowl",
+        "kcal": 520,
+        "macros": {
+          "protein_g": 32,
+          "carbs_g": 65,
+          "fat_g": 14,
+          "fiber_g": 3
+        }
+      }
+    ],
+    "total": {
+      "kcal": 520,
+      "protein_g": 32,
+      "carbs_g": 65,
+      "fat_g": 14,
+      "fiber_g": 3
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Photo fixture — calibrated to match vn-smoke/pho.json metadata (USDA + VN MOH 2017). Uses TINY_PNG_BASE64 (1×1 white PNG) as input per Path A in briefing §6.4 — MSW Gemini stub does NOT inspect image bytes; vision route's input-parsing + tolerance contract is the test target. Image-validation branches (>500kb, magic-byte sniff) covered by ai-vision.test.ts and log-flow-thumbnail-magic-bytes.test.ts."
+}

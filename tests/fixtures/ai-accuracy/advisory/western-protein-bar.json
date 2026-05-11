@@ -1,0 +1,36 @@
+{
+  "name": "western-protein-bar",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "a chocolate-flavored protein bar, 60 grams",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "protein bar",
+        "portion": 1,
+        "unit": "bar",
+        "kcal": 220,
+        "macros": {
+          "protein_g": 20,
+          "carbs_g": 22,
+          "fat_g": 7,
+          "fiber_g": 5
+        }
+      }
+    ],
+    "total": {
+      "kcal": 220,
+      "protein_g": 20,
+      "carbs_g": 22,
+      "fat_g": 7,
+      "fiber_g": 5
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "USDA-style nutrition-label composite. 60g whey-protein bar with cocoa coating: ~370 kcal/100g; ~33g protein/100g. Advisory tier — wide brand variance (Quest, RX, KIND, Clif span ~150–280 kcal per 60g bar)."
+}

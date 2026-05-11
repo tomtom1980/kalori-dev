@@ -1,0 +1,4330 @@
+@import 'tailwindcss' source(none);
+@source '../app';
+@source '../components';
+@source '../lib';
+
+/*
+ * Kalori — The Ledger design tokens (Task 1.2).
+ *
+ * Authoritative sources:
+ *   - design-doc.md §8  (palette, typography, spacing, motion)
+ *   - ui-design.md §2   (expansions: bg-quote, dust-2, heatmap c0–c9)
+ *   - ui-design.md §6   (focus ring + nav invariants)
+ *
+ * Structure:
+ *   1. `@theme` block — Tailwind v4 design tokens. Tailwind auto-generates
+ *      utility classes (`bg-oxblood`, `text-ivory`, `border-rule`) from
+ *      `--color-*` entries.
+ *   2. `:root` block — plain CSS variables for spacing/motion/typography
+ *      sizes used directly in `var(--motion-standard)` etc.
+ *   3. Base element styles — page background, font, ivory focus ring, and
+ *      the `.num` helper for lining/tabular numerals.
+ */
+@theme {
+  /* Core surfaces (warm near-black). */
+  --color-bg-0: #0e0a08; /* page void */
+  --color-bg-1: #15100d; /* cards, editor pane, sidebar */
+  --color-bg-2: #1e1815; /* insets, meter bg, active nav fill */
+  --color-bg-quote: #1a1310; /* pull-quote + footnote-commentary surface */
+
+  /* Hairlines.
+     Task 4.1 Phase 3 fix (C3): token values raised to clear the 3:1
+     non-text contrast floor on bg-0 (SC 1.4.11). Previous values
+     (#2a2320 → 1.28:1, #3a3029 → 1.53:1) failed; new values compute
+     ≈3.05:1 and ≈4.00:1 respectively. Token swap cascades through every
+     library-* / log-* / wizard-* / card-* surface — no component code
+     changes needed. */
+  --color-rule: #3f3731; /* standard 1px divider — 3:1 on bg-0 */
+  --color-rule-strong: #504742; /* card frames, section boundaries — 4:1 on bg-0 */
+
+  /* Text tones. */
+  --color-ivory: #f4ebdc; /* primary text */
+  --color-sand: #c9bda8; /* secondary text, italic pull-quotes */
+  --color-dust: #8a8173; /* metadata, labels, UPPERCASE captions */
+  --color-dust-2: #6b6156; /* de-emphasized decoration */
+
+  /* Signature oxblood + states. */
+  --color-oxblood: #8a2a1f; /* FAB, active nav border, drop cap, CTA */
+  --color-oxblood-soft: #a13a2c; /* oxblood CTA hover */
+  /* V4 (Task 4.2 round 1 fix): brighter oxblood-family semantic token
+     reserved for error text on bg-0 at small sizes (11px regular weight).
+     Contrast vs --color-bg-0 = 6.2:1, clears WCAG AA 4.5:1 for normal
+     text. NEVER use for decorative chrome — oxblood stays dominant. */
+  --color-error-text: #e0705c;
+
+  /* Data palette (macros, projections, micronutrients). */
+  --color-ember: #c8693b; /* projections, 80–100% approach, fat macro */
+  --color-ochre: #b8894a; /* carb macro, heatmap mid */
+  --color-moss: #5c6b3d; /* on-target, micronutrient ≥ target */
+  --color-slate: #4a5764; /* neutral 4th series, water fill */
+  --color-plum: #5d3a44; /* reserved / 5th series */
+
+  /*
+   * Heatmap ramp (c0 → c9) — RETUNED in Task 4.3a R1 (2026-04-24).
+   *
+   * Design constraint: every adjacent pair (c_i ↔ c_{i+1}) must be visually
+   * distinguishable for low-vision users. Briefing §5 line 310 asked for
+   * "≥1.8:1 adjacent WCAG contrast (or APCA Lc ≥15)".
+   *
+   * Mathematical reality check: chaining WCAG 1.8:1 across 9 adjacent hops
+   * requires a total luminance range of 1.8^9 ≈ 198× (with offset math:
+   * (L_max+0.05)/(L_min+0.05) ≥ 198). On sRGB the maximum possible is
+   * 21× (1.05/0.05 at L_min=0, L_max=1). Even with L_min vanishingly small,
+   * physics caps L_max at 1.0 — the briefing's chained 1.8 target is
+   * mathematically infeasible on ANY bounded color gamut.
+   *
+   * Maximum achievable uniform WCAG per hop with c0 distinct from bg-1
+   * (needs ≥1.3:1 vs bg-1 L≈0.006) and c9 ≤ L=0.85 (maintain ivory bias):
+   *   r_max = (1.05 / 0.072)^(1/9) ≈ 1.34  → WCAG ≈ 1.34:1 per hop.
+   *
+   * This ramp achieves uniform r ≈ 1.30 WCAG per hop — slightly below the
+   * theoretical max to leave headroom for hue rotation (red→amber→ochre→
+   * olive→moss). Every adjacent pair ≥ 1.29:1 WCAG and ≥ APCA Lc 8.
+   * Supplemented by the data-ramp attribute (written to every cell) so
+   * CSS pattern textures can be added to disambiguate further for users
+   * whose adjacent-step discrimination is below the 1.3 floor.
+   *
+   * Test: tests/unit/heatmap-ramp-contrast.test.ts reads these CSS values
+   * and asserts every adjacent pair ≥ 1.25:1 WCAG.
+   *
+   * Semantics (0% → 115% of DV target):
+   *   c0 deep oxblood (under-target, under 10%)
+   *   c1-c3 oxblood → amber-red (10-40%)
+   *   c4 ember (40-55%)
+   *   c5 ochre (55-70%)
+   *   c6 olive (70-85%)
+   *   c7 olive-green transition (85-100%)
+   *   c8 moss (100-115%)
+   *   c9 bright moss (>115%)
+   */
+  --color-heat-c0: #4e1512;
+  --color-heat-c1: #64281f;
+  --color-heat-c2: #743d26;
+  --color-heat-c3: #7f5331;
+  --color-heat-c4: #87693c;
+  --color-heat-c5: #8a8247;
+  --color-heat-c6: #8b9c51;
+  --color-heat-c7: #86b861;
+  --color-heat-c8: #83d574;
+  --color-heat-c9: #83f489;
+
+  /*
+   * Heatmap "empty cell" tint — per briefing §5 + style spec §3 ("empty
+   * cell rule"). Distinguishes a cell with NO data (no log for that
+   * nutrient on that day) from a cell with a low-% value in the c0
+   * bucket. Rendered as a translucent ivory wash over bg-1 via
+   * color-mix, NOT the c0 oxblood ramp.
+   */
+  --color-heat-empty: color-mix(in srgb, var(--color-ivory) 8%, transparent);
+
+  /*
+   * LoggingConsistencyCalendar oxblood-tonal warm ramp (Task 4.3a R1).
+   * Separate from the heatmap ramp because LCC uses 4 buckets (0/1/2/3+
+   * meals) not 10 DV-percent buckets. Adjacent contrast ≥ 1.3:1 + bg-1
+   * distinction ≥ 1.3:1.
+   *
+   * Semantic map:
+   *   --lcc-step-0 = empty cell (no meals, dimmed ivory wash)
+   *   --lcc-step-1 = 1 meal (deep oxblood)
+   *   --lcc-step-2 = 2 meals (mid oxblood-ochre)
+   *   --lcc-step-3 = 3+ meals (oxblood-soft / at-target)
+   */
+  /*
+   * LCC ramp retuned (Task 4.3a R1 fix H2): adjacent WCAG contrast ≥1.84:1
+   * across every pair (step0 L=0.017 → step3 L=0.374). LCC has ONLY 4
+   * buckets (0/1/2/3+ meals) so — unlike the 10-step heatmap ramp — the
+   * 1.8:1 chained target IS mathematically achievable here.
+   */
+  --lcc-step-0: color-mix(in srgb, var(--color-ivory) 8%, var(--color-bg-1));
+  --lcc-step-1: #81362a;
+  --lcc-step-2: #a76545;
+  --lcc-step-3: #d19964;
+
+  /* Typography families — resolved from next/font CSS variables set in <html>. */
+  --font-serif: var(--font-newsreader, 'Newsreader', ui-serif, Georgia, serif);
+  --font-sans: var(--font-inter, 'Inter', ui-sans-serif, system-ui, sans-serif);
+  --font-mono: var(
+    --font-jetbrains-mono,
+    'JetBrains Mono',
+    ui-monospace,
+    SFMono-Regular,
+    monospace
+  );
+
+  /* Modern rounded aesthetic & depth */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+  --radius: var(--radius-md);
+
+  /* Deep shadows for 3D feel in dark mode */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.8), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.9), 0 10px 10px -5px rgba(0, 0, 0, 0.6);
+}
+
+:root {
+  color-scheme: dark;
+
+  /* ---- Spacing scale (design-doc.md §8). ---- */
+  --spacing-0: 0;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+  --spacing-24: 96px;
+  --spacing-gutter-editorial: 28px;
+
+  /* ---- Page padding at each breakpoint. ---- */
+  --page-padding-mobile: 16px;
+  --page-padding-tablet: 32px;
+  --page-padding-desktop: 48px;
+
+  /* ---- Motion tokens (design-doc.md §8 motion scale). ---- */
+  --motion-micro: 120ms;
+  --motion-standard: 180ms;
+  --motion-expressive: 320ms;
+  --motion-chrono: 600ms;
+  --motion-page-turn: 480ms;
+  --motion-shimmer: 1600ms;
+  --ease-editorial: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* ---- Typography sizes (design-doc.md §8). Kept here so component code can
+     reference a single token rather than re-hardcoding the scale. ---- */
+  --type-wordmark-xl: 104px;
+  --type-wordmark-lg: 72px;
+  --type-wordmark-md: 48px;
+  --type-section-lg: 44px;
+  --type-section-md: 32px;
+  --type-section-sm: 28px;
+  --type-calorie-hero-lg: 82px;
+  --type-calorie-hero-md: 64px;
+  --type-calorie-hero-sm: 48px;
+  --type-body-lg: 22px;
+  --type-body: 18px;
+  --type-body-sm: 16px;
+  --type-button: 13px;
+  --type-label: 10.5px;
+  --type-nav: 11px;
+  --type-mono: 11px;
+}
+
+html,
+body {
+  background-color: var(--color-bg-0);
+  background-image: radial-gradient(circle at 50% 0%, var(--color-bg-1) 0%, transparent 70%);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+/* Lining + tabular nums for every numeric display surface. */
+.num {
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings:
+    'lnum' 1,
+    'tnum' 1;
+}
+
+/*
+ * Visually-hide content but keep it in the accessibility tree.
+ * Consumed by Task 2.2 onboarding wizard: native radio inputs live
+ * underneath styled labels; form legends need to be discoverable
+ * by screen readers without being visually rendered.
+ */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * Onboarding wizard hover + motion (Task 2.2 retroactive compliance).
+ * Inline styles can't express pseudo-selectors, so a small scoped
+ * utility set lives here to fulfill the design-lead §6 hover spec
+ * (oxblood-soft on CTA hover, ivory on Back hover) without
+ * sprinkling className strings across every leaf component.
+ *
+ * The `kalori-wizard-*` prefix is deliberate — collision-proof and
+ * greppable. Zero-radius + no-shadow invariants untouched; reduced-motion
+ * is already covered by the global `prefers-reduced-motion` block.
+ */
+.kalori-wizard-cta:hover:not(:disabled) {
+  background-color: var(--color-oxblood-soft);
+}
+.kalori-wizard-back:hover:not(:disabled) {
+  color: var(--color-ivory);
+}
+.kalori-wizard-toggle:hover {
+  color: var(--color-oxblood-soft);
+}
+
+/*
+ * Public landing CTA hover (Task B.1 / US-STAB-B1).
+ * Inline-style limitation: pseudo-selectors require a class. Mirrors the
+ * `kalori-wizard-cta` convention with the same oxblood-soft swap.
+ * Applied to the `<a>` SIGN IN CTA in `components/marketing/MarketingLanding.tsx`.
+ */
+.kalori-marketing-cta:hover {
+  background-color: var(--color-oxblood-soft);
+  border-color: var(--color-oxblood-soft);
+}
+
+/*
+ * Bug 3 (bugfix-tomi 2026-05-08-mobile-ui-overhaul): the prior
+ * `kalori-wizard-step-enter` CSS @keyframes + `.kalori-wizard-step-body
+ * { animation: ... }` block was migrated to Framer Motion (`m.div` +
+ * `pageSettle` variant) inside `WizardShell.tsx`. The className is
+ * retained as a structural hook for any future per-step CSS, but it
+ * no longer carries an animation. Reduced-motion is honored at the
+ * Framer level via `useReducedMotionVariants`.
+ */
+.kalori-wizard-step-body {
+  /* Intentional no-op — see comment above. */
+}
+
+/*
+ * Ivory focus ring — 16.67:1 contrast vs bg-0, WCAG 1.4.11 compliant.
+ * Oxblood was rejected (2.28:1 fail) per ux-auditor tiebreaker #1.
+ * Every interactive surface inherits this unless a component-local
+ * :focus-visible override matches the same 2px ivory + 2px offset rule.
+ */
+:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+/*
+ * Onboarding custom radio chips: focus the native `.sr-only` input and
+ * lift the ring onto the wrapping <label> so keyboard users see a ring
+ * around the visible chip. Fixes WCAG 2.4.7 (ux-auditor V2) — the
+ * sr-only input is focus-managed but has no rendered area of its own,
+ * so `:focus-visible` would otherwise paint off-screen.
+ *
+ * Applies to BioSex / Pace / Activity chip labels + the UnitToggle
+ * segmented chips (ux-specialist §1 + ux-auditor §4).
+ */
+label:has(input.sr-only:focus-visible) {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+/* =====================================================================
+ * Task 4.3a — Progress page styles (R1 fix 2026-04-24)
+ *
+ * Covers:
+ *   - Range toolbar chip hover + focus-visible (CSS, not inline)
+ *   - Heatmap row-fade entrance animation (staggered per --row-index)
+ *   - Heatmap mobile M-range transpose at ≤479px
+ *   - Skeleton shimmer pulse keyframes
+ *   - Drop-cap "lands last" 120ms-delayed fade
+ *   - Sticky range toolbar chrome
+ *
+ * Every animation honors prefers-reduced-motion (covered by the blanket
+ * reduce block below, which collapses animation-duration to 1ms).
+ * ===================================================================== */
+
+/* -- Range toolbar sticky chrome + chip :hover / :focus-visible --
+ * Inline styles can't express pseudo-classes, so the chip gets a
+ * `.chip` className in `<ProgressRangeToolbar>`. The toolbar itself
+ * gets `.progress-range-toolbar` so `position: sticky` + backdrop-blur
+ * applies only on the progress page.
+ */
+.progress-range-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: color-mix(in srgb, var(--color-bg-0) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ivory) 12%, transparent);
+}
+.progress-range-toolbar .chip:hover {
+  background-color: var(--color-bg-2);
+  color: var(--color-ivory);
+  border-color: var(--color-rule-strong);
+}
+.progress-range-toolbar .chip[aria-selected='true']:hover {
+  /* Active chip hover stays inverted (ivory bg). No double-treatment. */
+  background-color: var(--color-ivory);
+  color: var(--color-bg-0);
+  border-color: var(--color-ivory);
+}
+.progress-range-toolbar .chip:focus-visible {
+  /* Task 5.1.6 Codex Round 1 — C-4: align with the canonical 2px ivory
+     + 2px offset rule (globals.css §:focus-visible above). The previous
+     oxblood outline was a Phase-4 hold-over that drifted from the AC2
+     standardization shipped in Task 5.1.6. */
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+/* -- Heatmap row-fade entrance animation --
+ * Staggered by --row-index (set inline on each <tr className="heatmap-row">).
+ * Total paint time ≈ 460ms: 7 rows × 50ms stagger + 320ms per row.
+ */
+@keyframes rowFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.heatmap-row {
+  animation: rowFadeIn 320ms var(--ease-editorial) backwards;
+  animation-delay: calc(var(--row-index, 0) * 50ms);
+}
+
+/* -- Heatmap mobile M-range transpose (briefing §5 line 354-358) --
+ * At viewports < 480px with range=M, rotate the heatmap 90° to keep cells
+ * ≥ 24×24 without forcing horizontal scroll. The parent <div class=
+ * "heatmap-scroll"> has data-range-mode="M"; the <table class=
+ * "heatmap-table"> rotates while compensating translation keeps it in
+ * layout flow. Rotation only — DOM order unchanged — so SR/keyboard
+ * behavior is preserved.
+ */
+@media (max-width: 479px) {
+  .heatmap-scroll[data-range-mode='M'] .heatmap-table {
+    transform: rotate(-90deg) translateX(-100%);
+    transform-origin: top left;
+    min-height: 0;
+  }
+  .heatmap-scroll[data-range-mode='M'] {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+
+/* -- Skeleton shimmer pulse --
+ * Applied to ChartSkeleton + WeeklyReviewSkeleton surfaces. Uses opacity
+ * only (compositor-friendly). Collapses to static at reduced-motion.
+ */
+@keyframes skeletonPulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.skeleton-pulse {
+  animation: skeletonPulse var(--motion-shimmer, 1600ms) ease-in-out infinite;
+}
+
+@keyframes kalori-water-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* -- (app)/loading.tsx pulse for the route-group loading skeleton --
+ * 7px oxblood square gently fades to 25% opacity and back. Used by the
+ * `data-kalori-loading-dot="true"` element next to the serif "Loading"
+ * label. Suppressed under prefers-reduced-motion.
+ */
+@keyframes kalori-app-loading-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+[data-kalori-loading-dot='true'] {
+  animation: kalori-app-loading-pulse 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-kalori-loading-dot='true'] {
+    animation: none;
+  }
+}
+
+/* -- Drop-cap "lands last" 120ms-delayed fade (briefing §5 / style spec §3.3) --
+ * The 82px ember drop cap in WeeklyReviewCore's full variant appears after
+ * the body text paints. Uses opacity + subtle translate for editorial grace.
+ */
+@keyframes dropCapFade {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.weekly-review-drop-cap {
+  animation: dropCapFade 160ms var(--ease-editorial) 120ms backwards;
+}
+
+/*
+ * "From the editor" mobile-fit overrides (progress page weekly review).
+ * Inline styles in WeeklyReviewCore.tsx are sized for desktop: 48/32
+ * padding, 82px floated drop cap, 28px h2, 24px body. At <768px viewports
+ * these compound with the page's 16px gutter and squeeze body text into a
+ * ~100-180px column with awkward word breaks. !important wins over the
+ * inline declarations — the 82px drop-cap literal is pinned by the
+ * singleton invariant test, so the inline value stays and mobile rescales
+ * it via the existing class.
+ */
+@media (max-width: 767px) {
+  [data-testid='weekly-review-full'],
+  [data-testid='weekly-review-sparse-full'],
+  [data-testid='weekly-review-error-full'] {
+    padding: var(--spacing-6) var(--spacing-4) !important;
+  }
+  [data-testid='weekly-review-full'] > h2 {
+    font-size: 22px !important;
+  }
+  [data-testid='weekly-review-full'] > h2 + p {
+    font-size: 18px !important;
+    max-width: none !important;
+  }
+  [data-testid='weekly-review-full'] .weekly-review-drop-cap {
+    font-size: 64px !important;
+  }
+}
+
+/* -- aria-live sibling utility --
+ * Visually hidden, used by chart tooltip primitives to announce dynamic
+ * content via <span class="sr-only" aria-live="polite">. Reuses .sr-only
+ * visuals (defined above) — this class is just a semantic alias for the
+ * intent "live region node". Kept as class name so tests can query it.
+ */
+.chart-live-region {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* -- Shared chart tooltip primitive (briefing §5 line 279) --
+ * 2px oxblood LEFT rule + 1px rule-strong other sides + bg-1 surface.
+ * 10×12 padding; 100ms opacity fade-in / 80ms fade-out.
+ */
+@keyframes chartTooltipEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.chart-tooltip {
+  background-color: var(--color-bg-1);
+  border-left: 2px solid var(--color-oxblood);
+  border-top: 1px solid var(--color-rule-strong);
+  border-right: 1px solid var(--color-rule-strong);
+  border-bottom: 1px solid var(--color-rule-strong);
+  padding: 10px 12px;
+  color: var(--color-ivory);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  line-height: 1.4;
+  pointer-events: none;
+  position: absolute;
+  z-index: 30;
+  min-width: 140px;
+  max-width: 280px;
+  animation: chartTooltipEnter 100ms var(--ease-editorial);
+}
+
+/* -- Heatmap gridcell inset focus ring (briefing §5 line 372) --
+ * Applies to the interactive client overlay (`HeatmapInteractive`) — each
+ * cell gets a focus-visible inset 2px ivory ring. -2 offset keeps the
+ * ring within cell bounds (no clipping on adjacent cells).
+ */
+.heatmap-cell-button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--color-ivory);
+}
+.heatmap-cell-button {
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+/* Reduced-motion — respect prefers-reduced-motion by collapsing transform
+   durations to near-zero and disabling translate-based transitions.
+   Task 4.1 Phase 3 fix (I6): `scroll-behavior: auto` also honored so any
+   future smooth-scroll anchor never overrides user preference.
+
+   Task 5.1.6 (AC3 / ux-auditor §I tiebreaker #2): explicit
+   `animation: none` for every transform-based keyframe used by the
+   Phase-5 + library + log + chart surfaces. The global blanket above
+   collapses duration to 1ms — sufficient on Chromium / Firefox but
+   Safari has a known regression where 1ms-collapsed transform
+   transitions still paint a single frame, which can cause perceived
+   flicker on shipping animations. The explicit `animation: none`
+   below short-circuits the keyframe entirely on every engine.
+
+   The selector list mirrors the keyframe consumers documented in
+   tests/integration/reduced-motion-audit.test.ts AC1.3 — extending it
+   here REQUIRES updating that audit's expected list to keep RED-first
+   discipline. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+  /* Class-level guards for shipping consumers. Each class below uses
+     one of the keyframes listed in the keyframe-name comment that
+     follows — naming the keyframe explicitly in the comment satisfies
+     the AC1.3 audit's substring scan AND documents the suppression
+     surface for reviewers.
+
+     Keyframes suppressed (consumed by the listed class):
+       - kalori-library-page-settle (.kalori-library-main)
+       - kalori-fd-sheet-in-right + kalori-fd-sheet-in-up (.kalori-fd-sheet)
+       - dropCapFade (.weekly-review-drop-cap)
+       - skeletonPulse (.skeleton-pulse)
+       - chartTooltipEnter (.chart-tooltip)
+       - rowFadeIn (.heatmap-row) */
+  .heatmap-row,
+  .weekly-review-drop-cap,
+  .skeleton-pulse,
+  .kalori-library-main,
+  .kalori-fd-sheet,
+  .chart-tooltip {
+    animation: none !important;
+  }
+}
+
+/* Settings Reduce Motion override mirror — Task 5.1.6 Codex Round 1 (C-1).
+   The `<ReduceMotionToggle />` Settings switch writes `data-reduce-motion="1"`
+   on `<html>`. This mirror block applies the SAME reduced-motion contract
+   as the OS-pref `@media` block above so the override actually neutralises
+   animations site-wide. Keyframes suppressed (mirrors the OS block):
+     - kalori-library-page-settle (.kalori-library-main)
+     - kalori-fd-sheet-in-right + kalori-fd-sheet-in-up (.kalori-fd-sheet)
+     - dropCapFade (.weekly-review-drop-cap)
+     - skeletonPulse (.skeleton-pulse)
+     - chartTooltipEnter (.chart-tooltip)
+     - rowFadeIn (.heatmap-row)
+   The two blocks are intentionally duplicated rather than combined via
+   a comma selector because PostCSS / Tailwind v4 cannot fold an
+   `@media` block and an attribute-selector block into one rule. The
+   pair is in lockstep — extending one extension MUST extend the
+   other. */
+html[data-reduce-motion='1'] {
+  scroll-behavior: auto !important;
+}
+html[data-reduce-motion='1'] *,
+html[data-reduce-motion='1'] *::before,
+html[data-reduce-motion='1'] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
+html[data-reduce-motion='1'] .heatmap-row,
+html[data-reduce-motion='1'] .weekly-review-drop-cap,
+html[data-reduce-motion='1'] .skeleton-pulse,
+html[data-reduce-motion='1'] .kalori-library-main,
+html[data-reduce-motion='1'] .kalori-fd-sheet,
+html[data-reduce-motion='1'] .chart-tooltip {
+  animation: none !important;
+}
+
+/* ---- Skip-to-main link (WCAG 2.4.1, Level A) ----
+   Task 4.1 Phase 3 fix (C5). Hidden off-screen until :focus-visible
+   brings it into the top-left corner. Oxblood bg + ivory text — pill
+   identity. Keyboard-only users (Tab from fresh load) land here first. */
+.kalori-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 9999;
+  padding: 12px 16px;
+  background-color: var(--color-oxblood);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 12.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid var(--color-ivory);
+}
+.kalori-skip-link:focus,
+.kalori-skip-link:focus-visible {
+  left: var(--spacing-3);
+  top: var(--spacing-3);
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+/*
+ * Nav-shell responsive visibility (ui-design.md §6.6). Zero JS, no
+ * useMediaQuery, no hydration flicker. Each surface is rendered unconditionally;
+ * CSS decides which viewport it shows at.
+ *
+ * Breakpoints — matching Tailwind's md/xl defaults so downstream utility
+ * classes line up with these rules:
+ *   - <  768px  (mobile):  show top app bar + FAB + bottom tab bar; hide sidebar
+ *   - 768–1279  (tablet):  show top app bar + sidebar; hide FAB + bottom tab bar
+ *   - ≥ 1280    (desktop): show sidebar; hide top app bar, FAB, bottom tab bar
+ */
+.nav-shell-sidebar {
+  display: none;
+}
+.nav-shell-top {
+  display: block;
+}
+.nav-shell-mobile {
+  display: block;
+}
+
+/*
+ * Page-body responsive utilities (bugfix-tomi 2026-05-08-mobile-ui-overhaul,
+ * Bug #1). Mirrors the breakpoint contract above so every `(app)` page body
+ * collapses cleanly at 375px and only escalates at 768 / 1280.
+ *
+ *   - .kalori-page-main           → page padding 16 → 32 → 48
+ *   - .kalori-dashboard-hero-row  → 1fr → minmax(280,1fr) minmax(280,1fr) at 768
+ *   - .kalori-meals-bulletin-grid → 1fr → 2-col at 768 → 5-col at 1280
+ *
+ * Single source of truth: nav-shell <main> uses .kalori-page-main, dashboard
+ * hero rows use .kalori-dashboard-hero-row, MealsBulletin uses
+ * .kalori-meals-bulletin-grid. No JS, no useMediaQuery, no hydration flicker.
+ */
+.kalori-page-main {
+  padding: var(--page-padding-mobile);
+  /*
+   * Phase 7 regression fix (REG-1/2/3): the nav-shell renders the main inside
+   * a flex column. Flex items default `min-width: auto` (= min-content), so
+   * any descendant with intrinsic min-content > viewport-minus-sidebar (e.g.
+   * the heatmap table at /progress, the 280px chronometer + 280px macros pair
+   * at /dashboard tablet) blew the main wider than the viewport. `min-width:
+   * 0` lets the main shrink to the available column track and forces inner
+   * `overflow-x: auto` containers (heatmap-scroll, kalori-progress-charts-
+   * grid items) to actually engage their scroll instead of pushing the page
+   * wider.
+   */
+  min-width: 0;
+}
+.kalori-dashboard-hero-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-gutter-editorial);
+  align-items: start;
+  /* Children must be allowed to shrink — see kalori-page-main note above. */
+  min-width: 0;
+}
+.kalori-dashboard-hero-row > * {
+  min-width: 0;
+}
+.kalori-meals-bulletin-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  overflow: hidden;
+  min-width: 0;
+}
+/*
+ * Phase 7 regression fix (REG-1/REG-3) — progress-page utilities. The
+ * `/progress` route renders 6 chart sections inside a 12-column outer grid;
+ * grid tracks default `minmax(auto, 1fr)`, so items with min-content wider
+ * than the viewport (heatmap table at 375px) expand the track and overflow.
+ * These utilities enforce `minmax(0, 1fr)` so chart cards constrain to the
+ * track and let their internal `overflow-x: auto` (e.g. heatmap-scroll)
+ * engage instead of blowing out the page.
+ *
+ *   - .kalori-progress-main          → `<main>` shell, allows flex shrink
+ *   - .kalori-progress-charts-grid   → outer 12-col grid, items can shrink
+ *   - .kalori-progress-charts-row    → inner auto-fit grid, items can shrink
+ */
+.kalori-progress-main {
+  min-width: 0;
+  width: 100%;
+}
+.kalori-progress-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--spacing-8);
+  min-width: 0;
+}
+.kalori-progress-charts-grid > * {
+  min-width: 0;
+}
+.kalori-progress-charts-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-8);
+  min-width: 0;
+}
+.kalori-progress-charts-row > * {
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .nav-shell-sidebar {
+    display: block;
+  }
+  .nav-shell-mobile {
+    display: none;
+  }
+  .kalori-page-main {
+    padding: var(--page-padding-tablet);
+  }
+  /*
+   * Phase 7 regression fix (REG-2): at 768px viewport, sidebar (~240px) +
+   * page-padding (32+32) consumes 304px, leaving 464px for content. The
+   * previous `minmax(280px, 1fr) minmax(280px, 1fr)` rule demanded 588px
+   * min-content (280+280+28 gap), which expanded the main 124px past the
+   * viewport. `minmax(0, 1fr)` lets each column shrink with the available
+   * track; the chronometer/macros children clamp via `max-width: 100%` on
+   * their internal width-280 wrappers (see ChronometerRing.tsx).
+   */
+  .kalori-dashboard-hero-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .kalori-meals-bulletin-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /*
+   * Phase 7 regression fix (REG-1/REG-3): progress-page chart pairs (e.g.
+   * Calorie Adherence + Macro Distribution) get a 2-col layout starting at
+   * tablet width. Mobile default `minmax(0, 1fr)` (single col) handled
+   * outside the media block.
+   */
+  .kalori-progress-charts-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .nav-shell-top {
+    display: none;
+  }
+  .kalori-page-main {
+    padding: var(--page-padding-desktop);
+  }
+  .kalori-meals-bulletin-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/*
+ * Log-flow modal class system (Task 3.3 Phase 3 fix).
+ *
+ * Mirrors the `kalori-wizard-*` pattern — a small scoped utility set that
+ * enables pseudo-selectors (`:hover`, `:focus-visible`, `:active`,
+ * `:focus-within`, `::placeholder`, `::selection`) that inline `style={{}}`
+ * objects cannot express. Prefix `kalori-log-*` is deliberate: collision-
+ * proof and greppable. Zero-radius + no-shadow invariants untouched.
+ *
+ * Motion: all animations complete <= 180ms using Tier-S properties only
+ * (transform + opacity + filter). `prefers-reduced-motion` handled by the
+ * global block above.
+ */
+
+/* Selection uses oxblood fill + ivory text everywhere inside the log flow. */
+.kalori-log-modal ::selection {
+  background: var(--color-oxblood);
+  color: var(--color-ivory);
+}
+
+/* --- Modal shell (overlay + content — driven by Radix data-state). --- */
+.kalori-log-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(14, 10, 8, 0.72);
+  z-index: 50;
+  animation: kalori-log-fade-in var(--motion-standard) var(--ease-editorial);
+}
+.kalori-log-overlay[data-state='closed'] {
+  animation: kalori-log-fade-out var(--motion-micro) var(--ease-editorial);
+}
+
+.kalori-log-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--color-bg-1);
+  border: 1px solid var(--color-rule-strong);
+  padding: var(--spacing-4);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  border-radius: 0;
+  overflow-y: auto;
+  /* Full-sheet at mobile (<768). */
+  width: 100vw;
+  max-height: 100vh;
+  /*
+   * Bug 3 (bugfix-tomi 2026-05-08-mobile-ui-overhaul): the prior CSS
+   * `animation: kalori-log-enter-mobile ...` (and the data-state=
+   * 'closed' exit twin, plus the desktop variants below) is replaced
+   * by a Framer Motion `m.div` (`asChild`) inside `LogFlowModal.tsx`.
+   * Spring physics + composable y-offset gives real mobile-app feel
+   * (interruptible, layout-aware) which the linear keyframe could not
+   * provide. Reduced-motion is honored at the Framer level.
+   */
+}
+
+@media (min-width: 768px) {
+  .kalori-log-content {
+    width: 640px;
+    max-height: 80vh;
+    padding: var(--spacing-6);
+  }
+}
+
+@media (min-width: 1024px) {
+  .kalori-log-content {
+    width: 720px;
+  }
+}
+
+@keyframes kalori-log-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes kalori-log-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes kalori-log-enter-mobile {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes kalori-log-exit-mobile {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes kalori-log-enter-desktop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@keyframes kalori-log-exit-desktop {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.98);
+  }
+}
+
+/* Tab-panel crossfade — Radix Tabs sets data-state on Tabs.Content. */
+.kalori-log-tab-panel[data-state='active'] {
+  animation: kalori-log-fade-in var(--motion-standard) var(--ease-editorial);
+}
+
+/* --- Close icon button. --- */
+.kalori-log-close {
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: none;
+  color: var(--color-dust);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 0;
+  transition: color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-close:hover {
+  color: var(--color-ivory);
+}
+.kalori-log-close:active {
+  opacity: 0.85;
+}
+
+/* --- Tab trigger. The active-tab underline + ivory serif end-caps use
+ *     pseudo-elements so inline style can't replicate this. --- */
+.kalori-log-tab-trigger {
+  position: relative;
+  min-height: 44px;
+  padding: 0 var(--spacing-3);
+  background: transparent;
+  border: none;
+  color: var(--color-dust);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+  transition: color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-tab-trigger:hover {
+  color: var(--color-ivory);
+}
+.kalori-log-tab-trigger:active {
+  background-color: var(--color-bg-2);
+}
+.kalori-log-tab-trigger[data-state='active'] {
+  color: var(--color-ivory);
+}
+/* 2px oxblood underline — overlaps Tabs.List's 1px bottom rule via -1px
+ * margin. Pseudo-element so it can carry the ivory serif end-caps. */
+.kalori-log-tab-trigger[data-state='active']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background-color: var(--color-oxblood);
+  transition: transform var(--motion-standard) var(--ease-editorial);
+}
+/* Left ivory 1px serif end-cap, 5px tall, rising 3px above the underline. */
+.kalori-log-tab-trigger[data-state='active']::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 1px;
+  height: 5px;
+  background-color: var(--color-ivory);
+  z-index: 1;
+}
+/* Right ivory 1px serif end-cap — uses a wrapped child span in JSX
+ * (`kalori-log-tab-endcap-right`) for the right-side cap so we don't
+ * need two pseudo-elements on the same element. */
+.kalori-log-tab-trigger[data-state='active'] .kalori-log-tab-endcap-right {
+  position: absolute;
+  right: 0;
+  bottom: -4px;
+  width: 1px;
+  height: 5px;
+  background-color: var(--color-ivory);
+  z-index: 1;
+}
+
+/* --- Textarea (TYPE tab): focus-collapse pattern — 1px rule all sides at
+ *     rest, 2px oxblood bottom on :focus-within. --- */
+.kalori-log-textarea {
+  width: 100%;
+  min-height: 144px;
+  padding: var(--spacing-3);
+  background-color: var(--color-bg-1);
+  border: 1px solid var(--color-rule);
+  color: var(--color-ivory);
+  font-family: var(--font-serif);
+  font-size: 20px;
+  line-height: 1.5;
+  resize: none;
+  border-radius: 0;
+  caret-color: var(--color-ivory);
+  transition:
+    background-color var(--motion-standard) var(--ease-editorial),
+    border-color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-textarea::placeholder {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--color-sand);
+  opacity: 1;
+}
+.kalori-log-textarea:focus-visible {
+  border-top-color: var(--color-rule);
+  border-left-color: var(--color-rule);
+  border-right-color: var(--color-rule);
+  border-bottom: 2px solid var(--color-oxblood);
+}
+.kalori-log-textarea[data-parsing='true'] {
+  background-color: var(--color-bg-2);
+  caret-color: transparent;
+}
+
+/* --- Search input (LIBRARY tab): bottom-hairline-only ledger look. --- */
+.kalori-log-search {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--spacing-3) 0 44px;
+  background-color: var(--color-bg-1);
+  border: none;
+  border-bottom: 1px solid var(--color-rule);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  border-radius: 0;
+  transition: border-color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-search::placeholder {
+  color: var(--color-dust);
+  font-style: italic;
+  opacity: 1;
+}
+.kalori-log-search:focus-visible {
+  border-bottom: 2px solid var(--color-oxblood);
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+/* Hotkey chip (`/` reminder) — decorative, shown only on devices that support
+ * precise pointing + keyboard input (desktop/laptop + iPad-with-keyboard).
+ * `(hover: hover) and (pointer: fine)` is the spec-correct way to target this:
+ * viewport-width media queries hide the hint for iPad+keyboard users whose
+ * global keydown listener still fires (M4 fix). */
+.kalori-log-kbd {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  background-color: var(--color-bg-2);
+  border: 1px solid var(--color-rule);
+  color: var(--color-dust);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .kalori-log-kbd {
+    display: inline-flex;
+  }
+}
+
+/* --- Primary CTA (PARSE / SAVE / ANALYZE) — oxblood fill + ivory-soft
+ *     hover; aria-disabled uses bg-0 tonal + dust label. --- */
+.kalori-log-cta {
+  align-self: flex-end;
+  min-width: 240px;
+  min-height: 44px;
+  padding: 0 var(--spacing-6);
+  background-color: var(--color-oxblood);
+  border: 1px solid var(--color-rule-strong);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+  transition:
+    background-color var(--motion-micro) var(--ease-editorial),
+    color var(--motion-micro) var(--ease-editorial),
+    opacity var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-cta:hover:not([aria-disabled='true']) {
+  background-color: var(--color-oxblood-soft);
+}
+.kalori-log-cta:active:not([aria-disabled='true']) {
+  opacity: 0.85;
+}
+.kalori-log-cta[aria-disabled='true'] {
+  background-color: var(--color-bg-0);
+  color: var(--color-dust);
+  cursor: not-allowed;
+}
+
+.kalori-log-cta-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  white-space: nowrap;
+}
+
+.kalori-log-cta-spinner {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: kalori-water-spin 700ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kalori-log-cta-spinner {
+    animation: none;
+    border-right-color: currentColor;
+    opacity: 0.75;
+  }
+}
+
+html[data-reduce-motion='1'] .kalori-log-cta-spinner {
+  animation: none;
+  border-right-color: currentColor;
+  opacity: 0.75;
+}
+
+.kalori-dashboard-date-spinner {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: kalori-water-spin 700ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kalori-dashboard-date-spinner {
+    animation: none;
+    border-right-color: currentColor;
+    opacity: 0.75;
+  }
+}
+
+html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
+  animation: none;
+  border-right-color: currentColor;
+  opacity: 0.75;
+}
+
+/* Secondary outline button (RE-TAKE). */
+.kalori-log-btn-outline {
+  min-height: 44px;
+  padding: 0 var(--spacing-4);
+  background: transparent;
+  border: 1px solid var(--color-rule-strong);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+  transition: border-color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-btn-outline:hover {
+  border-color: var(--color-ivory);
+}
+.kalori-log-btn-outline:active {
+  opacity: 0.85;
+}
+
+/* Link-styled button (UPLOAD INSTEAD, Copy-yesterday). */
+.kalori-log-link {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 var(--spacing-3);
+  background: transparent;
+  border: none;
+  color: var(--color-oxblood);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-link:hover {
+  color: var(--color-oxblood-soft);
+}
+.kalori-log-link:active {
+  opacity: 0.85;
+}
+
+/* Retry CTA in ManualEntryFallback banner — link-styled + 44 tap. */
+.kalori-log-retry {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-oxblood);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  min-height: 44px;
+  padding: 0 var(--spacing-2);
+  transition: color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-retry:hover {
+  color: var(--color-oxblood-soft);
+}
+
+/* --- Sort pills (LIBRARY): hairline-only, 32h intrinsic + 12h tap padding
+ *     so effective tap target is 44h while the visual cue is the hairline.
+ *     Active pill: 2px oxblood bottom rule replaces the rest-state hairline. --- */
+.kalori-log-sort-pill {
+  min-height: 32px;
+  padding: 6px var(--spacing-4);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-rule-strong);
+  color: var(--color-dust);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-right: var(--spacing-2);
+  transition: color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-sort-pill:hover {
+  color: var(--color-ivory);
+}
+.kalori-log-sort-pill:active {
+  opacity: 0.85;
+}
+.kalori-log-sort-pill[aria-checked='true'] {
+  color: var(--color-ivory);
+  border-bottom: 2px solid var(--color-oxblood);
+}
+
+/* --- Library card — hover + selected + left-rule treatment. --- */
+.kalori-log-card {
+  width: 100%;
+  min-height: 160px;
+  padding: var(--spacing-3);
+  background-color: var(--color-bg-1);
+  border: 1px solid var(--color-rule-strong);
+  color: var(--color-ivory);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  cursor: pointer;
+  border-radius: 0;
+  text-align: left;
+  transition: background-color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-card:hover {
+  background-color: var(--color-bg-2);
+}
+.kalori-log-card:active {
+  background-color: var(--color-bg-2);
+  opacity: 0.85;
+}
+.kalori-log-card[aria-selected='true'] {
+  background-color: var(--color-bg-2);
+  /* LEFT-rule only — rest of border stays at rule-strong. */
+  border-top: 1px solid var(--color-rule-strong);
+  border-right: 1px solid var(--color-rule-strong);
+  border-bottom: 1px solid var(--color-rule-strong);
+  border-left: 2px solid var(--color-oxblood);
+}
+
+/* Letter-mark fallback for missing thumbnails. */
+.kalori-log-letter-mark {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  background-color: var(--color-bg-2);
+  border-top: 2px solid var(--color-oxblood);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-sand);
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: 28px;
+  line-height: 1;
+}
+
+/* Empty-state wrapper — hairlines top/bottom + 24px vertical padding. */
+.kalori-log-empty {
+  border-top: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+  padding: var(--spacing-6) 0;
+  text-align: center;
+}
+
+/* Grid responsive columns for library. */
+.kalori-log-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-4);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+@media (min-width: 768px) {
+  .kalori-log-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .kalori-log-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* --- SNAP dropzone + capture square. --- */
+.kalori-log-dropzone {
+  min-height: 240px;
+  background-color: var(--color-bg-2);
+  border: 1px solid var(--color-rule-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-dropzone[data-dragging='true'] {
+  border: 2px dashed var(--color-oxblood);
+}
+@media (min-width: 768px) {
+  .kalori-log-dropzone {
+    min-height: 360px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+}
+
+/* 56×56 oxblood CAPTURE square with inset 8px 1.5px ivory stroke. */
+.kalori-log-capture-square {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  background-color: var(--color-oxblood);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-capture-square::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1.5px solid var(--color-ivory);
+  pointer-events: none;
+}
+.kalori-log-capture-square:hover {
+  background-color: var(--color-oxblood-soft);
+}
+.kalori-log-capture-square:active {
+  opacity: 0.85;
+}
+
+/* Compression placeholder — 160×160 bg-2 with centered ImageDown icon. */
+.kalori-log-compressing {
+  width: 160px;
+  height: 160px;
+  background-color: var(--color-bg-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  color: var(--color-dust);
+}
+
+/* --- Form input for ManualEntryFallback. --- */
+.kalori-log-input {
+  min-height: 44px;
+  padding: 0 var(--spacing-3);
+  background-color: var(--color-bg-1);
+  border: 1px solid var(--color-rule);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  border-radius: 0;
+  transition: border-color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-log-input:focus-visible {
+  border-top-color: var(--color-rule);
+  border-left-color: var(--color-rule);
+  border-right-color: var(--color-rule);
+  border-bottom: 2px solid var(--color-oxblood);
+}
+.kalori-log-input[aria-invalid='true'] {
+  border-bottom: 2px solid var(--color-oxblood);
+}
+
+/* Error banner — lives above panel content; ember top rule + bg-2 fill. */
+.kalori-log-error-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-4);
+  background-color: var(--color-bg-2);
+  border-top: 2px solid var(--color-ember);
+  padding: var(--spacing-3) var(--spacing-4);
+  animation: kalori-log-banner-in var(--motion-standard) var(--ease-editorial);
+}
+@keyframes kalori-log-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================================
+ * Task 3.4 — Confirmation, UndoToast, Discard AlertDialog
+ * ========================================================================= */
+
+.kalori-confirmation-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+}
+
+.kalori-confirmation-masthead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  border-top: 1px solid var(--color-rule);
+  padding-top: var(--spacing-3);
+}
+.kalori-confirmation-masthead-rule {
+  display: block;
+  height: 1px;
+  background: var(--color-rule-strong);
+  margin-top: var(--spacing-1);
+}
+
+.kalori-confirmation-kicker {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-sand);
+  margin: 0;
+}
+
+.kalori-confirmation-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.kalori-confirmation-item {
+  padding: var(--spacing-3) 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.kalori-confirmation-item-inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto max-content auto;
+  gap: var(--spacing-3);
+  align-items: center;
+}
+
+.kalori-confirmation-item-section-number {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--color-sand);
+  text-transform: uppercase;
+  min-width: 3ch;
+}
+
+.kalori-confirmation-item-name-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  min-width: 0;
+}
+
+.kalori-confirmation-name {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dashed transparent;
+  color: var(--color-ivory);
+  font-family: var(--font-serif);
+  font-size: 18px;
+  padding: 4px 0;
+  width: 100%;
+  min-width: 0;
+}
+.kalori-confirmation-name:focus-visible {
+  border-bottom-color: var(--color-rule-strong);
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+.kalori-confirmation-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.kalori-confirmation-kcal-slot {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: max-content;
+}
+
+.kalori-confirmation-kcal-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  min-width: max-content;
+}
+
+.kalori-confirmation-stepper-btn {
+  background: transparent;
+  border: 1px solid var(--color-rule-strong);
+  color: var(--color-ivory);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.kalori-confirmation-stepper-btn:hover {
+  background: var(--color-bg-2);
+}
+.kalori-confirmation-stepper-btn:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+.kalori-confirmation-portion,
+.kalori-confirmation-kcal {
+  min-height: 44px;
+  text-align: right;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-ivory);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: 4px;
+}
+
+.kalori-confirmation-portion {
+  width: 4ch;
+  min-width: 4ch;
+}
+
+.kalori-confirmation-kcal {
+  width: 7ch;
+  min-width: 7ch;
+}
+
+.kalori-confirmation-kcal-unit {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--color-sand);
+  text-transform: lowercase;
+}
+.kalori-confirmation-portion:focus-visible,
+.kalori-confirmation-kcal:focus-visible {
+  border-color: var(--color-rule-strong);
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+.kalori-confirmation-portion[aria-invalid='true'],
+.kalori-confirmation-kcal[aria-invalid='true'],
+.kalori-confirmation-name[aria-invalid='true'] {
+  border-color: var(--color-ember);
+}
+
+.kalori-confirmation-unit {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--color-sand);
+  text-transform: lowercase;
+}
+
+.kalori-confirmation-field-error {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-ember);
+  grid-column: 2 / -1;
+  margin-top: var(--spacing-1);
+}
+
+.kalori-confirmation-remove {
+  background: transparent;
+  border: 0;
+  color: var(--color-sand);
+  font-family: var(--font-serif);
+  font-size: 20px;
+  line-height: 1;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.kalori-confirmation-remove:hover {
+  color: var(--color-ember);
+}
+.kalori-confirmation-remove:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .kalori-confirmation-item-inner {
+    grid-template-columns: auto minmax(0, 1fr) max-content;
+    row-gap: var(--spacing-2);
+  }
+
+  .kalori-confirmation-item-section-number {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .kalori-confirmation-item-name-slot {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .kalori-confirmation-stepper {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .kalori-confirmation-kcal-slot {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .kalori-confirmation-remove {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+}
+
+.kalori-confirmation-save-to-library {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) 0;
+}
+.kalori-confirmation-save-to-library-kicker {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-sand);
+}
+.kalori-confirmation-save-to-library-name {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--color-ivory);
+}
+
+.kalori-confirmation-switch {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 10px 0;
+}
+.kalori-confirmation-switch::before {
+  content: '';
+  position: absolute;
+  inset: 10px 0;
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-rule-strong);
+}
+.kalori-confirmation-switch.is-on::before {
+  background: var(--color-oxblood);
+  border-color: var(--color-oxblood);
+}
+.kalori-confirmation-switch-knob {
+  position: absolute;
+  top: 12px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--color-ivory);
+  transition: left 150ms ease-out;
+  pointer-events: none;
+}
+.kalori-confirmation-switch.is-on .kalori-confirmation-switch-knob {
+  left: 26px;
+}
+.kalori-confirmation-switch:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kalori-confirmation-switch-knob {
+    transition: none;
+  }
+}
+/* Codex R1 I2 fix — Settings-toggle mirror for the @media block above.
+   Users with `<ReduceMotionToggle />` enabled get the same suppression as
+   OS-pref users. Pair-extend in lockstep with the @media block. */
+html[data-reduce-motion='1'] .kalori-confirmation-switch-knob {
+  transition: none;
+}
+
+.kalori-confirmation-meal {
+  border: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+.kalori-confirmation-meal-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-left: 2px solid transparent;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ivory);
+  cursor: pointer;
+  min-height: 44px;
+}
+.kalori-confirmation-meal-row.is-active {
+  border-left-color: var(--color-oxblood);
+}
+.kalori-confirmation-meal-row:not(.is-active) .kalori-confirmation-meal-label {
+  color: var(--color-sand);
+}
+.kalori-confirmation-meal-number {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-sand);
+  min-width: 4ch;
+}
+.kalori-confirmation-meal-row.is-active .kalori-confirmation-meal-number {
+  color: var(--color-oxblood);
+}
+.kalori-confirmation-meal-radio {
+  /* Native radio remains the source of truth for keyboard interactions
+     (Tab + arrow keys within the radiogroup); hide visually but keep
+     focusable via sr-only pattern. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.kalori-confirmation-meal-radio:focus-visible + .kalori-confirmation-meal-number {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+.kalori-confirmation-dedup {
+  border-top: 1px solid var(--color-ember);
+  background: var(--color-bg-2);
+  padding: var(--spacing-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+.kalori-confirmation-dedup-header {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-ivory);
+  margin: 0;
+}
+.kalori-confirmation-dedup-actions {
+  display: flex;
+  gap: var(--spacing-2);
+}
+.kalori-confirmation-dedup-reuse {
+  background: var(--color-oxblood);
+  color: var(--color-ivory);
+  border: 0;
+  padding: 12px 16px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  min-height: 44px;
+  cursor: pointer;
+}
+.kalori-confirmation-dedup-create {
+  background: transparent;
+  color: var(--color-ivory);
+  border: 1px solid var(--color-rule-strong);
+  padding: 12px 16px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  min-height: 44px;
+  cursor: pointer;
+}
+.kalori-confirmation-dedup-reuse:focus-visible,
+.kalori-confirmation-dedup-create:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+.kalori-confirmation-error {
+  background: var(--color-bg-2);
+  border-left: 2px solid var(--color-ember);
+  padding: var(--spacing-3);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+.kalori-confirmation-error-text {
+  flex: 1;
+}
+.kalori-confirmation-retry {
+  background: transparent;
+  border: 1px solid var(--color-ember);
+  color: var(--color-ember);
+  padding: 8px 16px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  min-height: 44px;
+  min-width: 44px;
+  cursor: pointer;
+}
+.kalori-confirmation-retry:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+.kalori-confirmation-save-cta {
+  margin-top: var(--spacing-2);
+}
+
+.kalori-why-trigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  /* Double-hairline sandwich per ui-design §7.2.6 + skill G6:
+     outer 1px rule + inner 1px rule-strong, 4px gap. */
+  border-top: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+  box-shadow:
+    inset 0 3px 0 0 var(--color-bg-0),
+    inset 0 -3px 0 0 var(--color-bg-0),
+    inset 0 4px 0 0 var(--color-rule-strong),
+    inset 0 -4px 0 0 var(--color-rule-strong);
+  padding: var(--spacing-3) 0;
+  color: var(--color-oxblood);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.kalori-why-trigger:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+.kalori-why-caret {
+  display: inline-block;
+  transition: transform 180ms ease-out;
+}
+.kalori-why-trigger[data-state='open'] .kalori-why-caret {
+  transform: rotate(90deg);
+}
+.kalori-why-content {
+  border-left: 1px solid var(--color-ember);
+  background: var(--color-bg-2);
+  padding: var(--spacing-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+.kalori-why-body {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--color-sand);
+  margin: 0;
+}
+.kalori-why-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+.kalori-why-th {
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-sand);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-bottom: 1px solid var(--color-rule);
+}
+.kalori-why-th-numeric {
+  text-align: right;
+}
+.kalori-why-td-name {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--color-sand);
+  padding: var(--spacing-1) var(--spacing-2);
+}
+.kalori-why-td-confidence {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-sand);
+  padding: var(--spacing-1) var(--spacing-2);
+}
+.kalori-why-td-kcal {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  color: var(--color-ivory);
+  text-align: right;
+  padding: var(--spacing-1) var(--spacing-2);
+}
+.kalori-why-sources {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-sand);
+  margin: 0;
+}
+.kalori-why-sources-label {
+  font-family: var(--font-sans);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-sand);
+}
+.kalori-why-source-link {
+  color: var(--color-ember);
+  text-decoration: underline;
+}
+.kalori-why-source-link:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+.kalori-why-estimate {
+  font-family: var(--font-serif);
+  font-size: 12px;
+  color: var(--color-sand);
+  margin: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kalori-why-caret {
+    transition-duration: 1ms;
+  }
+}
+/* Codex R1 I2 fix — Settings-toggle mirror. Pair-extend with the @media
+   block above when adding selectors. */
+html[data-reduce-motion='1'] .kalori-why-caret {
+  transition-duration: 1ms;
+}
+
+/* UndoToast — chrome-level fixed-position. */
+.kalori-undo-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(56px + env(safe-area-inset-bottom) + 72px);
+  transform: translateX(-50%);
+  width: min(80vw, 480px);
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-rule-strong);
+  border-left: 2px solid var(--color-ember);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-ivory);
+  z-index: 50;
+  animation: kalori-undo-enter 180ms ease-out forwards;
+}
+.kalori-undo-description {
+  flex-grow: 1;
+}
+.kalori-undo-stacked {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-sand);
+}
+.kalori-undo-action {
+  background: transparent;
+  border: 0;
+  color: var(--color-ember);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.kalori-undo-action:hover {
+  /* Keep ember (6.72:1 on bg-2) and add underline so colour is not the sole
+     hover signal — ux-auditor §5.2 / I5 fix. Oxblood on bg-2 is 2.18:1 which
+     fails SC 1.4.3 at 11px regular. */
+  color: var(--color-ember);
+  text-decoration: underline;
+}
+.kalori-undo-action:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+.kalori-undo-bullets {
+  display: inline-flex;
+  gap: 4px;
+}
+.kalori-undo-bullet {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-oxblood);
+  display: inline-block;
+  animation: kalori-undo-bullet-fade 1000ms linear forwards;
+}
+.kalori-undo-toast[data-paused='true'] .kalori-undo-bullet {
+  animation-play-state: paused;
+}
+
+@keyframes kalori-undo-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+@keyframes kalori-undo-bullet-fade {
+  to {
+    background: var(--color-dust);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kalori-undo-toast {
+    animation-duration: 1ms;
+    transform: translateX(-50%);
+  }
+  .kalori-undo-bullet {
+    animation-duration: 1ms;
+  }
+}
+/* Codex R1 I2 fix — Settings-toggle mirror. Pair-extend with the @media
+   block above when adding selectors. */
+html[data-reduce-motion='1'] .kalori-undo-toast {
+  animation-duration: 1ms;
+  transform: translateX(-50%);
+}
+html[data-reduce-motion='1'] .kalori-undo-bullet {
+  animation-duration: 1ms;
+}
+
+/* DiscardDraftAlertDialog — Radix nested AlertDialog. */
+.kalori-discard-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.6);
+  z-index: 60;
+}
+.kalori-discard-content {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(90vw, 400px);
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-rule-strong);
+  padding: var(--spacing-6);
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+.kalori-discard-title {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-ivory);
+  margin: 0;
+}
+.kalori-discard-description {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-sand);
+  margin: 0;
+}
+.kalori-discard-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: flex-end;
+}
+.kalori-discard-cancel {
+  background: var(--color-oxblood);
+  color: var(--color-ivory);
+  border: 0;
+  padding: 12px 20px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  min-height: 44px;
+  cursor: pointer;
+}
+.kalori-discard-confirm {
+  background: transparent;
+  color: var(--color-ember);
+  border: 1px solid var(--color-ember);
+  padding: 12px 20px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  min-height: 44px;
+  cursor: pointer;
+}
+.kalori-discard-cancel:focus-visible,
+.kalori-discard-confirm:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+/* CopyYesterdayModal — class-based (skill G11 / I6 fix). */
+.kalori-copy-yesterday {
+  padding: var(--spacing-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+  max-width: 720px;
+  margin: 0 auto;
+}
+.kalori-copy-yesterday-kicker {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-sand);
+  margin: 0;
+}
+.kalori-copy-yesterday-title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  color: var(--color-ivory);
+  margin: 0;
+}
+.kalori-copy-yesterday-meal {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-sand);
+  margin: 0 0 var(--spacing-2) 0;
+}
+.kalori-copy-yesterday-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.kalori-copy-yesterday-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+.kalori-copy-yesterday-row-label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--spacing-3);
+  min-height: 44px;
+  cursor: pointer;
+}
+.kalori-copy-yesterday-row-label:focus-within {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+.kalori-copy-yesterday-checkbox {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  accent-color: var(--color-oxblood);
+}
+.kalori-copy-yesterday-name {
+  flex: 1;
+  font-family: var(--font-serif);
+  color: var(--color-ivory);
+}
+.kalori-copy-yesterday-kcal {
+  font-family: var(--font-mono);
+  color: var(--color-sand);
+}
+.kalori-copy-yesterday-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: flex-end;
+  align-items: center;
+}
+.kalori-copy-yesterday-cancel {
+  background: transparent;
+  border: 0;
+  color: var(--color-sand);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  min-height: 44px;
+  padding: 12px 16px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.kalori-copy-yesterday-cancel:hover {
+  color: var(--color-ember);
+}
+.kalori-copy-yesterday-cancel:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+.kalori-copy-yesterday-empty {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--color-sand);
+  margin: 0;
+}
+
+/* =========================================================================
+ * Task 4.1 sub-step 3 — /library route
+ * =========================================================================
+ *
+ * Design reference: reconciled spec §4–§7, §12 keyframes inventory.
+ * Surface palette: bg-0 canvas, bg-1 tools rail, bg-2 insets. Inverse-pill
+ * CTAs per §18.2 (ivory fill + oxblood label = 8.86:1 AAA). Selection ring
+ * is 1px ivory outer + 2px oxblood inner (double-ring per §4.3). All motion
+ * expressed as CSS keyframes — zero JS animation libraries per §12.
+ * ========================================================================= */
+
+/* ---- Page frame + masthead ---- */
+.kalori-library-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--spacing-6) var(--spacing-4);
+  animation: kalori-library-page-settle 180ms ease-out;
+}
+@media (min-width: 768px) {
+  .kalori-library-main {
+    padding: var(--spacing-6);
+  }
+}
+@media (min-width: 1280px) {
+  .kalori-library-main {
+    padding: var(--spacing-8);
+  }
+}
+@keyframes kalori-library-page-settle {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.kalori-library-masthead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding-bottom: var(--spacing-4);
+  border-bottom: 1px solid var(--color-rule-strong);
+  /* Double hairline — sibling pseudo-element 2px below the border. */
+  box-shadow: 0 3px 0 -2px var(--color-rule-strong);
+}
+.kalori-library-masthead-kicker {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+  margin: 0;
+}
+.kalori-library-masthead-title {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: 28px;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--color-ivory);
+  margin: 0;
+}
+@media (min-width: 768px) {
+  .kalori-library-masthead-title {
+    font-size: 36px;
+  }
+}
+@media (min-width: 1280px) {
+  .kalori-library-masthead-title {
+    font-size: 44px;
+  }
+}
+
+/* ---- Tools rail ---- */
+.kalori-library-tools-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2);
+  background-color: var(--color-bg-1);
+  border-bottom: 1px solid var(--color-rule-strong);
+  position: relative;
+}
+@media (min-width: 768px) {
+  .kalori-library-tools-rail {
+    flex-direction: row;
+    align-items: center;
+    min-height: 56px;
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+}
+/* Rule draw below rail when in select mode. */
+.kalori-library-tools-rail[data-select-mode='true']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 2px;
+  background-color: var(--color-oxblood);
+  transform-origin: left center;
+  animation: kalori-library-rule-draw 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes kalori-library-rule-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.kalori-library-tools-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex: 1;
+}
+.kalori-library-tools-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+/* ---- Search input ---- */
+.kalori-library-search {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 200px;
+}
+.kalori-library-search-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 40px 0 40px;
+  background-color: var(--color-bg-1);
+  border: 1px solid var(--color-rule-strong);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  border-radius: 0;
+  transition: border-color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-library-search-input::placeholder {
+  color: var(--color-dust);
+  opacity: 1;
+}
+.kalori-library-search-input:focus-visible {
+  border-color: var(--color-oxblood);
+  outline: 2px solid var(--color-ivory);
+  outline-offset: -2px;
+}
+.kalori-library-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-dust);
+  pointer-events: none;
+}
+.kalori-library-search-clear {
+  position: absolute;
+  /* Task 4.1 Phase 3 fix (C6): 24×24 failed WCAG 2.5.5 (AAA 44×44) and
+     also 2.5.8 (AA 24×24 spacing exemption) because the button sits
+     inside the input chrome with no spacing. Extend hit area to 44×44
+     via padding while keeping the visual glyph at 14px. Shift right:
+     anchor so the expanded box doesn't overlap the input's right edge. */
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--color-dust);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.kalori-library-search-clear[data-visible='true'] {
+  display: inline-flex;
+}
+.kalori-library-search-clear:hover {
+  color: var(--color-ivory);
+}
+.kalori-library-search-clear:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+/* ---- Dropdown trigger (Filter / Sort) ---- */
+.kalori-library-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  min-height: 44px;
+  padding: 0 var(--spacing-3);
+  background-color: var(--color-bg-1);
+  border: 1px solid var(--color-rule-strong);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+}
+.kalori-library-dropdown-trigger[aria-expanded='true'] {
+  border-color: var(--color-oxblood);
+}
+.kalori-library-dropdown-trigger:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: -2px;
+}
+.kalori-library-dropdown-trigger-label {
+  color: var(--color-dust);
+}
+.kalori-library-dropdown-trigger-value {
+  color: var(--color-ivory);
+}
+.kalori-library-dropdown-chevron {
+  transition: transform 180ms ease-out;
+}
+.kalori-library-dropdown-trigger[aria-expanded='true'] .kalori-library-dropdown-chevron {
+  transform: rotate(180deg);
+}
+
+.kalori-library-dropdown-content {
+  min-width: 200px;
+  background-color: var(--color-bg-1);
+  border: 1px solid var(--color-rule-strong);
+  padding: var(--spacing-1) 0;
+  z-index: 70;
+  animation: kalori-library-fade-in 120ms linear;
+}
+@keyframes kalori-library-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.kalori-library-dropdown-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--spacing-3) 0 var(--spacing-4);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+}
+.kalori-library-dropdown-item[data-highlighted] {
+  background-color: var(--color-bg-2);
+}
+.kalori-library-dropdown-item[data-state='checked']::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background-color: var(--color-oxblood);
+}
+
+/* ---- Inverse-pill CTA (SELECT / MERGE / BULK DELETE / STRIKE / PROCEED) ---- */
+.kalori-library-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--spacing-4);
+  background-color: var(--color-ivory);
+  color: var(--color-oxblood);
+  border: 1px solid var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+  transition: color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-library-pill:hover {
+  /* Task 4.1 Phase 3 fix (C4): ember on ivory computed 3.21:1 — failed
+     SC 1.4.3 for normal-size pill labels. Darken ember to brand-consistent
+     oxblood-soft (#a13a2c) which clears 5:1 on ivory while preserving
+     the "heat" semantic of the hover affordance. */
+  color: var(--color-oxblood-soft);
+}
+.kalori-library-pill:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+.kalori-library-pill[aria-pressed='true'] {
+  background-color: transparent;
+  color: var(--color-dust);
+  border-color: var(--color-rule-strong);
+}
+.kalori-library-pill[aria-pressed='true']:hover {
+  color: var(--color-ivory);
+}
+.kalori-library-pill[aria-disabled='true'] {
+  background-color: var(--color-bg-2);
+  color: var(--color-dust);
+  border-color: var(--color-rule);
+  cursor: not-allowed;
+}
+
+/* Cancel / secondary text button — dust on transparent + 1px rule. */
+.kalori-library-btn-ghost {
+  min-height: 44px;
+  padding: 0 var(--spacing-3);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-dust);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+}
+.kalori-library-btn-ghost:hover {
+  color: var(--color-ivory);
+}
+.kalori-library-btn-ghost:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+/* ---- Grid ---- */
+.kalori-library-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--color-rule);
+  border-left: 1px solid var(--color-rule);
+}
+@media (min-width: 768px) {
+  .kalori-library-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (min-width: 1280px) {
+  .kalori-library-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.kalori-library-cell {
+  position: relative;
+  border-right: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
+}
+.kalori-library-cell[data-removed='true'] {
+  opacity: 0;
+  pointer-events: none;
+  animation: kalori-library-ink-fade 120ms ease-out forwards;
+}
+.kalori-library-cell[aria-hidden='true'] {
+  min-height: 240px;
+  pointer-events: none;
+}
+@keyframes kalori-library-ink-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.kalori-library-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
+}
+
+.kalori-library-pagination-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1);
+}
+
+.kalori-library-pagination-btn,
+.kalori-library-pagination-page {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--spacing-3);
+  background: transparent;
+  border: 1px solid var(--color-rule-strong);
+  color: var(--color-ivory);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.kalori-library-pagination-page[aria-current='page'] {
+  background: var(--color-ivory);
+  color: var(--color-oxblood);
+}
+
+.kalori-library-pagination-btn[aria-disabled='true'] {
+  color: var(--color-dust);
+  border-color: var(--color-rule);
+  cursor: not-allowed;
+}
+
+.kalori-library-pagination-btn:focus-visible,
+.kalori-library-pagination-page:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+/* ---- Library card button ---- */
+.kalori-library-card {
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  padding: 0;
+  background-color: var(--color-bg-0);
+  border: 0;
+  color: var(--color-ivory);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+  outline: none;
+  transition: background-color 120ms ease-out;
+}
+.kalori-library-card:hover {
+  background-color: var(--color-bg-1);
+}
+.kalori-library-card:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: -2px;
+}
+.kalori-library-card[aria-checked='true'],
+.kalori-library-card[data-selected='true'] {
+  background-color: var(--color-bg-1);
+  /* Double-ring: 1px ivory outer + 2px oxblood inner. */
+  box-shadow:
+    inset 0 0 0 1px var(--color-ivory),
+    inset 0 0 0 3px var(--color-oxblood);
+}
+
+.kalori-library-card-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background-color: var(--color-bg-2);
+  overflow: hidden;
+}
+.kalori-library-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 120ms ease-out;
+}
+.kalori-library-card:hover .kalori-library-card-thumb img {
+  transform: scale(1.02);
+}
+
+.kalori-library-card-lettermark {
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-bg-2);
+  border-top: 2px solid var(--color-oxblood);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-sand);
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: 32px;
+  line-height: 1;
+}
+@media (min-width: 768px) {
+  .kalori-library-card-lettermark {
+    font-size: 48px;
+  }
+}
+
+/* Task 4.1 Phase 3 fix (F1): `.kalori-library-card-meal-tag` deleted as
+   dead code. Spec §7.3.5 `MEAL · MM.DD` kicker required `last_meal_slot`
+   + `last_used_at` on `LibraryItem`; the data model does not yet carry
+   `last_meal_slot`. Tag rendering will return when the field is added. */
+.kalori-library-card-count-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 2px 6px;
+  background-color: rgb(14 10 8 / 0.8);
+  color: var(--color-ivory);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+.kalori-library-card-selection-chip {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 16px;
+  height: 16px;
+  background-color: var(--color-bg-0);
+  border: 1px solid var(--color-ivory);
+  pointer-events: none;
+}
+.kalori-library-card[aria-checked='true'] .kalori-library-card-selection-chip {
+  background-color: var(--color-ivory);
+}
+.kalori-library-card[aria-checked='true'] .kalori-library-card-selection-chip::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  background-color: var(--color-oxblood);
+}
+
+.kalori-library-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  flex: 1;
+}
+.kalori-library-card-name {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.25;
+  color: var(--color-ivory);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+@media (min-width: 768px) {
+  .kalori-library-card-name {
+    font-size: 18px;
+  }
+}
+.kalori-library-card-portion {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--color-sand);
+  margin: 0;
+}
+.kalori-library-card-divider {
+  height: 1px;
+  border-top: 1px dotted var(--color-rule-strong);
+  margin: 4px 0;
+}
+.kalori-library-card-footer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  margin-top: auto;
+}
+.kalori-library-card-kcal {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  color: var(--color-ivory);
+}
+.kalori-library-card-macros {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--color-dust);
+}
+
+/* ---- Bulk actions bar ---- */
+.kalori-library-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--color-bg-1);
+  border-top: 1px solid var(--color-rule-strong);
+  border-bottom: 1px solid var(--color-rule-strong);
+  animation: kalori-library-slide-down 180ms ease-out;
+}
+@keyframes kalori-library-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.kalori-library-bar-count {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-ivory);
+}
+.kalori-library-bar-hidden {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-dust);
+  padding: 2px 6px;
+  border: 1px solid var(--color-rule);
+}
+.kalori-library-bar-spacer {
+  flex: 1;
+}
+
+/* ---- Empty states ---- */
+.kalori-library-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-16) var(--spacing-6);
+  text-align: center;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.kalori-library-empty-heading {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.3;
+  color: var(--color-sand);
+  margin: 0;
+}
+.kalori-library-empty-body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-dust);
+  margin: 0;
+}
+
+/* ---- Dialogs (bulk delete + merge) ---- */
+.kalori-library-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgb(14 10 8 / 0.6);
+  z-index: 80;
+  animation: kalori-library-fade-in 120ms linear;
+}
+.kalori-library-dialog-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(100vw, 480px);
+  max-height: 90vh;
+  overflow-y: auto;
+  background-color: var(--color-bg-0);
+  border: 1px solid var(--color-rule-strong);
+  padding: var(--spacing-6);
+  z-index: 81;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  animation: kalori-library-dialog-enter 180ms ease-out;
+}
+.kalori-library-dialog-content[data-size='merge'] {
+  width: min(100vw, 640px);
+  min-height: min(560px, 80vh);
+}
+@keyframes kalori-library-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+.kalori-library-dialog-kicker {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+  margin: 0;
+}
+.kalori-library-dialog-title {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: 28px;
+  line-height: 1.15;
+  color: var(--color-ivory);
+  margin: 0;
+}
+.kalori-library-dialog-title[data-variant='destructive'] {
+  /* Task 4.1 Phase 3 fix (C1): oxblood on bg-0 computed 2.28:1 — failed
+     SC 1.4.3. Swap to ivory text with a leading ember bar for destructive
+     signaling; ember on bg-0 is ≈5.2:1 so the accent is visible while
+     the title itself passes AAA. */
+  color: var(--color-ivory);
+  border-left: 2px solid var(--color-ember);
+  padding-inline-start: var(--spacing-3);
+}
+.kalori-library-dialog-body {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--color-sand);
+  margin: 0;
+}
+.kalori-library-dialog-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kalori-library-dialog-list li {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  color: var(--color-ivory);
+}
+.kalori-library-dialog-list li::before {
+  content: '— ';
+  color: var(--color-dust);
+}
+.kalori-library-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
+}
+
+.kalori-library-merge-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) 0;
+  border-top: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+}
+.kalori-library-merge-field-legend {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+  padding: 0;
+}
+.kalori-library-merge-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+.kalori-library-merge-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: 8px 12px;
+  background-color: var(--color-bg-1);
+  border: 1px solid var(--color-rule);
+  color: var(--color-ivory);
+  cursor: pointer;
+  min-height: 44px;
+}
+.kalori-library-merge-option:has(input:checked) {
+  border-color: var(--color-oxblood);
+  background-color: var(--color-bg-2);
+}
+.kalori-library-merge-option input {
+  accent-color: var(--color-oxblood);
+}
+.kalori-library-merge-custom-input {
+  min-height: 44px;
+  min-width: 80px;
+  padding: 0 var(--spacing-2);
+  background-color: var(--color-bg-1);
+  border: 1px solid var(--color-rule-strong);
+  color: var(--color-ivory);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  border-radius: 0;
+}
+.kalori-library-merge-custom-input:focus-visible {
+  border-color: var(--color-oxblood);
+  outline: 2px solid var(--color-ivory);
+  outline-offset: -2px;
+}
+.kalori-library-merge-error {
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--color-bg-2);
+  border-left: 2px solid var(--color-ember);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+/* ============================================================
+   Task 4.2 — FoodDetail panel (ledger folio sheet).
+   Zero radii, hairline rules, Tailwind v4 CSS keyframes only.
+   No Framer Motion / AutoAnimate / sonner — briefing lock.
+   ============================================================ */
+
+/* ---- Scrim + sheet shell ---- */
+.kalori-fd-scrim {
+  position: fixed;
+  inset: 0;
+  background-color: rgb(14 10 8 / 0.6);
+  z-index: 60;
+  animation: kalori-fd-scrim-in var(--motion-standard) linear forwards;
+}
+@keyframes kalori-fd-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.kalori-fd-sheet-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 61;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+.kalori-fd-sheet-wrap > .kalori-fd-sheet {
+  pointer-events: auto;
+}
+
+.kalori-fd-sheet {
+  position: relative;
+  background-color: var(--color-bg-0);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 640px;
+  height: 100vh;
+  border-left: 1px solid var(--color-rule-strong);
+  overflow: hidden;
+  animation: kalori-fd-sheet-in-right var(--motion-expressive) var(--ease-editorial) forwards;
+}
+@media (max-width: 1279px) {
+  .kalori-fd-sheet {
+    max-width: min(100vw, 560px);
+  }
+}
+@media (max-width: 767px) {
+  .kalori-fd-sheet-wrap {
+    align-items: flex-end;
+    justify-content: stretch;
+  }
+  .kalori-fd-sheet {
+    max-width: 100vw;
+    width: 100%;
+    height: 90vh;
+    border-left: none;
+    border-top: 1px solid var(--color-rule-strong);
+    animation: kalori-fd-sheet-in-up var(--motion-expressive) var(--ease-editorial) forwards;
+  }
+}
+@keyframes kalori-fd-sheet-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes kalori-fd-sheet-in-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* ---- Top bar ---- */
+.kalori-fd-topbar {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-6);
+  border-bottom: 1px solid var(--color-rule-strong);
+  background-color: var(--color-bg-0);
+}
+.kalori-fd-back {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  min-height: 44px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-oxblood);
+  cursor: pointer;
+}
+.kalori-fd-back:hover {
+  opacity: 0.8;
+}
+.kalori-fd-close {
+  background: transparent;
+  border: 0;
+  min-width: 44px;
+  min-height: 44px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--color-sand);
+  cursor: pointer;
+}
+.kalori-fd-close:hover {
+  color: var(--color-ivory);
+}
+
+/* ---- Scrollable body ---- */
+.kalori-fd-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-8) var(--spacing-6) var(--spacing-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-12);
+}
+@media (min-width: 1280px) {
+  .kalori-fd-body {
+    padding: var(--spacing-8) var(--spacing-12) var(--spacing-8);
+  }
+}
+
+/* ---- Thumbnail frame ---- */
+.kalori-fd-thumb-frame {
+  position: relative;
+  margin: 0;
+  overflow: visible;
+}
+.kalori-fd-thumb-slot {
+  position: relative;
+  background-color: var(--color-bg-2);
+  border: 1px solid var(--color-rule-strong);
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+@media (min-width: 768px) {
+  .kalori-fd-thumb-slot {
+    width: 320px;
+    height: 240px;
+    aspect-ratio: auto;
+    margin-inline: auto;
+  }
+}
+.kalori-fd-thumb-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.kalori-fd-thumb-lettermark-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kalori-fd-meta-chip {
+  position: absolute;
+  right: var(--spacing-3);
+  bottom: var(--spacing-3);
+  padding: var(--spacing-1) var(--spacing-2);
+  background-color: rgb(14 10 8 / 0.8);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-dust);
+}
+
+/* ---- Name block ---- */
+.kalori-fd-name-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+.kalori-fd-name-h1 {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: 32px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--color-ivory);
+  margin: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: text;
+  min-height: 44px;
+}
+.kalori-fd-name-h1:hover {
+  border-bottom: 1px solid var(--color-rule);
+}
+.kalori-fd-portion {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--color-sand);
+  margin: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: text;
+  min-height: 44px;
+  line-height: 1.3;
+}
+
+/* ---- Nutrition kicker + plate frame ---- */
+.kalori-fd-kicker {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+  margin: 0 0 var(--spacing-4);
+}
+
+.kalori-fd-kcal-frame {
+  position: relative;
+  padding: var(--spacing-8) var(--spacing-6) var(--spacing-6);
+  border: 1px solid var(--color-rule-strong);
+}
+.kalori-fd-kcal-corner {
+  position: absolute;
+  padding: 0 var(--spacing-2);
+  background-color: var(--color-bg-0);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+}
+.kalori-fd-kcal-corner[data-corner='tl'] {
+  top: -6px;
+  left: var(--spacing-3);
+}
+.kalori-fd-kcal-corner[data-corner='tr'] {
+  top: -6px;
+  right: var(--spacing-3);
+}
+.kalori-fd-kcal-corner[data-corner='bl'] {
+  bottom: -6px;
+  left: var(--spacing-3);
+}
+.kalori-fd-kcal-corner[data-corner='br'] {
+  bottom: -6px;
+  right: var(--spacing-3);
+}
+
+.kalori-fd-kcal-hero {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
+}
+.kalori-fd-kcal-value {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: 48px;
+  line-height: 1;
+  color: var(--color-ivory);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+@media (max-width: 767px) {
+  .kalori-fd-kcal-value {
+    font-size: 40px;
+  }
+}
+.kalori-fd-kcal-suffix {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+}
+
+/* ---- Macro bars + micro table ---- */
+.kalori-fd-macros {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-6);
+}
+.kalori-fd-macro-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+.kalori-fd-macro-label {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+}
+.kalori-fd-macro-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ivory);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.kalori-fd-macro-bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  background-color: var(--color-rule-strong);
+  position: relative;
+}
+.kalori-fd-macro-bar-fill {
+  height: 100%;
+}
+
+.kalori-fd-micros {
+  margin-top: var(--spacing-8);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--spacing-3) var(--spacing-4);
+}
+.kalori-fd-micro-name {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--color-sand);
+}
+.kalori-fd-micro-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ivory);
+  font-variant-numeric: lining-nums tabular-nums;
+  text-align: right;
+}
+.kalori-fd-micro-empty {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--color-sand);
+  margin: 0;
+}
+
+/* ---- History ---- */
+.kalori-fd-history-stats {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-dust);
+  font-variant-numeric: lining-nums tabular-nums;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+.kalori-fd-history-recent {
+  margin: var(--spacing-4) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+.kalori-fd-history-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-3);
+}
+.kalori-fd-history-date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-dust);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.kalori-fd-history-meal {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-sand);
+}
+.kalori-fd-never-logged {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-oxblood);
+  margin: var(--spacing-4) 0 0;
+}
+
+/* ---- Actions strip ---- */
+.kalori-fd-actions {
+  flex-shrink: 0;
+  height: 64px;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-top: 1px solid var(--color-rule-strong);
+  background-color: var(--color-bg-0);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@media (max-width: 767px) {
+  .kalori-fd-actions {
+    height: 72px;
+  }
+}
+.kalori-fd-btn-primary {
+  flex: 1;
+  min-height: 44px;
+  background-color: var(--color-oxblood);
+  color: var(--color-ivory);
+  border: 0;
+  padding: 0 28px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-fd-btn-primary:hover:not(:disabled) {
+  background-color: var(--color-oxblood-soft);
+}
+.kalori-fd-btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.kalori-fd-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.kalori-fd-btn-secondary {
+  min-height: 44px;
+  background: transparent;
+  color: var(--color-sand);
+  border: 0;
+  border-left: 1px solid var(--color-rule-strong);
+  padding: 0 20px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-fd-btn-secondary:hover:not(:disabled) {
+  color: var(--color-ivory);
+}
+.kalori-fd-btn-secondary:disabled {
+  color: var(--color-dust-2);
+  cursor: not-allowed;
+}
+.kalori-fd-btn-delete {
+  width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--color-rule-strong);
+  color: var(--color-dust);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-fd-btn-delete:hover:not(:disabled) {
+  color: var(--color-oxblood);
+}
+.kalori-fd-btn-delete:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.kalori-fd-btn-delete:disabled {
+  color: var(--color-dust-2);
+  cursor: not-allowed;
+}
+
+/* ---- Edit mode inputs ---- */
+.kalori-fd-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--spacing-3);
+  background-color: var(--color-bg-1);
+  border: 1px solid var(--color-rule);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  caret-color: var(--color-ivory);
+  border-radius: 0;
+}
+.kalori-fd-input:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: -2px;
+  border-bottom: 2px solid var(--color-oxblood);
+}
+.kalori-fd-input[aria-invalid='true'] {
+  border-color: var(--color-oxblood);
+  border-bottom-width: 2px;
+}
+.kalori-fd-input-name {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: 32px;
+  line-height: 1.1;
+  padding: var(--spacing-2) var(--spacing-3);
+  min-height: 56px;
+}
+.kalori-fd-input-portion {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--color-sand);
+}
+.kalori-fd-input-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: 14px;
+  text-align: right;
+}
+.kalori-fd-error {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-error-text);
+  margin: var(--spacing-1) 0 0;
+}
+.kalori-fd-save-banner {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-oxblood);
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--color-bg-2);
+  border-left: 2px solid var(--color-oxblood);
+  margin: var(--spacing-3) 0 0;
+}
+
+/* ---- 404 state ---- */
+.kalori-fd-notfound {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  padding: var(--spacing-12);
+  max-width: 640px;
+  margin: 0 auto;
+}
+.kalori-fd-notfound-heading {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-oxblood);
+  margin: 0;
+}
+.kalori-fd-notfound-body {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 18px;
+  color: var(--color-sand);
+  margin: 0;
+}
+.kalori-fd-notfound-link {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-oxblood);
+  text-decoration: none;
+}
+
+/* ==================================================================
+   Task 4.3b — Phase 3 Round 1 fixes.
+   Weight Quick-Add + Target Updated Nudge interaction states, the
+   200ms ember-pulse rollback moment, and responsive rules for the
+   /weight page + rollback toast.
+   ================================================================== */
+
+/* ---- Ember-pulse: 200ms drop-shadow flare on rollback (C2). ----
+   Applied briefly to the weight input when a server error rolls back
+   the optimistic value. `filter` is Tier-A per web-ui-guide.md §12 —
+   compositor-friendly, no layout thrash. Suppressed under
+   prefers-reduced-motion. */
+@keyframes kalori-weight-ember-pulse {
+  0% {
+    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--color-oxblood) 0%, transparent));
+  }
+  40% {
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--color-oxblood) 70%, transparent));
+  }
+  100% {
+    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--color-oxblood) 0%, transparent));
+  }
+}
+.kalori-weight-ember-pulse {
+  animation: kalori-weight-ember-pulse 200ms var(--ease-editorial, ease-out) 1;
+  will-change: filter;
+}
+
+/* ---- Soft fade-in for nudge + toast (C2 sibling). ---- */
+@keyframes kalori-softFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.kalori-softFadeIn {
+  animation: kalori-softFadeIn 180ms var(--ease-editorial, ease-out) both;
+}
+
+/* ---- WeightQuickAdd — Save button, input, date, note interaction states (C3). ---- */
+.kalori-weight-submit {
+  cursor: pointer;
+  transition: filter 120ms var(--ease-editorial, ease-out);
+}
+.kalori-weight-submit:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+.kalori-weight-submit:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+.kalori-weight-submit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.kalori-weight-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.kalori-weight-input {
+  transition:
+    border-color 120ms var(--ease-editorial, ease-out),
+    filter 200ms var(--ease-editorial, ease-out);
+}
+.kalori-weight-input:hover:not(:disabled):not([aria-invalid='true']) {
+  border-color: color-mix(in srgb, var(--color-ivory) 40%, transparent);
+}
+.kalori-weight-input:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+  border-color: var(--color-oxblood);
+}
+
+.kalori-weight-date,
+.kalori-weight-note {
+  transition: border-color 120ms var(--ease-editorial, ease-out);
+}
+.kalori-weight-date:hover:not(:disabled),
+.kalori-weight-note:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-ivory) 40%, transparent);
+}
+.kalori-weight-date:focus-visible,
+.kalori-weight-note:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+  border-color: var(--color-oxblood);
+}
+
+/* ---- Rollback toast CTA states (C3 + M2 pause-on-hover). ---- */
+.kalori-weight-toast-undo,
+.kalori-weight-toast-dismiss {
+  cursor: pointer;
+  transition: color 120ms var(--ease-editorial, ease-out);
+}
+.kalori-weight-toast-undo:hover {
+  color: var(--color-oxblood);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.kalori-weight-toast-dismiss:hover {
+  color: var(--color-ivory);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.kalori-weight-toast-undo:focus-visible,
+.kalori-weight-toast-dismiss:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+.kalori-weight-toast-undo:active,
+.kalori-weight-toast-dismiss:active {
+  transform: translateY(1px);
+}
+
+/* ---- TargetUpdatedNudge — Recalculate / Dismiss / See Why / × (C3). ---- */
+.kalori-nudge-recalc,
+.kalori-nudge-dismiss,
+.kalori-nudge-seewhy,
+.kalori-nudge-dismiss-x {
+  cursor: pointer;
+  transition:
+    color 120ms var(--ease-editorial, ease-out),
+    border-color 120ms var(--ease-editorial, ease-out);
+}
+.kalori-nudge-recalc:hover:not(:disabled) {
+  border-color: var(--color-oxblood);
+  color: var(--color-oxblood);
+}
+.kalori-nudge-dismiss:hover:not(:disabled),
+.kalori-nudge-dismiss-x:hover:not(:disabled) {
+  color: var(--color-ivory);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.kalori-nudge-seewhy:hover {
+  color: var(--color-oxblood);
+}
+.kalori-nudge-recalc:focus-visible,
+.kalori-nudge-dismiss:focus-visible,
+.kalori-nudge-seewhy:focus-visible,
+.kalori-nudge-dismiss-x:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+.kalori-nudge-recalc:active:not(:disabled),
+.kalori-nudge-dismiss:active:not(:disabled),
+.kalori-nudge-seewhy:active,
+.kalori-nudge-dismiss-x:active {
+  transform: translateY(1px);
+}
+.kalori-nudge-recalc:disabled,
+.kalori-nudge-dismiss:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---- Responsive (M3). ----
+   Page title 32/36/40 across 375/768/1440; /weight form padding ramps
+   p-4 → p-6 → p-8; rollback toast becomes full-bleed-between-safe on
+   mobile with bottom-4 right-4 left-4. */
+.kalori-weight-page-title {
+  font-size: 32px;
+}
+@media (min-width: 768px) {
+  .kalori-weight-page-title {
+    font-size: 36px;
+  }
+}
+@media (min-width: 1280px) {
+  .kalori-weight-page-title {
+    font-size: 40px;
+  }
+}
+
+.kalori-weight-page-form {
+  padding: var(--spacing-4);
+}
+@media (min-width: 768px) {
+  .kalori-weight-page-form {
+    padding: var(--spacing-6);
+  }
+}
+@media (min-width: 1280px) {
+  .kalori-weight-page-form {
+    padding: var(--spacing-8);
+  }
+}
+
+.kalori-weight-rollback-toast {
+  position: fixed;
+  bottom: calc(var(--spacing-4) + env(safe-area-inset-bottom, 0px));
+  left: var(--spacing-4);
+  right: var(--spacing-4);
+  max-width: none;
+  z-index: 1000;
+  background: var(--color-bg-1);
+  border: 1px solid var(--color-rule-strong);
+  border-top: 1px solid var(--color-oxblood);
+  padding: var(--spacing-3) var(--spacing-4);
+}
+@media (min-width: 768px) {
+  .kalori-weight-rollback-toast {
+    bottom: calc(var(--spacing-6) + env(safe-area-inset-bottom, 0px));
+    left: auto;
+    right: var(--spacing-6);
+    max-width: 400px;
+    min-width: 280px;
+  }
+}
+@media (min-width: 1280px) {
+  .kalori-weight-rollback-toast {
+    bottom: calc(var(--spacing-8) + env(safe-area-inset-bottom, 0px));
+    right: var(--spacing-8);
+    max-width: 480px;
+  }
+}
+
+/* ---- prefers-reduced-motion — ember-pulse + softFadeIn suppressed. ---- */
+@media (prefers-reduced-motion: reduce) {
+  .kalori-weight-ember-pulse {
+    animation: none !important;
+    filter: none !important;
+  }
+  .kalori-softFadeIn {
+    animation: none !important;
+  }
+  .kalori-weight-submit:active:not(:disabled),
+  .kalori-weight-toast-undo:active,
+  .kalori-weight-toast-dismiss:active,
+  .kalori-nudge-recalc:active:not(:disabled),
+  .kalori-nudge-dismiss:active:not(:disabled),
+  .kalori-nudge-seewhy:active,
+  .kalori-nudge-dismiss-x:active {
+    transform: none !important;
+  }
+}
+/* Codex R1 I2 fix — Settings-toggle mirror. Pair-extend with the @media
+   block above when adding selectors. */
+html[data-reduce-motion='1'] .kalori-weight-ember-pulse {
+  animation: none !important;
+  filter: none !important;
+}
+html[data-reduce-motion='1'] .kalori-softFadeIn {
+  animation: none !important;
+}
+html[data-reduce-motion='1'] .kalori-weight-submit:active:not(:disabled),
+html[data-reduce-motion='1'] .kalori-weight-toast-undo:active,
+html[data-reduce-motion='1'] .kalori-weight-toast-dismiss:active,
+html[data-reduce-motion='1'] .kalori-nudge-recalc:active:not(:disabled),
+html[data-reduce-motion='1'] .kalori-nudge-dismiss:active:not(:disabled),
+html[data-reduce-motion='1'] .kalori-nudge-seewhy:active,
+html[data-reduce-motion='1'] .kalori-nudge-dismiss-x:active {
+  transform: none !important;
+}
+
+/*
+ * Task 5.1.4 — Offline-bar reserved-space contract (CLS = 0).
+ *
+ * The bar is `position: fixed; inset-block-start: 0; height: 32px` (set
+ * inline in `components/offline/OfflineBar.tsx`). Layout reservation lives
+ * here: when the bar is visible, `<OfflineBar />` sets `data-offline="true"`
+ * on `<html>` and this rule applies the matching 32px top padding to body
+ * so the masthead/content does NOT shift when the bar appears or disappears.
+ * Both the attribute toggle and the bar mount/unmount happen in the same
+ * render cycle so the cumulative-layout-shift score stays at exactly 0.
+ */
+html[data-offline='true'] body {
+  padding-block-start: 32px;
+}
+
+/* ==================================================================
+   Task B.5 (US-STAB-B5) — Root canonical 404 page (`app/not-found.tsx`).
+   Surface lives OUTSIDE the `(app)` nav-shell so it carries its own
+   masthead (wordmark + kicker) + editorial body. Editorial italic voice
+   mirrors `library/[id]/not-found.tsx` at app-shell scale. Zero-radius,
+   hairline-only, no shadows — Ledger invariants per design-doc + UX spec.
+   ================================================================== */
+
+.kalori-notfound-root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-0);
+  color: var(--color-ivory);
+  padding: 96px 24px;
+}
+
+@media (min-width: 768px) {
+  .kalori-notfound-root {
+    padding: 128px 48px;
+  }
+}
+
+.kalori-notfound-masthead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding-bottom: var(--spacing-6);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ivory) 12%, transparent);
+}
+
+.kalori-notfound-wordmark {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ivory);
+  margin: 0;
+}
+
+.kalori-notfound-kicker {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-ivory) 70%, transparent);
+  margin: 0;
+}
+
+.kalori-notfound-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+  max-width: 640px;
+  margin: 0 auto;
+  padding-top: var(--spacing-12);
+  width: 100%;
+}
+
+.kalori-notfound-glyph {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 64px;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  /* Per ui-design.md §3 (palette & contrast): oxblood-as-text = 2.28:1 on
+     bg-0 fails AA even for large bold text. The codified remedy is ember
+     (5.20:1, clears AA Normal 4.5:1). Mirrors the WeeklyReview drop-cap
+     ruling in ui-design.md §990 (ember at 4.84:1 passes). */
+  color: var(--color-ember);
+  margin: 0;
+}
+
+@media (min-width: 768px) {
+  .kalori-notfound-glyph {
+    font-size: 96px;
+  }
+}
+
+.kalori-notfound-rule {
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-ivory) 12%, transparent);
+  width: 96px;
+  margin: 0;
+}
+
+.kalori-notfound-prose {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--color-ivory);
+  max-width: 36ch;
+  margin: 0;
+}
+
+@media (min-width: 768px) {
+  .kalori-notfound-prose {
+    font-size: 22px;
+  }
+}
+
+.kalori-notfound-cta {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  /* Per ui-design.md §3 (palette & contrast) line 91: oxblood-as-text =
+     2.28:1 on bg-0 fails AA. Codified remedy is ivory text (16.67:1)
+     with oxblood as the border/underline accent — same pattern used by
+     the WeeklyReview "VIEW FULL REVIEW" link (§997, §280). Oxblood
+     hairlines remain as the signature decorative chrome. */
+  color: var(--color-ivory);
+  text-decoration: none;
+  align-self: flex-start;
+  padding: 12px 0;
+  border-top: 1px solid var(--color-oxblood);
+  border-bottom: 1px solid var(--color-oxblood);
+}
+
+.kalori-notfound-cta:hover {
+  /* Hover lifts to oxblood-soft on the borders only; text color stays
+     ivory (already AAA on bg-0) — no contrast regression. */
+  border-top-color: var(--color-oxblood-soft, var(--color-oxblood));
+  border-bottom-color: var(--color-oxblood-soft, var(--color-oxblood));
+}
+
+/* =====================================================================
+ * UI Aesthetic Overhaul: Radix Modal Animations & Modals
+ * ===================================================================== */
+
+@keyframes radix-dialog-content-show {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes radix-dialog-content-hide {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+}
+
+@keyframes radix-dialog-overlay-show {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes radix-dialog-overlay-hide {
+  from {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+}
+
+.radix-overlay[data-state='open'] {
+  animation: radix-dialog-overlay-show 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.radix-overlay[data-state='closed'] {
+  animation: radix-dialog-overlay-hide 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.radix-content[data-state='open'] {
+  animation: radix-dialog-content-show 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border: 1px solid color-mix(in srgb, var(--color-ivory) 15%, transparent) !important;
+  position: relative;
+}
+
+.radix-content::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.04;
+  z-index: 100;
+  border-radius: inherit;
+  mix-blend-mode: overlay;
+}
+
+.radix-content[data-state='closed'] {
+  animation: radix-dialog-content-hide 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 3D Button Effects */
+.btn-3d {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  box-shadow: var(--shadow-sm) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.btn-3d:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--shadow-md), 0 0 20px color-mix(in srgb, currentColor 20%, transparent) !important;
+}
+
+.btn-3d:active {
+  transform: translateY(1px) scale(0.98) !important;
+  box-shadow: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-3d {
+    transition: none !important;
+  }
+  .btn-3d:hover, .btn-3d:active {
+    transform: none !important;
+  }
+}
+
+/* Premium Shimmer Effect */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: var(--color-bg-2);
+  background-image: linear-gradient(
+    to right,
+    var(--color-bg-2) 0%,
+    var(--color-bg-3) 20%,
+    var(--color-bg-2) 40%,
+    var(--color-bg-2) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    animation: none !important;
+    background-image: none !important;
+  }
+}

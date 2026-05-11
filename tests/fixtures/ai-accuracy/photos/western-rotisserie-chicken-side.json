@@ -1,0 +1,36 @@
+{
+  "name": "western-rotisserie-chicken-side",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "vision",
+  "input": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "rotisserie chicken quarter (with skin)",
+        "portion": 0.25,
+        "unit": "bird",
+        "kcal": 380,
+        "macros": {
+          "protein_g": 36,
+          "carbs_g": 0,
+          "fat_g": 26,
+          "fiber_g": 0
+        }
+      }
+    ],
+    "total": {
+      "kcal": 380,
+      "protein_g": 36,
+      "carbs_g": 0,
+      "fat_g": 26,
+      "fiber_g": 0
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Photo fixture — calibrated to western-smoke/rotisserie-chicken.json. Side-on plating shot. Path A: TINY_PNG_BASE64 input. Tests vision-pipeline tolerance band on a high-fat zero-carb item (carbs_g=0 + fiber_g=0 divide-by-zero edges)."
+}

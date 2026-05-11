@@ -1,0 +1,50 @@
+Issue Log
+
+1. Homepage should automatically open the dashboard
+- Currently, when the website starts, it only shows the main page/logo.
+- To access the actual site, I have to manually type /dashboard in the URL.
+- Expected behavior: the main site should automatically redirect to the dashboard without requiring manual URL editing.
+
+2. Minor nutrition elements are not calculated correctly
+- When I add new items, the system correctly calculates calories, protein, carbs, and fat.
+- However, the minor nutritional elements are not being calculated properly.
+- Expected behavior:
+  - All minor nutritional elements should be calculated correctly for all food and drink items.
+  - These values should be displayed properly.
+  - The system should also show the recommended daily amount for each minor element.
+
+3. New item entry form keeps previous recorded text
+- When I record a new item, the input window still shows the previous entry instead of starting blank.
+- Expected behavior: the text/input box should be empty by default every time I create a new entry.
+
+4. Newly added items are not saved to the library
+- When I add a new item, it is not added to the library.
+- Because of this, I cannot select or reuse that item later.
+- Expected behavior: every newly added item should automatically be saved to the library.
+
+5. Library management is incomplete
+- I cannot properly manage the item library.
+- Expected behavior:
+  - I should be able to see all recorded items in the library.
+  - I should be able to add new items.
+  - I should be able to edit/modify existing items.
+  - I should be able to remove/delete items.
+
+6. Verify all navigation and site functions
+- The site navigation bar should be fully checked.
+- All navigation links and site functions should work correctly as described.
+- Expected behavior: all pages, buttons, and functions should operate properly without broken navigation or missing functionality.
+
+7. At the settings menu I still see this: Settings arrive with Task 2.2.
+	This should not be there and the menu seems very minimalistic it has very little tweaks and settings so I want you to review this whole page against our plan 
+
+8. OK, so we have on the left side buttons for the menu. At the top is called navigation, but I cannot really press it. It doesn't do anything.
+
+It just says navigation. So can you check if it's supposed to do something or should we remove it? 
+
+9. On the production side, I logged in with my Gmail. It shows that in the settings, but on the bottom left it still shows dev user, probably from a cache, which is wrong. At sign out, we need to fix that as well. 
+
+10. At the library, it shows an empty library because I didn't log any food. But I would like to have library management at the library as well, so I would like to see the logged food. I would like to be able to delete, modify, and add.
+We need to check if that was part of the initial requirements or if it wasn't, we should add that. 
+
+11. I see that the progress shows "wait," but there is no option anywhere to add or modify "wait." As time goes on, we need to fix it as well and check if it was part of the original plan. 

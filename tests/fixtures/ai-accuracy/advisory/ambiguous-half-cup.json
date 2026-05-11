@@ -1,0 +1,36 @@
+{
+  "name": "ambiguous-half-cup",
+  "tier": "advisory",
+  "region": "western",
+  "callType": "text-parse",
+  "input": "half a cup of cottage cheese",
+  "expected": {
+    "itemCount": 1,
+    "items": [
+      {
+        "name": "cottage cheese (small curd, 2% milkfat)",
+        "portion": 0.5,
+        "unit": "cup",
+        "kcal": 90,
+        "macros": {
+          "protein_g": 13,
+          "carbs_g": 5,
+          "fat_g": 2,
+          "fiber_g": 0
+        }
+      }
+    ],
+    "total": {
+      "kcal": 90,
+      "protein_g": 13,
+      "carbs_g": 5,
+      "fat_g": 2,
+      "fiber_g": 0
+    }
+  },
+  "tolerance": {
+    "kcal_pct": 0.2,
+    "macro_pct": 0.3
+  },
+  "notes": "Edge: explicit-portion ambiguous-product (cottage cheese fat % unspecified). USDA FoodData Central #173414 (2% milkfat, lowfat): ~90 kcal per ½ cup serving. Advisory tier — fiber=0 + fat-pct-unspecified edge."
+}

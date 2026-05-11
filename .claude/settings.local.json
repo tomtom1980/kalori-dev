@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp \"C:/Users/tamas/.claude/lessonlearned.md\" \"C:/Users/tamas/.claude/lessonlearned-archive-2026-04-23.md\")",
+      "Read(//c/Users/tamas/.claude/**)"
+    ]
+  }
+}
