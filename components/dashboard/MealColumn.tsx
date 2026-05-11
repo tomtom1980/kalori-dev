@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * <MealColumn /> - dashboard meal category column.
  *

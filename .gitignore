@@ -56,3 +56,6 @@ Planning/*apikeys*.txt
 Planning/*secrets*.txt
 Planning/.tmp-*
 Planning/.tmp/
+
+.vercel
+.env*.local
