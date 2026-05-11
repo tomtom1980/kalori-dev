@@ -41,7 +41,27 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-import { isPublicRoute } from '@/lib/auth/public-routes';
+const PUBLIC_ROUTES: readonly string[] = [
+  '/',
+  '/login',
+  '/auth/callback',
+  '/api/auth',
+  '/sw.js',
+  '/manifest.json',
+  '/offline',
+] as const;
+
+function isPublicRoute(pathname: string): boolean {
+  for (const route of PUBLIC_ROUTES) {
+    if (route === '/') {
+      if (pathname === '/') return true;
+      continue;
+    }
+    if (pathname === route) return true;
+    if (pathname.startsWith(`${route}/`)) return true;
+  }
+  return false;
+}
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const response = NextResponse.next();
@@ -95,6 +115,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       },
     });
 
+    // @ts-expect-error - Vercel Edge TS compiler occasionally misses getSession on SupabaseAuthClient
     const { data } = await supabase.auth.getSession();
     hasSession = data.session !== null;
   } catch {
