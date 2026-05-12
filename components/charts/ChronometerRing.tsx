@@ -268,7 +268,6 @@ export function ChronometerRing({ data, timezone = 'UTC' }: ChronometerRingProps
         >
           <AnimatedNumber
             value={consumed}
-            formatValue={formatNumber}
             data-testid="chrono-consumed"
             className="num"
             style={{

@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 
 export interface AnimatedNumberProps {
   value: number;
-  formatValue?: (v: number) => string;
   className?: string;
   style?: React.CSSProperties;
   'data-testid'?: string;
@@ -13,7 +12,6 @@ export interface AnimatedNumberProps {
 
 export function AnimatedNumber({
   value,
-  formatValue,
   className,
   style,
   'data-testid': testId,
@@ -49,9 +47,7 @@ export function AnimatedNumber({
   }, [value, reduced]);
 
   const activeValue = reduced ? value : displayValue;
-  const formatted = formatValue
-    ? formatValue(Math.round(activeValue))
-    : Math.round(activeValue).toLocaleString('en-US');
+  const formatted = Math.round(activeValue).toLocaleString('en-US');
 
   return (
     <span className={className} style={style} data-testid={testId}>
