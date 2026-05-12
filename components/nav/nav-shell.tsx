@@ -42,6 +42,7 @@ import { useDashboardDateTransitionStore } from '@/lib/stores/useDashboardDateTr
 // user was already on the dashboard.
 import { announcePolite } from '@/lib/a11y/announce';
 import { authFetch } from '@/lib/auth/refresh-interceptor';
+import { m, motion, useReducedMotion } from '@/lib/motion/defaults';
 import { useUndoQueueStore } from '@/lib/stores/useUndoQueueStore';
 import { useWaterMutationStore } from '@/lib/stores/useWaterMutationStore';
 import { getDeviceTimeZone } from '@/lib/time/device-timezone';
@@ -148,6 +149,7 @@ export function NavShell({
   const clearDashboardDateLoading = useDashboardDateTransitionStore(
     (state) => state.clearLoadingDay,
   );
+  const reducedMotion = useReducedMotion();
   // Task A.2 + Codex Round 1 #3 — top-app-bar monogram comes from the
   // server-resolved DTO. Null/unauthenticated chrome mounts use the
   // ANONYMOUS_IDENTITY default → em-dash monogram.
@@ -388,7 +390,10 @@ export function NavShell({
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div
+      className="kalori-app-shell"
+      style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
+    >
       <a href="#app-main" className="kalori-skip-link" data-testid="skip-to-main">
         {t.nav.skipToMain}
       </a>
@@ -414,7 +419,8 @@ export function NavShell({
               userInitials={topBarInitials}
             />
           </div>
-          <main
+          <m.main
+            key={pathname}
             id="app-main"
             tabIndex={-1}
             className="kalori-page-main"
@@ -428,9 +434,12 @@ export function NavShell({
               // bottom tab bar hides at >=768.
               paddingBottom: 'calc(56px + env(safe-area-inset-bottom) + var(--spacing-16))',
             }}
+            initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={reducedMotion ? { duration: 0 } : motion.expressive}
           >
             {children}
-          </main>
+          </m.main>
         </div>
       </div>
 
@@ -463,6 +472,7 @@ export function NavShell({
           whatever route they tapped from.
         */}
         <div
+          className="kalori-fab-pair"
           style={{
             position: 'fixed',
             left: 'calc(50% - 60px)',

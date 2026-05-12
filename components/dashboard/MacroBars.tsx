@@ -126,6 +126,7 @@ function MacroRowView({ row, onOpen }: { row: MacroRow; onOpen: (row: MacroRow) 
         <button
           type="button"
           data-testid={`macro-row-${row.key}`}
+          className="kalori-macro-row"
           title={hoverText}
           aria-label={t.dashboard.macros.breakdownTriggerA11y
             .replace('{macro}', MACRO_LABEL_TITLE[row.key])

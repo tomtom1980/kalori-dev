@@ -28,6 +28,7 @@ export function BottomTabBar({ pathname }: BottomTabBarProps) {
     <nav
       aria-label={t.nav.a11y.primary}
       data-testid="bottom-tab-bar"
+      className="kalori-bottom-tab-bar"
       style={{
         position: 'fixed',
         left: 0,
@@ -53,6 +54,7 @@ export function BottomTabBar({ pathname }: BottomTabBarProps) {
             // components/nav/primary-destinations.ts)
             href={destination.href}
             data-testid={destination.testId}
+            className="kalori-bottom-tab-link"
             aria-current={active ? 'page' : undefined}
             style={{
               minWidth: '44px',

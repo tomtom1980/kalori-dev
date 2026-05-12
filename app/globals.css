@@ -784,6 +784,92 @@ html[data-reduce-motion='1'] .chart-tooltip {
   min-width: 0;
 }
 
+/* ---- Modern shell polish (UI redesign continuation) ----
+   These class hooks sit on shared chrome/card surfaces whose base geometry is
+   still owned by inline token styles. Keep this layer interaction-focused so
+   it does not fight layout or accessibility invariants. */
+.kalori-app-shell {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-bg-1) 38%, transparent),
+      transparent 22rem
+    ),
+    var(--color-bg-0);
+}
+
+.kalori-motion-card {
+  will-change: opacity, transform;
+}
+
+.kalori-top-app-bar,
+.kalori-bottom-tab-bar {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.kalori-sidebar,
+.kalori-top-app-bar,
+.kalori-bottom-tab-bar,
+.kalori-dashboard-masthead,
+.kalori-chart-card {
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-ivory) 5%, transparent);
+}
+
+.kalori-sidebar-link,
+.kalori-bottom-tab-link,
+.kalori-sidebar-signout,
+.kalori-fab,
+.kalori-macro-row,
+.kalori-chart-card {
+  transition:
+    background-color var(--motion-micro) var(--ease-editorial),
+    border-color var(--motion-micro) var(--ease-editorial),
+    color var(--motion-micro) var(--ease-editorial),
+    opacity var(--motion-micro) var(--ease-editorial),
+    transform var(--motion-micro) var(--ease-editorial);
+}
+
+.kalori-sidebar-link:hover,
+.kalori-bottom-tab-link:hover,
+.kalori-sidebar-signout:hover,
+.kalori-macro-row:hover {
+  background-color: color-mix(in srgb, var(--color-ivory) 7%, transparent) !important;
+  border-color: color-mix(in srgb, var(--color-ivory) 18%, transparent) !important;
+}
+
+.kalori-chart-card:hover {
+  border-color: color-mix(in srgb, var(--color-ivory) 22%, var(--color-rule-strong)) !important;
+}
+
+.kalori-fab:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.kalori-fab:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.kalori-fab-pair {
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.34));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kalori-motion-card,
+  .kalori-fab,
+  .kalori-fab-pair {
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+html[data-reduce-motion='1'] .kalori-motion-card,
+html[data-reduce-motion='1'] .kalori-fab,
+html[data-reduce-motion='1'] .kalori-fab-pair {
+  transform: none !important;
+  filter: none !important;
+}
+
 @media (min-width: 768px) {
   .nav-shell-sidebar {
     display: block;

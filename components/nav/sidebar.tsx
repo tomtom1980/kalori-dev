@@ -58,6 +58,7 @@ export interface SidebarProps {
 export function Sidebar({ pathname, identity = ANONYMOUS_IDENTITY }: SidebarProps) {
   return (
     <aside
+      className="kalori-sidebar"
       style={{
         width: '240px',
         minHeight: '100vh',
@@ -114,6 +115,7 @@ export function Sidebar({ pathname, identity = ANONYMOUS_IDENTITY }: SidebarProp
               // components/nav/primary-destinations.ts)
               href={destination.href}
               data-testid={destination.testId}
+              className="kalori-sidebar-link"
               aria-current={active ? 'page' : undefined}
               style={{
                 display: 'flex',
@@ -146,6 +148,7 @@ export function Sidebar({ pathname, identity = ANONYMOUS_IDENTITY }: SidebarProp
 function BrandRow() {
   return (
     <div
+      className="kalori-sidebar-brand"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -206,6 +209,7 @@ function UserStrip({ identity }: { identity: DisplayIdentity }) {
       <button
         type="button"
         aria-label={t.user.signOutA11y}
+        className="kalori-sidebar-signout"
         style={{
           minHeight: '44px',
           minWidth: '44px',

@@ -56,6 +56,7 @@ export function LogFAB({ variant = 'food', disabled = false, onClick }: LogFABPr
         type="button"
         aria-label={t.fab.logWaterA11y}
         data-testid="log-fab-water"
+        className="kalori-fab kalori-fab-water"
         disabled={disabled}
         onClick={onClick}
         style={{
@@ -104,6 +105,7 @@ export function LogFAB({ variant = 'food', disabled = false, onClick }: LogFABPr
       aria-label={t.fab.logFoodA11y}
       aria-haspopup="dialog"
       data-testid="log-fab-food"
+      className="kalori-fab kalori-fab-food"
       disabled={disabled}
       onClick={onClick}
       style={{

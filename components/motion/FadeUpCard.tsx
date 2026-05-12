@@ -1,24 +1,23 @@
 'use client';
 
-import { m, type MotionStyle } from 'framer-motion';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
-import { motion } from '@/lib/motion/defaults';
+import { m, motion } from '@/lib/motion/defaults';
 
 export interface FadeUpCardProps {
   children: ReactNode;
   delay?: number;
   className?: string;
-  style?: MotionStyle;
+  style?: ComponentProps<typeof m.div>['style'];
 }
 
 export function FadeUpCard({ children, delay = 0, className, style }: FadeUpCardProps) {
   return (
     <m.div
+      className={className ? `kalori-motion-card ${className}` : 'kalori-motion-card'}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...motion.standard, delay }}
-      {...(className ? { className } : {})}
       {...(style ? { style } : {})}
     >
       {children}

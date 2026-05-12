@@ -34,6 +34,7 @@ export function ChartCard(props: ChartCardProps) {
   return (
     <section
       data-testid={props.testid}
+      className="kalori-chart-card"
       role={props.role ?? 'region'}
       aria-labelledby={props.ariaLabelledBy ?? props.id}
       style={{

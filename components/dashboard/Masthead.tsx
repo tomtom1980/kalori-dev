@@ -33,6 +33,7 @@ export function Masthead({ edition, firstVisit }: MastheadProps) {
   return (
     <header
       data-testid="dashboard-masthead"
+      className="kalori-dashboard-masthead"
       style={{
         borderBottom: '1px solid var(--color-rule-strong)',
         paddingBlockEnd: 'var(--spacing-6)',

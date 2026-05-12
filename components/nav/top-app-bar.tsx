@@ -22,6 +22,7 @@ export function TopAppBar({ sectionKicker, editionLine, userInitials }: TopAppBa
   return (
     <header
       data-testid="top-app-bar"
+      className="kalori-top-app-bar"
       style={{
         height: '44px',
         display: 'flex',
