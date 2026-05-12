@@ -876,7 +876,7 @@ html[data-reduce-motion='1'] .chart-tooltip {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-4);
-  border-radius: 0;
+  border-radius: var(--radius-modal);
   overflow-y: auto;
   /* Full-sheet at mobile (<768). */
   width: 100vw;
@@ -975,7 +975,7 @@ html[data-reduce-motion='1'] .chart-tooltip {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: 0;
+  border-radius: var(--radius-pill);
   transition: color var(--motion-micro) var(--ease-editorial);
 }
 .kalori-log-close:hover {
@@ -1000,7 +1000,7 @@ html[data-reduce-motion='1'] .chart-tooltip {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   cursor: pointer;
-  border-radius: 0;
+  border-radius: var(--radius-pill);
   transition: color var(--motion-micro) var(--ease-editorial);
 }
 .kalori-log-tab-trigger:hover {
@@ -1061,7 +1061,7 @@ html[data-reduce-motion='1'] .chart-tooltip {
   font-size: 20px;
   line-height: 1.5;
   resize: none;
-  border-radius: 0;
+  border-radius: var(--radius-input);
   caret-color: var(--color-ivory);
   transition:
     background-color var(--motion-standard) var(--ease-editorial),
@@ -1095,7 +1095,7 @@ html[data-reduce-motion='1'] .chart-tooltip {
   color: var(--color-ivory);
   font-family: var(--font-sans);
   font-size: 14px;
-  border-radius: 0;
+  border-radius: var(--radius-input);
   transition: border-color var(--motion-micro) var(--ease-editorial);
 }
 .kalori-log-search::placeholder {
