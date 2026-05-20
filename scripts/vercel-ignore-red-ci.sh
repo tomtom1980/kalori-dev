@@ -3,32 +3,36 @@
 # CI for the same commit is red (or still running past our poll window).
 #
 # Exit codes (per Vercel contract):
-#   0 -> proceed with build (CI is green, or gate is opted out)
-#   1 -> skip deployment (CI failed / cancelled)
+#   1 -> proceed with build (CI is green, or gate is opted out)
+#   0 -> skip deployment (CI failed / cancelled)
 #
 # Required env (set by Vercel at build time):
 #   VERCEL_GIT_COMMIT_SHA  - full commit SHA being deployed
 #   VERCEL_GIT_COMMIT_REF  - branch name
+#   VERCEL_GIT_REPO_OWNER  - repo owner name
+#   VERCEL_GIT_REPO_SLUG   - repo slug name
 # Optional:
 #   GITHUB_CHECK_TOKEN     - fine-grained PAT, read-only scopes on
 #                            tomtom1980/kalori (actions:read, contents:read,
 #                            metadata:read). Without it, the gate logs a
-#                            warning and exits 0 (fail-open) so production
+#                            warning and exits 1 (fail-open) so production
 #                            deploys are not bricked while the token is
 #                            being provisioned.
 #
 # Behaviour:
-#   * Only gates the `main` branch. Preview branches deploy freely so PR
-#     flow stays fast.
+#   * Only gates the `main` and `master` branches. Preview branches deploy
+#     freely (exit 1) so PR flow stays fast.
 #   * Polls GitHub Check Runs API every 20s for up to 8 min.
 #   * Passes when every check_run has conclusion=success.
 #   * Fails fast on any failure/cancelled/timed_out conclusion.
-#   * If no check_runs appear within the window, fails open (exit 0) with
+#   * If no check_runs appear within the window, fails open (exit 1) with
 #     a warning - prevents an absent/misconfigured CI from permanently
 #     blocking deploys.
 set -euo pipefail
 
-REPO="tomtom1980/kalori-tamas-dev"
+OWNER="${VERCEL_GIT_REPO_OWNER:-tomtom1980}"
+SLUG="${VERCEL_GIT_REPO_SLUG:-kalori-tamas-dev}"
+REPO="${OWNER}/${SLUG}"
 MAX_POLL_SECONDS=480  # 8 minutes
 POLL_INTERVAL=20
 
@@ -39,19 +43,19 @@ REF="${VERCEL_GIT_COMMIT_REF:-}"
 
 if [ -z "${SHA}" ]; then
   log "VERCEL_GIT_COMMIT_SHA not set (manual CLI deploy?); allowing build."
-  exit 0
+  exit 1
 fi
 
-# Only gate production (main). Previews deploy without waiting.
-if [ "${REF}" != "main" ]; then
-  log "Branch '${REF}' is not main; skipping CI gate (preview deploy)."
-  exit 0
+# Only gate production (main/master). Previews deploy without waiting.
+if [ "${REF}" != "main" ] && [ "${REF}" != "master" ]; then
+  log "Branch '${REF}' is not main/master; skipping CI gate (preview deploy)."
+  exit 1
 fi
 
 if [ -z "${GITHUB_CHECK_TOKEN:-}" ]; then
   log "GITHUB_CHECK_TOKEN not set; gate is inactive (fail-open). Set it in"
   log "Vercel env vars to activate the gate. Proceeding with build."
-  exit 0
+  exit 1
 fi
 
 AUTH_HEADER="Authorization: Bearer ${GITHUB_CHECK_TOKEN}"
@@ -97,7 +101,7 @@ while [ "${elapsed}" -lt "${MAX_POLL_SECONDS}" ]; do
   if printf '%s\n' "${conclusions}" | grep -Eq '^(failure|cancelled|timed_out|action_required|startup_failure)$'; then
     log "At least one CI check failed for ${SHA}. Skipping deploy."
     log "Conclusions seen: $(printf '%s ' ${conclusions})"
-    exit 1
+    exit 0
   fi
 
   # All checks present AND all conclusions are success -> green, proceed.
@@ -106,7 +110,7 @@ while [ "${elapsed}" -lt "${MAX_POLL_SECONDS}" ]; do
 
   if [ "${pending}" = "0" ] && [ "${non_success}" = "0" ]; then
     log "All ${total_count} CI checks green for ${SHA}. Proceeding with build."
-    exit 0
+    exit 1
   fi
 
   log "CI still running (${total_count} checks; ${pending} pending); sleeping ${POLL_INTERVAL}s (elapsed ${elapsed}s)."
@@ -116,4 +120,4 @@ done
 
 log "Poll window (${MAX_POLL_SECONDS}s) exhausted without a green/red verdict."
 log "Failing open to avoid blocking on a stalled/absent CI. Check manually."
-exit 0
+exit 1
