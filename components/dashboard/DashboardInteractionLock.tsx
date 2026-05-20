@@ -28,6 +28,7 @@ export function DashboardInteractionLock({ viewedDay, children }: DashboardInter
     <div
       ref={ref}
       data-testid="dashboard-interaction-lock"
+      data-prefers-reduced-motion="reduce-via-globals"
       aria-busy={locked}
       aria-disabled={locked}
       style={{

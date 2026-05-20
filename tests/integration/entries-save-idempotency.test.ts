@@ -40,14 +40,21 @@ describe('POST /api/entries/save — idempotency round-trip (integration)', () =
     const validBody = {
       client_id: clientId,
       logged_at: '2026-04-21T10:00:00.000Z',
-      meal_category: 'breakfast',
-      source: 'text',
+      meal_category: 'drink',
+      source: 'manual',
       items: [{ name: 'eggs', portion: 2, unit: 'unit', kcal: 140 }],
+      alcohol: { volume_ml: 355, abv_percent: 5 },
     } as const;
 
     // Single in-closure store that persists across both POSTs.
     const store = new Map<string, Row>(); // key = `${user_id}:${client_id}`
-    const calls = { insertCount: 0, selectCount: 0, revalidated: [] as string[] };
+    const alcoholStore = new Map<string, Row>(); // key = entry_id
+    const calls = {
+      insertCount: 0,
+      alcoholInsertCount: 0,
+      selectCount: 0,
+      revalidated: [] as string[],
+    };
 
     const from = vi.fn((table: string) => {
       if (table === 'profiles') {
@@ -112,6 +119,24 @@ describe('POST /api/entries/save — idempotency round-trip (integration)', () =
           }),
         };
       }
+      if (table === 'alcohol_logs') {
+        return {
+          select: () => ({
+            eq: (_column: string, entryId: string) => ({
+              maybeSingle: async () => ({
+                data: alcoholStore.get(entryId) ?? null,
+                error: null,
+              }),
+            }),
+          }),
+          insert: async (payload: Row) => {
+            calls.alcoholInsertCount += 1;
+            const row = { id: `alc-${calls.alcoholInsertCount}`, ...payload };
+            alcoholStore.set(String(payload.entry_id), row);
+            return { data: row, error: null };
+          },
+        };
+      }
       throw new Error(`unknown table: ${table}`);
     });
 
@@ -151,6 +176,7 @@ describe('POST /api/entries/save — idempotency round-trip (integration)', () =
     // Single row stored after two POSTs — the I11 contract.
     expect(store.size).toBe(1);
     expect(calls.insertCount).toBe(1);
+    expect(calls.alcoholInsertCount).toBe(1);
 
     // Both responses reference the same row id.
     expect(json2.entry.id).toBe(json1.entry.id);

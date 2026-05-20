@@ -10,21 +10,24 @@
 
 | Migration # | Status | Phase | Story |
 |---|---|---|---|
-| **0018** | IN SCOPE — applied to dev per-task at D6 RED→GREEN; applied to prod at Phase E.1 batch | D | US-STAB-D6 |
-| **0019** | DEFERRED (per DT-5 / O-2) — `profiles.micros_rda_override` jsonb column NOT created in this sprint; tracked as `F-MICROS-RDA-OVERRIDE-COLUMN` for post-MVP | n/a | n/a |
-| **0020** | RESERVED-NOT-USED (per DT-2 / D3 honest-copy-only scope-down) — was originally allocated for offline-conflict-resolver server-side state; D3 stays honest-copy-only so no schema needed; full client-wins-resubmit impl remains DEFERRED under existing followup `F-OFFLINE-5.1.5-CLIENT-WINS-RESUBMIT` | n/a | n/a |
+| ~~**0018**~~ | RENUMBERED → 0020 (slot 0018 claimed by `0018_water_log_atomic_cap.sql` 2026-05-09 bugfix-tomi; sprint-design-doc's "0018" reference is stale) | n/a | n/a |
+| ~~**0019**~~ | Slot claimed by `0019_water_log_negative_ml_adjustments.sql` (2026-05-09 bugfix-tomi) — NOT the originally-deferred `profiles.micros_rda_override` jsonb column (that remains DEFERRED per DT-5 / O-2 under `F-MICROS-RDA-OVERRIDE-COLUMN`) | n/a | n/a |
+| **0020** | IN SCOPE — applied to dev 2026-05-15 at D.6 RED→GREEN; applied to prod at Phase E.1 batch. **Renumbered from the design-doc's 0018**. File: `supabase/migrations/0020_food_library_dedup_index.sql` | D | US-STAB-D6 |
+| ~~Originally reserved for offline-conflict-resolver server-side state~~ (per DT-2 / D3 honest-copy-only scope-down — moved aside by D.6 renumber) — full client-wins-resubmit impl remains DEFERRED under existing followup `F-OFFLINE-5.1.5-CLIENT-WINS-RESUBMIT` | n/a | n/a | n/a |
 
 **Net sprint-introduced migrations: 1 (0018 only).**
 
 ---
 
-## 2. Migration 0018 — `food_library_items` partial unique index
+## 2. Migration 0020 *(formerly numbered 0018)* — `food_library_items` partial unique index
 
 ### Filename + path
 
-`supabase/migrations/0018_food_library_dedup_index.sql`
+`supabase/migrations/0020_food_library_dedup_index.sql` *(post-fact alignment — see renumber note below)*
 
-(Design doc §7 references the longer filename `0018_food_library_items_dedup_partial_unique.sql`; the actual filename committed at task time should match Supabase migration filename conventions in `Planning/architecture.md` §2 + the existing 0001–0017 naming pattern. Either name acceptable as long as the migration number is `0018` and the file is the next file in the migration sequence.)
+**Migration-number renumber (2026-05-15, Task D.6 close):** The sprint design-doc references slot `0018` and migration-plan first authored this filename as `0018_food_library_dedup_index.sql`. Between design (2026-05-01) and execution (2026-05-15), the 0018 + 0019 slots were claimed by `0018_water_log_atomic_cap.sql` and `0019_water_log_negative_ml_adjustments.sql` (2026-05-09 bugfix-tomi run). D.6 used the next available slot `0020`. Test IDs retain the `0018-` prefix as the historical task identifier (`tests/integration/db/0018-migration.test.ts` + `tests/integration/db/0018-pre-cleanup.test.ts`). ACs reference "the migration" by contract (predicate + index name), not by slot number — they remain valid.
+
+(Design doc §7 references the longer filename `0018_food_library_items_dedup_partial_unique.sql`; the actual filename committed at task time matches Supabase migration filename conventions in `Planning/architecture.md` §2 + the existing 0001–0019 naming pattern. The shorter `dedup_index` form was used.)
 
 ### Goal
 
@@ -149,7 +152,7 @@ All sprint migrations preserve the existing 32-assertion RLS harness GREEN. New 
 
 ### 3.1 Per-task to kalori-dev (at Phase D US-STAB-D6 RED→GREEN)
 
-1. Implementation sub-agent on US-STAB-D6 writes the migration file at `supabase/migrations/0018_food_library_dedup_index.sql`.
+1. Implementation sub-agent on US-STAB-D6 writes the migration file at `supabase/migrations/0020_food_library_dedup_index.sql` (renumbered from 0018 — see §2 filename note).
 2. RED test commits FIRST — `tests/integration/db/0018-migration.test.ts::index-exists-with-soft-delete-predicate` should fail because the index does not exist yet.
 3. Pre-flight cleanup probe runs: `scripts/dedup-pre-flight.mjs` (per FF #C mitigation in design-doc §10) against kalori-dev. If existing dupes found, halts with manual-review prompt. Documented runbook for resolution: keep most-recent `updated_at`, soft-delete older(s).
 4. Migration applies to `kalori-dev` via `DATABASE_URL_DIRECT` (port 5432) OR Supabase CLI — same path used for migrations 0001–0017.
@@ -159,18 +162,18 @@ All sprint migrations preserve the existing 32-assertion RLS harness GREEN. New 
 
 ### 3.2 Batch to kalori-prod at Phase E.1 closure
 
-Migration 0018 is the ONLY sprint migration in the prod cutover batch (0019 deferred per DT-5; no 0020).
+Migration 0020 (renumbered from 0018) is the ONLY sprint-D.6 migration in the prod cutover batch. (Note: migrations 0018 + 0019 = water-log bugfix-tomi work, applied to prod 2026-05-09 — already at prod.)
 
 Cutover runs once at Phase E.1 (US-STAB-E1) via `scripts/apply-prod-migrations.mjs`:
-1. Pre-flight schema diff: dev schema vs prod schema — must match expected delta (only 0018 added; everything else identical).
-2. Apply 0018 to `kalori-prod`.
+1. Pre-flight schema diff: dev schema vs prod schema — must match expected delta (only 0020 added; everything else identical).
+2. Apply 0020 to `kalori-prod`.
 3. Post-cutover verify: assert partial unique index exists in `pg_indexes` on `food_library_items (user_id, normalized_name) WHERE deleted_at IS NULL AND normalized_name IS NOT NULL`.
 4. Smoke against prod (read-only — RLS-bound, anon role, expect appropriate denials).
 5. Record cutover evidence at `Planning/features/2026-05-01-mvp-stabilization/acceptance-evidence/phase-E-prod-migration.md`.
 
 ---
 
-## 4. Rollback plan for 0018
+## 4. Rollback plan for 0020 *(formerly numbered 0018)*
 
 ### 4.1 Rollback procedure
 
@@ -186,7 +189,7 @@ If the user wants to restore soft-deleted rows after rollback (corner case — t
 
 - DROP INDEX does not break any consumers — the application reads from `food_library_items` via `SELECT` paths that don't reference the index name; the optimizer falls back to seq scan on small tables.
 - No new code path in the sprint depends on the index existing at runtime (the index is purely a CONSTRAINT, not a query optimization).
-- Re-run is idempotent if needed: re-applying 0018 after a DROP runs the same 7-step cleanup; cleanup is itself idempotent (every duplicate group has at most one most-recent row to keep, all others are soft-deleted; running twice produces the same final state).
+- Re-run is idempotent if needed: re-applying 0020 after a DROP runs the same 7-step cleanup; cleanup is itself idempotent (every duplicate group has at most one most-recent row to keep, all others are soft-deleted; running twice produces the same final state). The migration body also opens with `DROP INDEX IF EXISTS` so re-apply after a partial rollback is safe.
 
 ### 4.3 When to rollback
 

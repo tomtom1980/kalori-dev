@@ -22,7 +22,6 @@
  * (mirrors `kalori-wizard-cta` convention).
  */
 import { t } from '@/lib/i18n/en';
-import { FadeUpCard } from '@/components/motion/FadeUpCard';
 
 export interface MarketingLandingProps {
   /**
@@ -47,46 +46,43 @@ export function MarketingLanding({ deleted = false }: MarketingLandingProps = {}
       }}
     >
       {deleted ? (
-        <FadeUpCard delay={0.05}>
-          <div
-            data-testid="landing-deleted-banner"
-            role="status"
-            aria-live="polite"
+        <div
+          data-testid="landing-deleted-banner"
+          role="status"
+          aria-live="polite"
+          style={{
+            padding: 'var(--spacing-3) var(--spacing-4)',
+            backgroundColor: 'var(--color-bg-1)',
+            border: '1px solid var(--color-rule)',
+            color: 'var(--color-ivory)',
+            marginBlockEnd: 'var(--spacing-6)',
+          }}
+        >
+          <p
             style={{
-              padding: 'var(--spacing-3) var(--spacing-4)',
-              backgroundColor: 'var(--color-bg-1)',
-              border: '1px solid var(--color-rule)',
+              margin: 0,
+              fontFamily: 'var(--font-sans)',
+              fontSize: 'var(--type-label)',
+              fontWeight: 500,
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
               color: 'var(--color-ivory)',
-              marginBlockEnd: 'var(--spacing-6)',
-              borderRadius: 'var(--radius-card)',
             }}
           >
-            <p
-              style={{
-                margin: 0,
-                fontFamily: 'var(--font-sans)',
-                fontSize: 'var(--type-label)',
-                fontWeight: 500,
-                letterSpacing: '0.22em',
-                textTransform: 'uppercase',
-                color: 'var(--color-ivory)',
-              }}
-            >
-              {t.auth.deletedBanner.title}
-            </p>
-            <p
-              style={{
-                margin: 'var(--spacing-2) 0 0',
-                fontFamily: 'var(--font-serif)',
-                fontStyle: 'italic',
-                fontSize: 'var(--type-body-sm)',
-                color: 'var(--color-sand)',
-              }}
-            >
-              {t.auth.deletedBanner.body}
-            </p>
-          </div>
-        </FadeUpCard>
+            {t.auth.deletedBanner.title}
+          </p>
+          <p
+            style={{
+              margin: 'var(--spacing-2) 0 0',
+              fontFamily: 'var(--font-serif)',
+              fontStyle: 'italic',
+              fontSize: 'var(--type-body-sm)',
+              color: 'var(--color-sand)',
+            }}
+          >
+            {t.auth.deletedBanner.body}
+          </p>
+        </div>
       ) : null}
 
       <section
@@ -100,99 +96,88 @@ export function MarketingLanding({ deleted = false }: MarketingLandingProps = {}
           textAlign: 'center',
         }}
       >
-        <FadeUpCard delay={0.15}>
-          <h1
-            data-testid="landing-wordmark"
-            style={{
-              fontFamily: 'var(--font-serif)',
-              fontWeight: 300,
-              fontSize: 'clamp(48px, 9vw, 72px)',
-              lineHeight: 1,
-              letterSpacing: '-0.02em',
-              color: 'var(--color-ivory)',
-              margin: 0,
-            }}
-          >
-            {t.brand.wordmark}
-          </h1>
-        </FadeUpCard>
-
-        <FadeUpCard delay={0.25}>
-          <hr
-            aria-hidden="true"
-            style={{
-              width: '80px',
-              margin: '0 auto',
-              border: 'none',
-              borderTop: '1px solid var(--color-rule)',
-            }}
-          />
-        </FadeUpCard>
-
-        <FadeUpCard delay={0.35}>
-          <p
-            data-testid="landing-tagline"
-            style={{
-              margin: 0,
-              fontFamily: 'var(--font-serif)',
-              fontStyle: 'italic',
-              fontSize: 'var(--type-body-sm)',
-              color: 'var(--color-sand)',
-              maxWidth: '36ch',
-            }}
-          >
-            {t.masthead.tagline}
-          </p>
-        </FadeUpCard>
-
-        <FadeUpCard delay={0.45}>
-          <a
-            data-testid="landing-signin-cta"
-            href="/login"
-            className="kalori-marketing-cta"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minWidth: '220px',
-              minHeight: '56px',
-              paddingInline: 'var(--spacing-6)',
-              backgroundColor: 'var(--color-oxblood)',
-              color: 'var(--color-ivory)',
-              fontFamily: 'var(--font-sans)',
-              fontSize: 'var(--type-button)',
-              fontWeight: 500,
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              textDecoration: 'none',
-              border: '1px solid var(--color-oxblood)',
-              borderRadius: 'var(--radius-pill)',
-              marginBlockStart: 'var(--spacing-2)',
-            }}
-          >
-            {t.auth.title}
-          </a>
-        </FadeUpCard>
-      </section>
-
-      <FadeUpCard delay={0.55}>
-        <footer
+        <h1
+          data-testid="landing-wordmark"
           style={{
-            paddingBlockStart: 'var(--spacing-6)',
-            marginBlockStart: 'var(--spacing-12)',
-            borderTop: '1px solid var(--color-rule)',
-            textAlign: 'center',
-            fontFamily: 'var(--font-sans)',
-            fontSize: 'var(--type-label)',
-            fontWeight: 500,
-            letterSpacing: '0.22em',
-            textTransform: 'uppercase',
-            color: 'var(--color-dust)',
+            fontFamily: 'var(--font-serif)',
+            fontWeight: 300,
+            fontSize: 'clamp(48px, 9vw, 72px)',
+            lineHeight: 1,
+            letterSpacing: '-0.02em',
+            color: 'var(--color-ivory)',
+            margin: 0,
           }}
         >
-          {t.auth.privacyFooter}
-        </footer>
-      </FadeUpCard>
+          {t.brand.wordmark}
+        </h1>
+
+        <hr
+          aria-hidden="true"
+          style={{
+            width: '80px',
+            margin: 0,
+            border: 'none',
+            borderTop: '1px solid var(--color-rule)',
+          }}
+        />
+
+        <p
+          data-testid="landing-tagline"
+          style={{
+            margin: 0,
+            fontFamily: 'var(--font-serif)',
+            fontStyle: 'italic',
+            fontSize: 'var(--type-body-sm)',
+            color: 'var(--color-sand)',
+            maxWidth: '36ch',
+          }}
+        >
+          {t.masthead.tagline}
+        </p>
+
+        <a
+          data-testid="landing-signin-cta"
+          href="/login"
+          className="kalori-marketing-cta"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '220px',
+            minHeight: '56px',
+            paddingInline: 'var(--spacing-6)',
+            backgroundColor: 'var(--color-oxblood)',
+            color: 'var(--color-ivory)',
+            fontFamily: 'var(--font-sans)',
+            fontSize: 'var(--type-button)',
+            fontWeight: 500,
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            textDecoration: 'none',
+            border: '1px solid var(--color-oxblood)',
+            marginBlockStart: 'var(--spacing-2)',
+          }}
+        >
+          {t.auth.title}
+        </a>
+      </section>
+
+      <footer
+        style={{
+          paddingBlockStart: 'var(--spacing-6)',
+          marginBlockStart: 'var(--spacing-12)',
+          borderTop: '1px solid var(--color-rule)',
+          textAlign: 'center',
+          fontFamily: 'var(--font-sans)',
+          fontSize: 'var(--type-label)',
+          fontWeight: 500,
+          letterSpacing: '0.22em',
+          textTransform: 'uppercase',
+          color: 'var(--color-dust)',
+        }}
+      >
+        {t.auth.privacyFooter}
+      </footer>
     </main>
   );
 }

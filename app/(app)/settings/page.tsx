@@ -8,10 +8,14 @@
  * "{N} entries…" body line.
  */
 import { requireProfileOrRedirect } from '@/lib/auth/orphan-profile-fence';
+import type { CSSProperties } from 'react';
 import { t } from '@/lib/i18n/en';
+import { calculateAgeOnDate, isAgeInSupportedRange, isIsoDay } from '@/lib/profile/age';
 import { getServerSupabase } from '@/lib/supabase/server';
+import { userTzDayFrom } from '@/lib/time/day';
 
 import { AccountSubsection } from './_components/AccountSubsection';
+import { AiSummaryConsentToggle } from './_components/AiSummaryConsentToggle';
 import { DataSubsection } from './_components/DataSubsection';
 import { ReduceMotionToggle } from './_components/ReduceMotionToggle';
 
@@ -46,9 +50,10 @@ export default async function SettingsPage() {
   // Task A.3 — orphan-profile fence (US-STAB-A3). Single-pass profile
   // lookup co-located with the auth check; on orphan state redirects 302
   // to /onboarding before any count aggregate read.
-  const { user } = await requireProfileOrRedirect({
+  const { user, profile } = await requireProfileOrRedirect({
     route: '/settings',
     loginRedirectTo: '/settings',
+    selectExtras: 'birthday, age, timezone, ai_summary_opt_in',
   });
   const supabase = await getServerSupabase();
   const userEmail = user.email ?? '';
@@ -58,6 +63,16 @@ export default async function SettingsPage() {
   const counts = userId
     ? await fetchCountsForUser(supabase, userId)
     : { entries: 0, library: 0, weight: 0, water: 0 };
+  const birthday = typeof profile.birthday === 'string' ? profile.birthday : null;
+  const birthdayForDisplay = formatBirthdayForDisplay(birthday);
+  const timezone = typeof profile.timezone === 'string' ? profile.timezone : 'UTC';
+  const today = userTzDayFrom(new Date().toISOString(), timezone);
+  const derivedAge = birthday ? calculateAgeOnDate(birthday, today) : null;
+  const ageForDisplay = isAgeInSupportedRange(derivedAge)
+    ? derivedAge
+    : typeof profile.age === 'number'
+      ? profile.age
+      : null;
 
   return (
     <section data-testid="page-settings">
@@ -88,8 +103,88 @@ export default async function SettingsPage() {
         {t.settings.displayHeading}
       </h2>
       <ReduceMotionToggle />
+      <AiSummaryConsentToggle enabled={profile.ai_summary_opt_in === true} />
+      <section
+        aria-labelledby="settings-profile-heading"
+        style={{
+          borderTop: '1px solid var(--color-rule-strong)',
+          paddingTop: 'var(--spacing-6)',
+          marginTop: 'var(--spacing-6)',
+          marginBottom: 'var(--spacing-6)',
+        }}
+      >
+        <h2
+          id="settings-profile-heading"
+          style={{
+            fontFamily: 'var(--font-sans)',
+            fontWeight: 500,
+            fontSize: 'var(--type-label)',
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+            color: 'var(--color-dust)',
+            margin: 0,
+            marginBottom: 'var(--spacing-3)',
+          }}
+        >
+          {t.settings.profileHeading}
+        </h2>
+        <dl
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(120px, max-content) 1fr',
+            gap: 'var(--spacing-2) var(--spacing-6)',
+            margin: 0,
+          }}
+        >
+          <dt style={settingsTermStyle}>{t.settings.birthdayLabel}</dt>
+          <dd className="num" style={settingsValueStyle}>
+            {birthdayForDisplay ?? t.settings.profileMissingValue}
+          </dd>
+          <dt style={settingsTermStyle}>{t.settings.ageLabel}</dt>
+          <dd className="num" style={settingsValueStyle}>
+            {ageForDisplay === null ? t.settings.profileMissingValue : ageForDisplay}
+          </dd>
+        </dl>
+      </section>
       <DataSubsection counts={counts} userIdSlug={userIdSlug} />
       <AccountSubsection userEmail={userEmail} />
     </section>
   );
+}
+
+const settingsTermStyle = {
+  fontFamily: 'var(--font-sans)',
+  fontSize: 'var(--type-label)',
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase',
+  color: 'var(--color-dust)',
+} satisfies CSSProperties;
+
+const settingsValueStyle = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 14,
+  color: 'var(--color-ivory)',
+  margin: 0,
+} satisfies CSSProperties;
+
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const;
+
+function formatBirthdayForDisplay(value: string | null): string | null {
+  if (!isIsoDay(value)) return null;
+  const [, year, month, day] = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) ?? [];
+  const monthIndex = Number(month) - 1;
+  return `${MONTH_NAMES[monthIndex]} ${Number(day)}, ${year}`;
 }

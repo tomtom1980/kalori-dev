@@ -14,7 +14,6 @@ import { useOnboardingStore } from '@/lib/stores/useOnboardingStore';
 const OPTIONS: ReadonlyArray<{ value: BioSex; labelKey: keyof typeof t.onboarding }> = [
   { value: 'male', labelKey: 'bioSexMale' },
   { value: 'female', labelKey: 'bioSexFemale' },
-  { value: 'other', labelKey: 'bioSexOther' },
 ];
 
 export function StepBioSex(): React.ReactElement {

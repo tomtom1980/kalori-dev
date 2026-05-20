@@ -6,6 +6,8 @@
  */
 import { z } from 'zod';
 
+import { isWholeStyleQuantity } from '@/lib/log/portion-unit';
+
 // Task 4.2 round 1 C2 fix — nutrition payloads MUST carry the full macros
 // shape + kcal when `nutrition` is present. See route.ts for the
 // rationale: Supabase `.update({ nutrition })` is a shallow JSONB
@@ -18,6 +20,12 @@ export const MacrosFullSchema = z
     fat_g: z.number().finite().nonnegative(),
     fiber_g: z.number().finite().nonnegative(),
     sugar_g: z.number().finite().nonnegative(),
+    // Phase 2C + Codex R1 F2 — optional WITHOUT a default so absence
+    // round-trips through the schema. `.default(0)` would materialise a
+    // literal 0mg in the post-parse output and defeat the absence-vs-zero
+    // semantic the resolver in `useFoodDetailEdit.ts` now enforces. Kept
+    // in sync with the server `MacrosFull` in `route.ts`.
+    cholesterol_mg: z.number().finite().nonnegative().optional(),
   })
   .strict();
 
@@ -28,6 +36,7 @@ export const NutritionFullSchema = z
     kcal: z.number().int().nonnegative(),
     macros: MacrosFullSchema,
     micros: MicrosPartialSchema.optional(),
+    approxGrams: z.number().positive().finite().optional(),
   })
   .strict();
 
@@ -42,6 +51,19 @@ export const EditFieldsSchema = z
   .strict()
   .refine((v) => Object.keys(v).length > 0, {
     message: 'at least one field required',
+  })
+  .superRefine((fields, ctx) => {
+    if (
+      typeof fields.default_portion === 'number' &&
+      fields.default_unit &&
+      !isWholeStyleQuantity(fields.default_unit, fields.default_portion)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['default_portion'],
+        message: 'default_portion must be a whole number for this unit',
+      });
+    }
   });
 
 export const EditBodySchema = z

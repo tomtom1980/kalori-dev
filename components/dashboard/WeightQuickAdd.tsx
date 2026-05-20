@@ -76,6 +76,8 @@ export interface WeightQuickAddProps {
   todayUserTz: string;
   minDateUserTz: string;
   initialWeightKg?: number | null;
+  allowUnitChoice?: boolean;
+  showDateInput?: boolean;
   onCommitted?: (row: WeightLogRow, recalc?: WeightLogResponse['recalc']) => void;
 }
 
@@ -96,6 +98,8 @@ export function WeightQuickAdd({
   todayUserTz,
   minDateUserTz,
   initialWeightKg,
+  allowUnitChoice = false,
+  showDateInput = false,
   onCommitted,
 }: WeightQuickAddProps) {
   const weightInputId = useId();
@@ -116,6 +120,7 @@ export function WeightQuickAdd({
 
   const [weightInput, setWeightInput] = useState('');
   const [dateInput, setDateInput] = useState(todayUserTz);
+  const [selectedUnit, setSelectedUnit] = useState<'metric' | 'imperial'>(unitPref);
   const [noteInput, setNoteInput] = useState('');
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -249,6 +254,7 @@ export function WeightQuickAdd({
   }, []);
 
   const store = useWeightQuickAddStore();
+  const activeUnit = allowUnitChoice ? selectedUnit : unitPref;
   const committedMirror = store.lastCommittedWeightKg ?? initialWeightKg ?? null;
   // Task 4.5 R2 S2: widen the action type to `number | null` so the rollback
   // branch can call `setOpt(null)` for first-time loggers (previousWeight is
@@ -283,7 +289,7 @@ export function WeightQuickAdd({
       setStatusText('');
       return;
     }
-    const weightKg = unitPref === 'imperial' ? lbToKg(parsedInput) : parsedInput;
+    const weightKg = activeUnit === 'imperial' ? lbToKg(parsedInput) : parsedInput;
     if (weightKg < 30 || weightKg > 350) {
       setInlineError(t.weight.errorOutOfRange);
       setStatusText('');
@@ -346,7 +352,7 @@ export function WeightQuickAdd({
         // store.commit() above already returns a no-op in that case, but we
         // also suppress the announcement here to match ux-specialist §8.3.
         const announcedWeight =
-          unitPref === 'imperial' ? parsedInput.toFixed(1) : weightKg.toFixed(1);
+          activeUnit === 'imperial' ? parsedInput.toFixed(1) : weightKg.toFixed(1);
         if (!result.replayed) {
           const successCopy = t.weight.liveSaveSuccessFormat
             .replace('{weight}', announcedWeight)
@@ -461,12 +467,12 @@ export function WeightQuickAdd({
         // "kilograms" in the live region string.
         const prevForDisplay =
           previousWeight !== null
-            ? unitPref === 'imperial'
+            ? activeUnit === 'imperial'
               ? roundToOneDecimal(kgToLb(previousWeight)).toString()
               : roundToOneDecimal(previousWeight).toString()
             : '—';
         const unitLabel =
-          unitPref === 'imperial'
+          activeUnit === 'imperial'
             ? t.weight.liveRollbackUnitLabelLb
             : t.weight.liveRollbackUnitLabelKg;
         const rollbackCopy = t.weight.liveRollbackFormat
@@ -498,7 +504,7 @@ export function WeightQuickAdd({
 
   const displayValue =
     opt !== null && opt !== undefined
-      ? unitPref === 'imperial'
+      ? activeUnit === 'imperial'
         ? (opt * 2.20462).toFixed(1)
         : opt.toFixed(1)
       : '';
@@ -519,15 +525,25 @@ export function WeightQuickAdd({
           if (!busy) submit();
         }}
       >
+        {/*
+          Bug #9 R1: keep the desktop weight/date/save alignment, but let CSS
+          collapse the grid columns on narrow screens via the custom property.
+        */}
         <div
+          data-testid="weight-quick-add-field-pair"
+          data-alignment={mode === 'page' || showDateInput ? 'weight-date-grid' : undefined}
+          className="kalori-weight-field-pair"
           style={{
-            display: 'flex',
-            flexWrap: 'wrap',
+            display: mode === 'page' || showDateInput ? 'grid' : 'flex',
+            gridTemplateColumns:
+              mode === 'page' || showDateInput
+                ? 'var(--kalori-weight-field-pair-columns, minmax(200px, 1fr) minmax(160px, 180px) auto)'
+                : undefined,
             gap: 'var(--spacing-3)',
-            alignItems: 'flex-end',
+            alignItems: 'start',
           }}
         >
-          <div style={{ flex: '1 1 200px' }}>
+          <div style={{ flex: '1 1 200px', order: 0 }}>
             <label
               htmlFor={weightInputId}
               style={{
@@ -554,8 +570,8 @@ export function WeightQuickAdd({
                 // Reflect the lb-equivalent bounds (30 kg ≈ 66.14 lb,
                 // 350 kg ≈ 771.62 lb) so native HTML5 validation matches
                 // our kg-internal bounds after conversion.
-                min={unitPref === 'imperial' ? (30 / KG_PER_LB).toFixed(2) : '30'}
-                max={unitPref === 'imperial' ? (350 / KG_PER_LB).toFixed(2) : '350'}
+                min={activeUnit === 'imperial' ? (30 / KG_PER_LB).toFixed(2) : '30'}
+                max={activeUnit === 'imperial' ? (350 / KG_PER_LB).toFixed(2) : '350'}
                 autoComplete="off"
                 value={weightInput}
                 onChange={(e) => setWeightInput(e.target.value)}
@@ -582,7 +598,8 @@ export function WeightQuickAdd({
                   fontWeight: 300,
                   fontSize: 28,
                   padding: 'var(--spacing-2) var(--spacing-3)',
-                  minHeight: 44,
+                  minHeight: 52,
+                  boxSizing: 'border-box',
                 }}
               />
               <span
@@ -592,7 +609,7 @@ export function WeightQuickAdd({
                   color: 'var(--color-dust)',
                 }}
               >
-                {unitPref === 'imperial' ? t.weight.unitLb : t.weight.unitKg}
+                {activeUnit === 'imperial' ? t.weight.unitLb : t.weight.unitKg}
               </span>
             </div>
             <p
@@ -638,8 +655,77 @@ export function WeightQuickAdd({
             ) : null}
           </div>
 
-          {mode === 'page' ? (
-            <div style={{ flex: '0 0 160px' }}>
+          {allowUnitChoice ? (
+            <fieldset
+              style={{
+                border: 0,
+                padding: 0,
+                margin: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--spacing-2)',
+                order: 2,
+                gridColumn: mode === 'page' || showDateInput ? '1 / 2' : undefined,
+              }}
+            >
+              <legend
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: 'var(--type-label)',
+                  fontWeight: 500,
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                  color: 'var(--color-dust)',
+                  marginBottom: 'var(--spacing-2)',
+                }}
+              >
+                {t.weight.unitChoiceLabel}
+              </legend>
+              <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
+                {(['metric', 'imperial'] as const).map((unit) => {
+                  const active = activeUnit === unit;
+                  return (
+                    <label
+                      key={unit}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        minHeight: 44,
+                        padding: '0 var(--spacing-3)',
+                        border: `1px solid ${
+                          active ? 'var(--color-oxblood)' : 'var(--color-rule-strong)'
+                        }`,
+                        color: active ? 'var(--color-ivory)' : 'var(--color-dust)',
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: 'var(--type-label)',
+                        fontWeight: 600,
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        cursor: busy ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="weight-unit-choice"
+                        value={unit}
+                        checked={active}
+                        disabled={busy}
+                        onChange={() => {
+                          setSelectedUnit(unit);
+                          setWeightInput('');
+                        }}
+                        style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+                      />
+                      {unit === 'metric' ? t.weight.unitKg : t.weight.unitLb}
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+          ) : null}
+
+          {mode === 'page' || showDateInput ? (
+            <div style={{ flex: '0 0 160px', order: 1, alignSelf: 'start' }}>
               <label
                 htmlFor={dateInputId}
                 style={{
@@ -673,7 +759,8 @@ export function WeightQuickAdd({
                   fontFamily: 'var(--font-mono)',
                   fontSize: 14,
                   padding: 'var(--spacing-2) var(--spacing-3)',
-                  minHeight: 44,
+                  minHeight: 52,
+                  boxSizing: 'border-box',
                 }}
               />
             </div>
@@ -688,6 +775,7 @@ export function WeightQuickAdd({
             className="kalori-weight-submit"
             style={{
               flex: '0 0 auto',
+              order: 3,
               border: '1px solid var(--color-oxblood)',
               background: 'var(--color-oxblood)',
               color: 'var(--color-ivory)',
@@ -698,6 +786,7 @@ export function WeightQuickAdd({
               textTransform: 'uppercase',
               padding: 'var(--spacing-3) var(--spacing-5)',
               minHeight: 44,
+              alignSelf: 'end',
             }}
           >
             {busy ? t.weight.saveEntryLoading : t.weight.saveEntryCta}
@@ -795,12 +884,12 @@ export function WeightQuickAdd({
                   .replace(
                     '{previousWeight}',
                     rollbackState.previousWeight !== null
-                      ? unitPref === 'imperial'
+                      ? activeUnit === 'imperial'
                         ? roundToOneDecimal(kgToLb(rollbackState.previousWeight)).toString()
                         : roundToOneDecimal(rollbackState.previousWeight).toString()
                       : '—',
                   )
-                  .replace('{unit}', unitPref === 'imperial' ? t.weight.unitLb : t.weight.unitKg)}
+                  .replace('{unit}', activeUnit === 'imperial' ? t.weight.unitLb : t.weight.unitKg)}
               </p>
               <div
                 style={{

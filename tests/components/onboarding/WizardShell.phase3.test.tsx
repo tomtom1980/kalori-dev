@@ -87,10 +87,10 @@ describe('<WizardShell /> Phase 3 fix-round behaviors', () => {
       expect(useOnboardingStore.getState().currentStep).toBe(2);
     });
 
-    // Step 2 first interactive = age input.
+    // Step 2 first interactive = birthday input.
     await waitFor(() => {
-      const ageInput = screen.getByLabelText(t.onboarding.ageLabel);
-      expect(ageInput).toHaveFocus();
+      const birthdayInput = screen.getByLabelText(t.onboarding.birthdayLabel);
+      expect(birthdayInput).toHaveFocus();
     });
   });
 

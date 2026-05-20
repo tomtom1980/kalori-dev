@@ -52,6 +52,34 @@ describe('<LogPageClient /> — I2 library hydration', () => {
     ]);
   });
 
+  it('defaults to the hydrated library defaultPortion when no explicit quantity is provided', () => {
+    render(
+      <LogPageClient
+        initialTab="library"
+        initialItemId="dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+        libraryItems={[
+          {
+            id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+            name: 'Fried egg',
+            kcal: 90,
+            lastUsedIso: null,
+            logCount: 1,
+            proteinG: 6,
+            carbsG: 1,
+            fatG: 7,
+            fiberG: 0,
+            defaultPortion: 50,
+            unit: 'g',
+          },
+        ]}
+      />,
+    );
+    const state = useLogFlowStore.getState();
+    expect(state.librarySelection).toEqual([
+      { itemId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', quantity: 50 },
+    ]);
+  });
+
   it('ignores a non-positive quantity param and falls back to 1', () => {
     render(
       <LogPageClient

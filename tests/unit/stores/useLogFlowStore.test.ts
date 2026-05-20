@@ -27,7 +27,9 @@ describe('useLogFlowStore', () => {
     expect(state.snapDraft).toEqual({ status: 'idle' });
     expect(state.snapDraftEphemeral).toBeNull();
     expect(state.librarySelection).toEqual([]);
-    expect(state.librarySort).toBe('frequent');
+    // Bug 7b — log-modal LibraryTab default sort flipped to `name-asc`
+    // to mirror the `/library` page's post-Bug-7 default.
+    expect(state.librarySort).toBe('name-asc');
     expect(state.failureMode).toBeNull();
   });
 
@@ -161,6 +163,61 @@ describe('useLogFlowStore', () => {
     expect(mod.LOG_FLOW_TTL_MS).toBe(30 * 60 * 1000);
   });
 
+  // E.CODEX Round-2 I1 — Library Add Item must NOT inherit the persisted
+  // dashboard Type draft. The Library page's "Add Item" button calls
+  // `openModal('type', { mode: 'library-only' })`. Before the fix this
+  // preserved `typeDraft` / `typeParsed` / per-type `clientIds` from the
+  // dashboard log-flow draft, so opening Add Item showed an unrelated meal
+  // draft. The fix resets the Type-tab draft slice when entering
+  // library-only mode (standard mode continues to preserve drafts).
+  describe('E.CODEX Round-2 I1 — library-only mode isolates Type draft', () => {
+    it('openModal with mode=library-only clears typeDraft/typeParsed/failureMode/type clientId', async () => {
+      const { useLogFlowStore } = await import('@/lib/stores/useLogFlowStore');
+      // Seed a stale dashboard Type draft.
+      useLogFlowStore.getState().setTypeDraft('stale dashboard draft');
+      useLogFlowStore.getState().setTypeParsed({
+        items: [
+          {
+            name: 'eggs',
+            portion: 2,
+            unit: 'unit',
+            kcal: 140,
+            macros: { protein_g: 12, carbs_g: 1, fat_g: 10, fiber_g: 0 },
+            micros: {},
+            confidence: 0.9,
+          },
+        ],
+        reasoning: 'cached reasoning',
+      });
+      useLogFlowStore.getState().setFailureMode('network', 'stale input');
+      useLogFlowStore.getState().ensureClientId('type');
+      useLogFlowStore.getState().ensureClientId('snap'); // Sibling tab id — must survive.
+
+      useLogFlowStore.getState().openModal('type', { mode: 'library-only' });
+
+      const st = useLogFlowStore.getState();
+      // Library-only mode entered.
+      expect(st.isOpen).toBe(true);
+      expect(st.mode).toBe('library-only');
+      // Type-slice state cleared so the Library form starts empty.
+      expect(st.typeDraft).toBe('');
+      expect(st.typeParsed).toBeNull();
+      expect(st.failureMode).toBeNull();
+      expect(st.originalInput).toBeNull();
+      expect(st.clientIds.type).toBeUndefined();
+      // Sibling-tab id (snap) survives — only the Type slice is scoped.
+      expect(st.clientIds.snap).toBeDefined();
+    });
+
+    it('openModal with mode=standard (default) preserves typeDraft (regression guard)', async () => {
+      const { useLogFlowStore } = await import('@/lib/stores/useLogFlowStore');
+      useLogFlowStore.getState().setTypeDraft('keep me');
+      useLogFlowStore.getState().openModal('type');
+      expect(useLogFlowStore.getState().typeDraft).toBe('keep me');
+      expect(useLogFlowStore.getState().mode).toBe('standard');
+    });
+  });
+
   // F-UI-3.6-B-2 — user-scoped purge on auth change.
   //
   // Previously the persisted log-flow state (draft text, client_ids, library
@@ -242,6 +299,103 @@ describe('useLogFlowStore', () => {
       expect(st.librarySelection).toEqual([]);
       expect(st.clientIds).toEqual({});
       expect(st.lastUserId).toBe('user-b');
+    });
+  });
+
+  /**
+   * POST-MVP-BUGFIX-2026-05-17-LM-SEC-2 — `generateClientId` v4 fallback
+   * must use cryptographically secure entropy (`crypto.getRandomValues`)
+   * per RFC 4122 §4.4 instead of `Math.random()`. Sibling of the same
+   * defect in `mintLibraryClientId` (ConfirmationScreen).
+   */
+  describe('generateClientId — LM-SEC-2', () => {
+    const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+    it('Test 1 (fast path): uses crypto.randomUUID when available', async () => {
+      const sentinel = '99999999-aaaa-4bbb-8ccc-dddddddddddd';
+      vi.stubGlobal('crypto', {
+        randomUUID: () => sentinel,
+        getRandomValues: (buf: Uint8Array) => buf,
+      });
+
+      const { generateClientId } = await import('@/lib/stores/useLogFlowStore');
+
+      expect(generateClientId()).toBe(sentinel);
+
+      vi.unstubAllGlobals();
+    });
+
+    it('Test 2 (failing-first driver): when crypto.randomUUID is absent, uses crypto.getRandomValues — NOT Math.random — and returns valid v4', async () => {
+      const getRandomValues = vi.fn((buf: Uint8Array) => {
+        buf.fill(0xff);
+        return buf;
+      });
+      const mathRandomSpy = vi.spyOn(Math, 'random');
+
+      vi.stubGlobal('crypto', {
+        // randomUUID intentionally undefined.
+        getRandomValues,
+      });
+
+      const { generateClientId } = await import('@/lib/stores/useLogFlowStore');
+      const id = generateClientId();
+
+      expect(getRandomValues).toHaveBeenCalledTimes(1);
+      expect(mathRandomSpy).not.toHaveBeenCalled();
+      expect(id).toMatch(UUID_V4_RE);
+      // Bit-twiddle sanity check.
+      expect(id.charAt(14)).toBe('4');
+      expect(['8', '9', 'a', 'b']).toContain(id.charAt(19));
+
+      mathRandomSpy.mockRestore();
+      vi.unstubAllGlobals();
+    });
+
+    it('Test 3 (last-resort): when crypto has neither randomUUID nor getRandomValues, falls through to Math.random and still returns valid v4 shape', async () => {
+      vi.stubGlobal('crypto', {});
+
+      const { generateClientId } = await import('@/lib/stores/useLogFlowStore');
+      const id = generateClientId();
+
+      expect(id).toMatch(UUID_V4_RE);
+
+      vi.unstubAllGlobals();
+    });
+
+    it('Test 4 (schema validity): output of every branch is a UUID acceptable to z.string().uuid()', async () => {
+      // Branch A: randomUUID
+      vi.stubGlobal('crypto', {
+        randomUUID: () => '11111111-2222-4333-8444-555555555555',
+        getRandomValues: (buf: Uint8Array) => buf,
+      });
+      let mod = await import('@/lib/stores/useLogFlowStore');
+      const idA = mod.generateClientId();
+      vi.unstubAllGlobals();
+      vi.resetModules();
+
+      // Branch B: getRandomValues fallback
+      vi.stubGlobal('crypto', {
+        getRandomValues: (buf: Uint8Array) => {
+          for (let i = 0; i < buf.length; i++) buf[i] = (i * 17) & 0xff;
+          return buf;
+        },
+      });
+      mod = await import('@/lib/stores/useLogFlowStore');
+      const idB = mod.generateClientId();
+      vi.unstubAllGlobals();
+      vi.resetModules();
+
+      // Branch C: no crypto API at all
+      vi.stubGlobal('crypto', {});
+      mod = await import('@/lib/stores/useLogFlowStore');
+      const idC = mod.generateClientId();
+      vi.unstubAllGlobals();
+
+      const { z } = await import('zod');
+      const uuidSchema = z.string().uuid();
+      for (const id of [idA, idB, idC]) {
+        expect(uuidSchema.safeParse(id).success).toBe(true);
+      }
     });
   });
 });

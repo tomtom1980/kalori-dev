@@ -270,4 +270,179 @@ describe('authFetch (F12 refresh interceptor)', () => {
     expect(err.name).toBe('SessionExpiredError');
     expect(err.message).toMatch(/session expired/i);
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Task D.2 (US-STAB-D2) — AC3 — refresh interceptor handles the new
+  // canonical 401 envelope without any interceptor-code change.
+  //
+  // Detection in this module is status-code-only (`firstResponse.status !==
+  // 401`), so the new shape (status 401 + Content-Type: application/json +
+  // body `{error:'unauthenticated'}` + `WWW-Authenticate: Bearer
+  // realm="kalori"`) still trips the refresh path. This test pins the
+  // behaviour so the R1 invariant cannot regress as the 401 body shape
+  // evolves elsewhere.
+  // ───────────────────────────────────────────────────────────────────────
+  it('F12-handles-new-401-shape: status 401 + JSON {error:unauthenticated} still triggers refresh + retry', async () => {
+    refreshSession.mockResolvedValue({ data: { session: { access_token: 'new' } }, error: null });
+    // First response: the new canonical JSON 401. Second response: 200.
+    const newShapeUnauth = new Response(JSON.stringify({ error: 'unauthenticated' }), {
+      status: 401,
+      headers: {
+        'Content-Type': 'application/json',
+        'WWW-Authenticate': 'Bearer realm="kalori"',
+      },
+    });
+    const fetchSpy = mockFetchSequence([newShapeUnauth, mkResponse(200, { ok: true })]);
+    const { authFetch } = await import('./refresh-interceptor');
+
+    const res = await authFetch('http://host.test/api/water/log', {
+      method: 'POST',
+      body: JSON.stringify({ a: 1 }),
+    });
+
+    expect(res.status).toBe(200);
+    // R1 invariant: detection by status only — body/headers MUST NOT be
+    // pattern-matched. Confirms the refresh path STILL fires for the new
+    // shape (AC3) without modifying interceptor production code.
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+    expect(signOut).not.toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('F12-handles-new-401-shape-double-401: second new-shape 401 → signOut + throws', async () => {
+    refreshSession.mockResolvedValue({ data: { session: { access_token: 'new' } }, error: null });
+    signOut.mockResolvedValue({ error: null });
+    const headers = {
+      'Content-Type': 'application/json',
+      'WWW-Authenticate': 'Bearer realm="kalori"',
+    };
+    const firstResponse = new Response(JSON.stringify({ error: 'unauthenticated' }), {
+      status: 401,
+      headers,
+    });
+    const retryResponse = new Response(JSON.stringify({ error: 'unauthenticated' }), {
+      status: 401,
+      headers,
+    });
+    const fetchSpy = mockFetchSequence([firstResponse, retryResponse]);
+    const { hrefWrites } = stubWindow();
+    const { authFetch, SessionExpiredError } = await import('./refresh-interceptor');
+
+    await expect(authFetch('http://host.test/api/water/log', { method: 'POST' })).rejects.toThrow(
+      SessionExpiredError,
+    );
+
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(hrefWrites[0]).toContain('/login');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task E.1.1 — F-CODEX-D-R2-03 / F-CODEX-D-R3-01 — `authPost` error-body
+// propagation. Prior contract discarded the JSON response body on non-2xx
+// (`throw new Error('authPost ${url} failed: ${status}')`), making the new
+// `409 restore_name_conflict` payload from `app/api/library/bulk-delete/undo`
+// invisible to UI callers. New contract: throw `AuthApiError` (subclass of
+// Error) carrying `status: number` and `body: unknown`, with the SAME
+// message string so existing regex consumers
+// (`lib/log-flow/classify-error.ts`, FoodDetail Log-Now retry classifier)
+// continue to work unchanged.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('authPost error-body propagation (F-CODEX-D-R2-03)', () => {
+  beforeEach(() => {
+    refreshSession.mockReset();
+    signOut.mockReset();
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    unstubWindow();
+  });
+
+  it('RED-1: AuthApiError preserves 409 restore_name_conflict body for bulk-delete undo callers', async () => {
+    const conflictBody = {
+      error: 'restore_name_conflict',
+      conflicts: [{ client_id: 'abc', normalized_name: 'pho bo', existing_id: 'def' }],
+    };
+    mockFetchSequence([
+      new Response(JSON.stringify(conflictBody), {
+        status: 409,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    ]);
+    const { authPost, AuthApiError } = await import('./refresh-interceptor');
+
+    let caught: unknown;
+    try {
+      await authPost('/api/library/bulk-delete/undo', { client_ids: ['abc'] });
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(AuthApiError);
+    expect(caught).toBeInstanceOf(Error);
+    const err = caught as InstanceType<typeof AuthApiError>;
+    expect(err.status).toBe(409);
+    expect(err.body).toEqual(conflictBody);
+    // Back-compat: the message string format must remain the same so
+    // `lib/log-flow/classify-error.ts` and FoodDetail Log-Now's
+    // /failed:\s*(\d+)/ regex still match.
+    expect(err.message).toMatch(/failed:\s*409/);
+  });
+
+  it('RED-2: AuthApiError preserves non-JSON body as raw text (no-body / opaque-body case)', async () => {
+    mockFetchSequence([
+      new Response('plain text 503 from gateway', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain' },
+      }),
+    ]);
+    const { authPost, AuthApiError } = await import('./refresh-interceptor');
+
+    let caught: unknown;
+    try {
+      await authPost('/api/library/bulk-delete/undo', { client_ids: ['abc'] });
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(AuthApiError);
+    const err = caught as InstanceType<typeof AuthApiError>;
+    expect(err.status).toBe(503);
+    // Non-JSON: body should be the raw text string (best-effort) or null.
+    // The important invariant is the caller can still inspect `.status` to
+    // distinguish retryable 5xx from 4xx without parsing err.message.
+    expect(err.body === null || typeof err.body === 'string').toBe(true);
+    expect(err.message).toMatch(/failed:\s*503/);
+  });
+
+  it('RED-3: AuthApiError preserves 2xx happy path response body verbatim', async () => {
+    mockFetchSequence([
+      new Response(JSON.stringify({ restored_count: 1 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    ]);
+    const { authPost } = await import('./refresh-interceptor');
+
+    const result = await authPost<{ restored_count: number }>('/api/library/bulk-delete/undo', {
+      client_ids: ['abc'],
+    });
+
+    expect(result).toEqual({ restored_count: 1 });
+  });
+
+  it('RED-4: AuthApiError instances have stable name/prototype chain for instanceof checks', async () => {
+    const { AuthApiError } = await import('./refresh-interceptor');
+    const err = new AuthApiError('test message', 409, { error: 'foo' });
+
+    expect(err).toBeInstanceOf(AuthApiError);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.name).toBe('AuthApiError');
+    expect(err.status).toBe(409);
+    expect(err.body).toEqual({ error: 'foo' });
+    expect(err.message).toBe('test message');
+  });
 });

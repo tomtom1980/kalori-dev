@@ -189,7 +189,10 @@ describe('POST /api/profile/save — onboarding extensions', () => {
       new Request('http://kalori.test/api/profile/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: 'cid-1', patch: { age: 32 } }),
+        body: JSON.stringify({
+          client_id: 'cid-1',
+          patch: { birthday: '1994-04-21', age: 32 },
+        }),
       }),
     );
 
@@ -218,6 +221,7 @@ describe('POST /api/profile/save — onboarding extensions', () => {
     const existingRow = {
       id: 'u-1',
       bio_sex: 'male' as const,
+      birthday: '1996-04-21',
       age: 30,
       height_cm: 175,
       current_weight_kg: 80,
@@ -226,7 +230,7 @@ describe('POST /api/profile/save — onboarding extensions', () => {
       activity_level: 'moderate' as const,
       onboarding_completed_at: null,
     };
-    const { table, lastUpserted, lastUpdated } = buildChainableTable(existingRow);
+    const { table, lastUpserted, lastUpdated, lastInserted } = buildChainableTable(existingRow);
     vi.doMock('@/lib/supabase/server', () => ({
       getServerSupabase: async () => ({ auth: { getUser }, from: () => table }),
     }));
@@ -240,6 +244,7 @@ describe('POST /api/profile/save — onboarding extensions', () => {
           client_id: 'cid-8',
           patch: {
             bio_sex: 'male',
+            birthday: '1996-04-21',
             age: 30,
             height_cm: 175,
             current_weight_kg: 80,
@@ -286,6 +291,15 @@ describe('POST /api/profile/save — onboarding extensions', () => {
     expect(writtenPayload?.tdee).toBe(2711);
     expect(writtenPayload?.calorie_target).toBe(2160);
     expect(writtenPayload?.onboarding_completed_at).toBe('2026-04-21T00:00:00.000Z');
+    expect(lastInserted.payload).toMatchObject({
+      user_id: 'u-1',
+      date: '2026-04-21',
+      weight_kg: 80,
+      note: null,
+    });
+    expect(lastInserted.payload?.client_id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
   });
 
   it('Step 8 finalize: payload missing a required field is rejected with 400 before any mutation', async () => {
@@ -314,6 +328,7 @@ describe('POST /api/profile/save — onboarding extensions', () => {
           client_id: 'cid-8-missing-age',
           patch: {
             bio_sex: 'male',
+            birthday: '1996-04-21',
             // age intentionally omitted
             height_cm: 175,
             current_weight_kg: 80,
@@ -353,6 +368,7 @@ describe('POST /api/profile/save — onboarding extensions', () => {
     const existingRow = {
       id: 'u-1',
       bio_sex: 'male' as const,
+      birthday: '1996-04-21',
       age: 30,
       height_cm: 175,
       current_weight_kg: 80,
@@ -376,6 +392,7 @@ describe('POST /api/profile/save — onboarding extensions', () => {
           client_id: 'cid-8-incomplete',
           patch: {
             bio_sex: 'male',
+            birthday: '1996-04-21',
             age: 30,
             height_cm: 175,
             current_weight_kg: 80,
@@ -410,6 +427,7 @@ describe('POST /api/profile/save — onboarding extensions', () => {
     const existingRow = {
       id: 'u-1',
       bio_sex: 'male' as const,
+      birthday: '1996-04-21',
       age: 30,
       height_cm: 175,
       current_weight_kg: 80,
@@ -438,6 +456,7 @@ describe('POST /api/profile/save — onboarding extensions', () => {
           client_id: 'cid-8-fail',
           patch: {
             bio_sex: 'male',
+            birthday: '1996-04-21',
             age: 30,
             height_cm: 175,
             current_weight_kg: 80,
@@ -463,7 +482,11 @@ describe('POST /api/profile/save — onboarding extensions', () => {
       data: { user: { id: 'u-1' } },
       error: null,
     }));
-    const { table, lastUpserted, lastUpdated } = buildChainableTable({ id: 'u-1', age: 45 });
+    const { table, lastUpserted, lastUpdated } = buildChainableTable({
+      id: 'u-1',
+      birthday: '1981-04-21',
+      age: 45,
+    });
     vi.doMock('@/lib/supabase/server', () => ({
       getServerSupabase: async () => ({ auth: { getUser }, from: () => table }),
     }));
@@ -473,7 +496,10 @@ describe('POST /api/profile/save — onboarding extensions', () => {
       new Request('http://kalori.test/api/profile/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: 'cid-2', patch: { age: 45 } }),
+        body: JSON.stringify({
+          client_id: 'cid-2',
+          patch: { birthday: '1981-04-21', age: 45 },
+        }),
       }),
     );
 

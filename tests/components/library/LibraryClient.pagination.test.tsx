@@ -19,6 +19,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/lib/auth/refresh-interceptor', () => ({
+  authFetch: vi.fn(),
   authPost: vi.fn(),
   SessionExpiredError: class SE extends Error {},
 }));
@@ -41,10 +42,11 @@ function item(index: number, name = `Food ${String(index).padStart(2, '0')}`): L
   };
 }
 
-function cardButtons(container: HTMLElement): HTMLButtonElement[] {
-  return Array.from(
-    container.querySelectorAll<HTMLButtonElement>('button[data-testid^="library-card-item-"]'),
-  );
+function cardButtons(container: HTMLElement): HTMLElement[] {
+  // Bug 3 (library overhaul 2026-05-16) — card root refactored from
+  // `<button>` to `<div role="button">` to host the kebab menu trigger.
+  // Selector now keys on the testid prefix alone.
+  return Array.from(container.querySelectorAll<HTMLElement>('[data-testid^="library-card-item-"]'));
 }
 
 describe('<LibraryClient /> pagination', () => {
@@ -63,8 +65,9 @@ describe('<LibraryClient /> pagination', () => {
     expect(screen.queryByTestId('library-card-item-11')).not.toBeInTheDocument();
     expect(screen.queryByTestId('library-grid-pad-cell')).not.toBeInTheDocument();
     expect(screen.getByTestId('library-pagination')).toBeInTheDocument();
+    expect(screen.getByTestId('library-pagination-top')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByTestId('library-pagination-next'));
+    await userEvent.click(screen.getByTestId('library-pagination-top-next'));
 
     await waitFor(() => {
       expect(screen.getByTestId('library-card-item-11')).toBeInTheDocument();

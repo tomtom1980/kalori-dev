@@ -24,7 +24,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 
-import { ProgressWeightQuickAdd } from '@/app/(app)/progress/_components/weight-quick-add';
+import {
+  ProgressWeightQuickAdd,
+  ProgressWeightTrajectoryPanel,
+} from '@/app/(app)/progress/_components/weight-quick-add';
 import { useWeightQuickAddStore } from '@/lib/stores/useWeightQuickAddStore';
 
 const authPost = vi.fn();
@@ -251,6 +254,27 @@ describe('<ProgressWeightQuickAdd /> AC2 — bounds validation', () => {
     expect(screen.getByTestId('weight-quick-add-inline')).toBeTruthy();
   });
 
+  it('renders the progress inline weight/date fields as one responsive pair', () => {
+    render(
+      <ProgressWeightQuickAdd
+        unitPref="metric"
+        todayUserTz={todayIso}
+        minDateUserTz={minDateIso}
+        initialWeightKg={null}
+      />,
+    );
+
+    const fieldPair = screen.getByTestId('weight-quick-add-field-pair');
+    expect(fieldPair).toHaveAttribute('data-alignment', 'weight-date-grid');
+    expect(fieldPair).toHaveClass('kalori-weight-field-pair');
+    expect(fieldPair).toHaveStyle({ display: 'grid' });
+    expect(fieldPair.style.gridTemplateColumns).toContain('--kalori-weight-field-pair-columns');
+    expect(fieldPair).toContainElement(screen.getByTestId('weight-quick-add-input'));
+    expect(fieldPair).toContainElement(screen.getByTestId('weight-quick-add-date'));
+    expect(screen.getByTestId('weight-quick-add-input').style.minHeight).toBe('52px');
+    expect(screen.getByTestId('weight-quick-add-date').style.minHeight).toBe('52px');
+  });
+
   it('axe-core: zero critical/serious violations on the inline surface', async () => {
     const { container } = render(
       <ProgressWeightQuickAdd
@@ -261,5 +285,47 @@ describe('<ProgressWeightQuickAdd /> AC2 — bounds validation', () => {
       />,
     );
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe('<ProgressWeightTrajectoryPanel /> — shared unit switch', () => {
+  beforeEach(() => {
+    authPost.mockReset();
+    refreshSpy.mockReset();
+    useWeightQuickAddStore.getState().reset();
+  });
+
+  afterEach(() => {
+    useWeightQuickAddStore.getState().reset();
+  });
+
+  it('one top-level unit switch updates the entry suffix and chart values together', () => {
+    render(
+      <ProgressWeightTrajectoryPanel
+        unitPref="metric"
+        todayUserTz={todayIso}
+        minDateUserTz={minDateIso}
+        initialWeightKg={null}
+        entries={[
+          { date: '2026-04-20', weightKg: 75 },
+          { date: '2026-04-24', weightKg: 74 },
+        ]}
+        goalWeightKg={70}
+      />,
+    );
+
+    expect(screen.getByTestId('weight-quick-add-inline')).toHaveTextContent('kg');
+    expect(screen.getByTestId('weight-trajectory-point-0')).toHaveAttribute(
+      'aria-label',
+      expect.stringContaining('75 kilograms'),
+    );
+
+    fireEvent.click(screen.getByLabelText('lb'));
+
+    expect(screen.getByTestId('weight-quick-add-inline')).toHaveTextContent('lb');
+    expect(screen.getByTestId('weight-trajectory-point-0')).toHaveAttribute(
+      'aria-label',
+      expect.stringContaining('165.3 pounds'),
+    );
   });
 });

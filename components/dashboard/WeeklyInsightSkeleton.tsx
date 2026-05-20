@@ -17,11 +17,11 @@ export function WeeklyInsightSkeleton() {
     <section
       data-testid="weekly-insight-skeleton"
       aria-labelledby="weekly-insight-heading"
-      className="skeleton-shimmer"
+      aria-busy="true"
       style={{
         border: '1px solid var(--color-rule-strong)',
+        background: 'var(--color-bg-1)',
         padding: 'var(--spacing-6)',
-        borderRadius: 'var(--radius-lg)',
       }}
     >
       <p

@@ -26,7 +26,16 @@ type MergeAction =
   | { type: 'set'; field: keyof MergeFieldChoices; value: MergeChoiceTag | 'a' | 'b' }
   | {
       type: 'custom';
-      field: 'kcal_custom' | 'protein_custom' | 'carbs_custom' | 'fat_custom' | 'portion_custom';
+      // Codex R1 F1 fix — add cholesterol_custom to the custom action's
+      // field union so the dialog can drive a CUSTOM value for the new
+      // cholesterol picker (parity with protein/carbs/fat).
+      field:
+        | 'kcal_custom'
+        | 'protein_custom'
+        | 'carbs_custom'
+        | 'fat_custom'
+        | 'cholesterol_custom'
+        | 'portion_custom';
       value: number | null;
     }
   | { type: 'reset'; choices: MergeFieldChoices };
@@ -92,6 +101,20 @@ export function MergeDuplicatesDialog({
   const bCarbs = b.nutrition?.macros?.carbs_g ?? 0;
   const aFat = a.nutrition?.macros?.fat_g ?? 0;
   const bFat = b.nutrition?.macros?.fat_g ?? 0;
+  // Codex R1 F1 fix — cholesterol candidate extraction. Reads the
+  // optional `cholesterol_mg` macro key off both sides. Legacy rows
+  // (no key) default to 0 for picker display; the merge submit path
+  // omits the field entirely when both sides are absent so the merge
+  // RPC's full-replacement does not write a phantom 0mg.
+  const aMacros = a.nutrition?.macros as { cholesterol_mg?: number } | undefined;
+  const bMacros = b.nutrition?.macros as { cholesterol_mg?: number } | undefined;
+  const aHasCholesterol =
+    aMacros !== undefined && Object.prototype.hasOwnProperty.call(aMacros, 'cholesterol_mg');
+  const bHasCholesterol =
+    bMacros !== undefined && Object.prototype.hasOwnProperty.call(bMacros, 'cholesterol_mg');
+  const aCholesterol = aMacros?.cholesterol_mg ?? 0;
+  const bCholesterol = bMacros?.cholesterol_mg ?? 0;
+  const cholesterolVisible = aHasCholesterol || bHasCholesterol;
   const aPortion = a.default_portion ?? 1;
   const bPortion = b.default_portion ?? 1;
 
@@ -117,6 +140,14 @@ export function MergeDuplicatesDialog({
       return;
     }
     const thumb = choices.thumbnail_url === 'a' ? a.thumbnail_url : b.thumbnail_url;
+    // Bugfix R1 C1 — signed URL persistence guard. The dialog displays
+    // sign-on-read 1-hour signed URLs (post-Bug-3 SIGN_LIMIT raise).
+    // We send the SOURCE ROW ID alongside the (signed) URL so the
+    // server can re-resolve the raw storage path before writing to
+    // the database. The legacy `thumbnail_url` field is kept for
+    // back-compat — the server ignores its content when source id is
+    // present.
+    const thumbnailSource = choices.thumbnail_url === 'a' ? a : b;
     const unit = choices.default_unit === 'a' ? a.default_unit : b.default_unit;
     const fields = {
       display_name: winner.display_name,
@@ -134,6 +165,22 @@ export function MergeDuplicatesDialog({
           protein_g: pickValue(choices.protein_g, aProtein, bProtein, choices.protein_custom),
           carbs_g: pickValue(choices.carbs_g, aCarbs, bCarbs, choices.carbs_custom),
           fat_g: pickValue(choices.fat_g, aFat, bFat, choices.fat_custom),
+          // Codex R1 F1 fix — thread cholesterol_mg through the merge
+          // payload. The merge RPC replaces winner.nutrition wholesale
+          // (`p_fields->'nutrition'`), so any cholesterol value not
+          // included here is erased from the surviving row. We only
+          // emit the key when at least one source side had it, to
+          // avoid materialising a phantom 0mg for legacy-only pairs.
+          ...(cholesterolVisible
+            ? {
+                cholesterol_mg: pickValue(
+                  choices.cholesterol_mg ?? 'a',
+                  aCholesterol,
+                  bCholesterol,
+                  choices.cholesterol_custom ?? null,
+                ),
+              }
+            : {}),
         },
       },
     };
@@ -143,6 +190,8 @@ export function MergeDuplicatesDialog({
         client_id: crypto.randomUUID(),
         winnerId: winner.id,
         loserId: loser.id,
+        // Bugfix R1 C1 — discriminator for server-side raw-path resolve.
+        thumbnail_source_id: thumbnailSource.id,
         fields,
       };
       // IF-1 (Codex adversarial round 1): capture the RPC-returned
@@ -251,6 +300,30 @@ export function MergeDuplicatesDialog({
             onCustomChange={(n) => dispatch({ type: 'custom', field: 'fat_custom', value: n })}
             customLabel={t.library.mergeOptionCustom}
           />
+          {/* Codex R1 F1 fix — cholesterol picker. Only rendered when at
+              least one side actually carries cholesterol data, so legacy
+              row pairs do not see an empty mg row prompting them for a
+              field neither side has. Once the user types a CUSTOM value
+              for a legacy-only side, `cholesterolVisible` does not flip
+              mid-render (memoised by side props) — the picker stays
+              hidden until the data exists; that's an intentional
+              boundary, not a usability bug. */}
+          {cholesterolVisible ? (
+            <MergeField
+              legend={t.library.mergeFieldCholesterol}
+              name="cholesterol_mg"
+              valueA={String(aCholesterol)}
+              valueB={String(bCholesterol)}
+              choice={choices.cholesterol_mg ?? 'a'}
+              onChoice={(v) => dispatch({ type: 'set', field: 'cholesterol_mg', value: v })}
+              allowCustom
+              customValue={choices.cholesterol_custom ?? null}
+              onCustomChange={(n) =>
+                dispatch({ type: 'custom', field: 'cholesterol_custom', value: n })
+              }
+              customLabel={t.library.mergeOptionCustom}
+            />
+          ) : null}
           <MergeField
             legend={t.library.mergeFieldPortion}
             name="default_portion"

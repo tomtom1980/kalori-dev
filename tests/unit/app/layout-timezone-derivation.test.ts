@@ -118,9 +118,11 @@ describe('app/(app)/layout.tsx — profile timezone lookup (Codex R1 C1)', () =>
       expect(source).toMatch(/timezone=\{timezone\}/);
     });
 
-    it('mounts DeviceTimezoneSync so server profile timezone follows the browser device timezone', () => {
+    it('mounts DeviceTimezoneSync only after a profile row exists', () => {
       expect(source).toMatch(/from\s+['"]@\/components\/time\/DeviceTimezoneSync['"]/);
-      expect(source).toMatch(/<DeviceTimezoneSync\s+profileTimezone=\{timezone\}\s*\/>/);
+      expect(source).toMatch(
+        /hasProfileRow\s*\?\s*<DeviceTimezoneSync\s+profileTimezone=\{timezone\}\s*\/>\s*:\s*null/,
+      );
     });
 
     it('does NOT drill a precomputed loggedOn prop to NavShell (Codex R2 C2 regression guard)', () => {

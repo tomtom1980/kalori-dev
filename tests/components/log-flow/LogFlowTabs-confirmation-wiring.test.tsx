@@ -41,6 +41,13 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 
+// This wiring suite asserts the desktop editable portion input. The mobile
+// wheel trigger is covered separately by mobile-wheel-picker-consumers.
+vi.mock('@/lib/hooks/use-is-mobile', () => ({
+  MOBILE_QUERY: '(max-width: 1279px)',
+  useIsMobile: () => false,
+}));
+
 describe('<LogFlowTabs /> — F-UI-3.6-B-1 confirmation wiring', () => {
   beforeEach(() => {
     useLogFlowStore.getState().resetDraft();
@@ -193,7 +200,7 @@ describe('<LogFlowTabs /> — F-UI-3.6-B-1 confirmation wiring', () => {
     const user = userEvent.setup();
     render(<LogFlowTabs />);
 
-    const fileInput = screen.getByTestId('snap-tab-file-input') as HTMLInputElement;
+    const fileInput = screen.getByTestId('snap-tab-upload-input') as HTMLInputElement;
     const file = new File(['x'], 'test.jpg', { type: 'image/jpeg' });
     await user.upload(fileInput, file);
 
@@ -207,6 +214,9 @@ describe('<LogFlowTabs /> — F-UI-3.6-B-1 confirmation wiring', () => {
     expect(payload?.source).toBe('photo');
     expect(payload?.tab).toBe('snap');
     expect(payload?.items[0]?.name).toBe('banh mi');
+    expect(screen.getByTestId('confirmation-item-0-name')).toHaveValue('banh mi');
+    expect(screen.getByTestId('confirmation-item-0-portion')).toHaveValue(1);
+    expect(screen.getByTestId('confirmation-item-0-kcal')).toHaveValue(350);
   });
 
   it('TYPE tab manual-fallback submit enters confirmation phase', async () => {

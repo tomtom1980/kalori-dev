@@ -66,6 +66,9 @@ export const t = {
     // top of the nav shell. Visible only on :focus-visible; jumps focus
     // past the nav chrome into the page `<main>`.
     skipToMain: 'Skip to main content',
+    pullToRefresh: {
+      refreshing: 'Refreshing',
+    },
   },
 
   masthead: {
@@ -86,11 +89,14 @@ export const t = {
     tagline: 'A record of what you eat, kept like a journal.',
     editionPrefix: 'No.',
     editionFormat: 'No. {n} · {weekday}, {day} {month} {year}',
+    todayDateLabel: "Today's date is:",
     welcomeFirstVisit: 'First entry. Welcome to the ledger.',
+    dailyInspiration: 'A clear record makes the next meal easier to choose.',
     offlineBanner: 'Offline. Today’s ledger is held locally.',
   },
 
   dashboard: {
+    heading: 'Dashboard',
     // Task 1.2 placeholder heading + body — Task 2.2 ships the real chronometer.
     stubHeading: '§ 01 · Today\u2019s Chronometer',
     stubBody: 'The masthead and chronometer land with Task 2.2.',
@@ -115,6 +121,7 @@ export const t = {
       ariaLabel:
         '{consumed} of {target} calories logged today, {pct} percent of target, status {status}',
       dataTableSummary: 'View as data table',
+      dataTableCaption: 'Daily calorie data table',
       dataTableHeadMetric: 'Metric',
       dataTableHeadValue: 'Value',
       dataTableRowConsumed: 'Calories, logged today',
@@ -154,10 +161,14 @@ export const t = {
       carbs: 'CARBS',
       fat: 'FAT',
       fiber: 'FIBER',
+      // Phase 2A (2026-05-16) — cholesterol 5th macro row. Tracked in mg
+      // (not g) per USDA/FDA Daily Value reference (300mg/day).
+      cholesterol: 'CHOLESTEROL',
       proteinTitle: 'Protein',
       carbsTitle: 'Carbs',
       fatTitle: 'Fat',
       fiberTitle: 'Fiber',
+      cholesterolTitle: 'Cholesterol',
       valueFormat: '{consumed}g',
       targetSuffix: '/ {target}g',
       pctFormat: '{pct}%',
@@ -168,12 +179,26 @@ export const t = {
       ariaLabel: '{macro}, {consumed} grams of {target} target, {pct} percent',
       ariaLabelOver: '{macro}, {consumed} grams, over {target} target by {over} grams',
       ariaLabelEmpty: '{macro}, no data yet',
+      // Codex R1 F3 fix — unit-aware aria siblings for cholesterol (mg)
+      // and any future non-grams macros. The grams variants above are
+      // kept intact for any external string-equality test that may pin
+      // to the literal grams variant; the mg variants are used by
+      // buildAriaValueText() when row.unit === 'mg'.
+      ariaLabelMg: '{macro}, {consumed} milligrams of {target} milligram target, {pct} percent',
+      ariaLabelOverMg:
+        '{macro}, {consumed} milligrams, over {target} milligram target by {over} milligrams',
+      detailsCue: 'Details',
       breakdownTriggerA11y: 'Show {macro} breakdown. {summary}',
       breakdownHoverEmpty: 'No {macro} entries yet.',
       breakdownHoverTop: 'Top contributors: {items}.',
       breakdownKicker: 'Macro breakdown',
       breakdownTitle: '{macro} breakdown',
       breakdownTargetLine: '{consumed}g logged of {target}g target',
+      // Phase 2A (2026-05-16) — unit-aware sibling for cholesterol (mg)
+      // and any future non-grams macros. `breakdownTargetLine` is kept
+      // intact for any external string-equality test that may pin to
+      // the literal grams variant.
+      breakdownTargetLineUnit: '{consumed}{unit} logged of {target}{unit} target',
       breakdownClose: 'Close macro breakdown',
       breakdownEmpty: 'No entries contributed to {macro} yet.',
       breakdownPctOfTotal: '{pct}% of total',
@@ -297,6 +322,12 @@ export const t = {
       pctFormat: '{pct}%',
       pctUnderFormat: '{pct}% of RDA',
       pctOverFormat: '!{pct}%',
+      // Codex R2 I2 (bugfix-tomi 2026-05-17-micros-display-consistency) —
+      // Placeholder rendered in the percent slot when a row has no canonical
+      // RDA reference (sugar, caffeine, orphan keys). Distinct from "0%"
+      // (which would imply a measured deficit) so the row does not read as
+      // a low-RDA meter.
+      pctUnknownLabel: '—',
       overLabel: 'over upper limit',
       overflowMoreFormat: '+ {n} MORE ELEMENTS',
       overflowLess: '— FEWER —',
@@ -304,10 +335,41 @@ export const t = {
       emptyCaption: 'Log a few meals and the minor elements will surface here.',
       rowAriaLabel: '{name}, {pct} percent of daily reference, status {status}',
       rowAriaLabelOver: '{name}, {pct} percent, over upper limit',
+      // Codex R2 I2 — aria template for RDA-unknown rows. No percent token;
+      // the row carries amount + unit so screen readers announce a useful
+      // value (e.g. "sugar, 25 grams, no daily reference") rather than the
+      // misleading "0 percent of daily reference, below reference" phrase
+      // the row used to share with measurable-low rows.
+      rowAriaLabelUnknown: '{name}, {amount}{unit}, no daily reference',
       statusLow: 'below reference',
       statusMid: 'below reference',
       statusGood: 'at reference',
       statusOver: 'over upper limit',
+      // Codex R2 I2 — used by the row aria-label substitution path when
+      // status === 'unknown'. Not displayed visually; the visual surface
+      // uses `pctUnknownLabel` ("—") instead.
+      statusUnknown: 'no daily reference',
+      detailsCue: 'Details',
+      // Phase 2B (2026-05-16) — hover + click breakdown parity with macros.
+      breakdownTriggerA11y: 'Open {name} contributors breakdown. {summary}',
+      breakdownHoverEmpty: 'No {name} entries yet.',
+      breakdownHoverTop: 'Top contributors: {items}.',
+      breakdownKicker: 'Element breakdown',
+      breakdownTitle: '{name} breakdown',
+      breakdownTargetLineWithRda: '{consumed}{unit} logged of {target}{unit} target',
+      breakdownTargetLineNoRda: '{consumed}{unit} logged · no reference',
+      breakdownClose: 'Close element breakdown',
+      breakdownEmpty: 'No entries contributed to {name} yet.',
+      breakdownPctOfTotal: '{pct}% of total',
+      breakdownAmountFormat: '{amount}{unit}',
+    },
+    // Task C.1 (US-STAB-C1) — Micros + RDA panel eyebrow labels + chip aria
+    // template. Distinct namespace from the existing 7-day-union `micro` block
+    // so neither component can accidentally pick up the other's copy.
+    microsRda: {
+      headerLeft: 'MICROS',
+      headerRight: '30 ELEMENTS',
+      rowAriaLabel: '{name}, {pct} percent of daily reference',
     },
 
     // --- Task 3.5 Weekly Insight (shell only; Task 4.3a owns content) ---
@@ -320,6 +382,50 @@ export const t = {
       weeklyEmptyCaption: 'Log seven days and the ledger will offer a review.',
       weeklyErrorHeading: 'The note could not be set',
       weeklyErrorRetry: 'Try again',
+    },
+
+    dailyEditorsNote: {
+      kicker: "Â§ THE EDITOR'S NOTE",
+      emptyBody:
+        'Nothing is logged for {day} yet; log food for this day before the editor can review it.',
+      body: '{day} has {entries} {entryWord} at {consumed} of {target} kcal, so this note is scoped to the current day.',
+      entrySingular: 'entry',
+      entryPlural: 'entries',
+      outcomeLabel: 'Outcome',
+      recommendationLabel: 'Recommendation',
+      goodLabel: 'Good',
+      needsAttentionLabel: 'Needs attention',
+      outcomeUnder: '{delta} kcal remain against the daily target.',
+      outcomeOver: '{delta} kcal over the daily target.',
+      outcomeOnTarget: 'Right on the daily target.',
+      recommendUnder: 'Use the remaining room for a steady, protein-forward choice.',
+      recommendApproaching: 'Keep the next choice measured and avoid calorie-dense extras.',
+      recommendOnTarget: 'Hold the pace and keep the rest of the day simple.',
+      recommendOver: 'Make the next choice lighter and prioritize water or fiber.',
+      signalWater: 'Water is still below the halfway mark.',
+      signalFiber: 'Fiber is still behind the daily reference.',
+      signalMicro: '{name} is below reference today.',
+      signalGoodMacro: '{name} is carrying the day well.',
+      signalGoodWater: 'Water is already at target.',
+      signalGoodLogged: 'The day has enough logged data to guide the next choice.',
+      updating: 'Updating summary',
+      aiFailedTitle: 'AI parsing failed.',
+      aiFailedBody:
+        'The latest AI summary could not be generated and no previous summary is available.',
+      retryAiSummary: 'Retry AI summary',
+    },
+
+    bac: {
+      headerLeft: 'BAC estimate',
+      headerRight: 'alcohol',
+      description: 'Current estimated BAC',
+      refreshA11y: 'Refresh BAC',
+      // Accessible label for the refresh button while a refresh is in
+      // flight (`isPending === true`). Mirrors the loading affordance
+      // (icon spin + value fade) for screen-reader users.
+      refreshingA11y: 'Refreshing BAC',
+      asOfFormat: 'As of {time}',
+      emptyAsOf: 'As of now',
     },
 
     // --- Task 3.5 undo dashboard-specific copy ---
@@ -371,6 +477,23 @@ export const t = {
     tabLibraryLabel: 'LIBRARY',
     tabLibraryA11y: 'Log from library',
 
+    // --- Add Food tab merge (Type + Library unified) ---
+    tabAddFoodLabel: 'ADD FOOD',
+    addNewItemAriaLabel: 'Add new food item',
+    addNewItemCtaPrefix: 'Add',
+    addNewItemCtaSuffix: 'as new item',
+    libraryNoMatchWithCta: 'Nothing matches that search yet.',
+    backToLibraryAriaLabel: 'Back to library',
+    loadingLibraryA11y: 'Loading library',
+    // Library card macro row — 5 abbreviated macros rendered below kcal.
+    // Cholesterol uses mg; the rest use g — keep units explicit so the
+    // numbers can't be misread across magnitudes.
+    libraryCardMacroProtein: 'P {value}g',
+    libraryCardMacroCarbs: 'C {value}g',
+    libraryCardMacroFat: 'F {value}g',
+    libraryCardMacroFiber: 'Fi {value}g',
+    libraryCardMacroCholesterol: 'Ch {value}mg',
+
     // Type tab
     typeDescribeLabel: 'DESCRIBE YOUR MEAL',
     typeDescribePlaceholder: 'Describe what you ate \u2014 in any language',
@@ -387,6 +510,7 @@ export const t = {
     snapCaptureDrop: 'DROP TO UPLOAD',
     snapCaptureA11y: 'Capture photo',
     snapUploadInstead: 'UPLOAD INSTEAD',
+    snapUploadPicture: 'Upload picture',
     snapRetake: 'RE-TAKE',
     snapAnalyze: 'ANALYZE',
     snapCompressingLabel: 'Compressing image',
@@ -394,6 +518,9 @@ export const t = {
     snapAnalyzingStill: 'Still looking\u2026',
     snapUnsupportedMime: 'Unsupported image format. Use JPEG, PNG, or WEBP.',
     snapTooLarge: 'Image too large even after compression. Try a smaller photo.',
+    snapNoFoodTitle: 'No recognizable food item is on this picture.',
+    snapNoFoodBody: 'Try another photo or add the food item without a photo.',
+    snapNoFoodAddItemCTA: 'Add food item',
     // Task 4.7.5 — inline warning when thumbnail upload fails post-parse.
     // Entry still saves (parsed items are load-bearing); thumbnail is
     // enrichment, so non-blocking surface only.
@@ -406,6 +533,7 @@ export const t = {
     librarySearchLabel: 'SEARCH LIBRARY',
     librarySearchPlaceholder: 'Search library',
     librarySortLabel: 'Sort library',
+    librarySortNameAsc: 'NAME A-Z',
     librarySortFrequent: 'FREQUENT',
     librarySortRecent: 'RECENT',
     librarySortHighProtein: 'HIGH-PROTEIN',
@@ -429,7 +557,9 @@ export const t = {
     // Validation errors (ManualEntryFallback inline error rendering)
     fallbackErrorFoodRequired: 'Enter a food name.',
     fallbackErrorPortionRequired: 'Enter the portion size in grams.',
+    fallbackErrorQuantityRequired: 'Enter a quantity greater than 0.',
     fallbackErrorKcalRequired: 'Enter the calorie value.',
+    fallbackErrorMacroRequired: 'Enter 0 or a positive number.',
     fallbackErrorSummary: 'Please correct the highlighted fields.',
 
     // Modal description (sr-only)
@@ -447,11 +577,30 @@ export const t = {
     fallbackHeadingSnap: 'AI couldn\u2019t read the photo \u2014 describe it manually or try again',
     fallbackHeadingLibrary: 'Couldn\u2019t save selection \u2014 enter manually or try again',
     fallbackManualCTA: 'MANUAL ENTRY',
+    fallbackManualNote: 'File the food manually, then review it before saving.',
+    fallbackSnapNeedsReview:
+      'Photo was kept. Add the food details manually or retry the photo analysis.',
     fallbackRetryCTA: 'TRY AGAIN',
+    fallbackRetryPhotoCTA: 'TRY PHOTO AGAIN',
     fallbackFoodNameLabel: 'FOOD NAME',
     fallbackPortionLabel: 'PORTION (G)',
+    fallbackQuantityLabel: 'QUANTITY / PORTION',
+    fallbackQuantityChoose: 'CHOOSE QUANTITY',
+    fallbackQuantityWheelTitle: 'QUANTITY',
+    fallbackUnitGroupLabel: 'UNIT',
+    fallbackUnitGram: 'g',
+    fallbackUnitServing: 'serving',
+    fallbackUnitPiece: 'piece',
+    fallbackUnitBowl: 'bowl',
+    fallbackUnitCup: 'cup',
+    fallbackPresetGroupLabel: 'Preset amounts',
     fallbackKcalLabel: 'KCAL',
-    fallbackSubmitCTA: 'SAVE ENTRY',
+    fallbackMacrosToggle: 'OPTIONAL MACROS',
+    fallbackProteinLabel: 'PROTEIN (G)',
+    fallbackCarbsLabel: 'CARBS (G)',
+    fallbackFatLabel: 'FAT (G)',
+    fallbackFiberLabel: 'FIBER (G)',
+    fallbackSubmitCTA: 'SAVE MANUALLY',
 
     // Discard prompt
     discardPromptTitle: 'DISCARD UNSAVED ENTRY?',
@@ -463,6 +612,7 @@ export const t = {
     // Task 3.4 — ConfirmationScreen
     confirmationKicker: 'KALORI’S LEDGER READS:',
     confirmationSaveCTA: 'SAVE TO LEDGER',
+    confirmationLibrarySaveCTA: 'ADD LIBRARY ITEM',
     confirmationDiscardCTA: 'DISCARD',
     confirmationEditInputCTA: '← EDIT INPUT',
     confirmationItemRemove: 'Remove {name}',
@@ -470,6 +620,23 @@ export const t = {
     confirmationItemPortionLabel: 'Portion',
     confirmationItemKcalLabel: 'Calories',
     confirmationItemKcalUnit: 'kcal',
+    // Phase 2C — macros summary strip on each ConfirmationScreen row.
+    // Surfaces the 5 macros (4 grams + cholesterol mg) so the user can
+    // verify the AI-parsed / library-re-log values before save.
+    confirmationItemMacroProtein: 'P',
+    confirmationItemMacroCarbs: 'C',
+    confirmationItemMacroFat: 'F',
+    confirmationItemMacroFiber: 'Fb',
+    confirmationItemMacroCholesterol: 'Chol',
+    confirmationItemMacroUnitGrams: 'g',
+    confirmationItemMacroUnitMg: 'mg',
+    // Bug 1 (2026-05-17-library-micros) — library-only micros expander on
+    // <ConfirmationScreen />. Shown only in library-only mode so the user
+    // can adjust the AI-parsed micronutrient values before /api/library/create.
+    confirmationItemMicrosExpandShow: 'Add micronutrient details',
+    confirmationItemMicrosExpandHide: 'Hide micronutrient details',
+    confirmationParsedMicrosExpandShow: 'Show all micronutrients',
+    confirmationParsedMicrosExpandHide: 'Hide all micronutrients',
     confirmationMealLabel: 'Meal',
     confirmationMealBreakfast: 'BREAKFAST',
     confirmationMealLunch: 'LUNCH',
@@ -479,17 +646,67 @@ export const t = {
     // ('drink'). The UI must render it so copy-yesterday'd drink entries can
     // re-edit their meal slot.
     confirmationMealDrink: 'DRINK',
+    // Bug A (bugfix-tomi 2026-05-19-bac-improvements) — the manual
+    // AlcoholControls toggle / preset / inputs were removed. Gemini now
+    // auto-detects alcoholic items via the AI prompt contract and emits
+    // is_alcoholic + volume_ml + abv_percent per item. The confirmation
+    // surface shows a one-line read-only "Detected" caption when
+    // meal=drink AND at least one item is_alcoholic=true.
+    //
+    // Placeholders in `confirmationAlcoholDetectedFormat`:
+    //   {volume} — volume_ml as integer (e.g. "355")
+    //   {abv}    — abv_percent as displayed number (e.g. "5" or "6.5")
+    //   {grams}  — alcohol_grams rounded to nearest int (e.g. "14")
+    //
+    // Visual style mirrors the ledger-editorial caption rhythm: kicker
+    // label + middot-separated values, no fields, no toggle.
+    confirmationAlcoholDetectedLabel: 'Detected',
+    confirmationAlcoholDetectedFormat: '{volume} ml · {abv}% ABV · ~{grams} g',
+    confirmationAlcoholDetectedA11y:
+      'Alcoholic drink detected: {volume} milliliters at {abv} percent ABV, approximately {grams} grams of alcohol.',
+    // RETAINED as a small fallback heading for the legacy DRINK fieldset
+    // area. The toggle / preset / validation keys are gone — the Detected
+    // label fully replaces the manual entry surface.
+    confirmationAlcoholGroupLabel: 'Alcohol details',
     confirmationSaveToLibraryLabel: 'FILE UNDER',
     confirmationDedupHeader: 'A library entry with this name already exists.',
     confirmationDedupReuse: 'REUSE EXISTING',
     confirmationDedupCreate: 'CREATE NEW',
+    confirmationSaveToLibraryNameLabel: 'Library name',
+    confirmationSaveToLibraryNamePlaceholder: 'Library name',
+    confirmationDuplicateNameError:
+      'This name is already in your library. Pick a different name or reuse the existing entry below.',
+    confirmationLibraryLimitReached:
+      'You have reached the limit to add new items to the library. Maximum 20 new additions per day and 100 per month.',
+    // E.CODEX Round-2 C2 — library-only mode duplicate banner. The standard
+    // DedupBanner is hidden in library-only mode (no log entry to link), so
+    // the user needs a dedicated surface explaining WHY Save is disabled and
+    // how to resolve. Heading copy mirrors `confirmationDedupHeader`; the
+    // hint instructs them to rename (there's no REUSE path in library-only
+    // because we're creating, not logging).
+    confirmationLibraryOnlyDedupHeader: 'A library entry with this name already exists.',
+    confirmationLibraryOnlyDedupHint:
+      'Rename this entry to something unique to add it to your library.',
     confirmationWhyHeader: 'WHY THESE NUMBERS?',
     confirmationWhyEstimate: 'estimate',
     confirmationWhySourcesHeading: 'SOURCES',
     confirmationWhyIngredientHeading: 'INGREDIENT',
     confirmationWhyConfidenceHeading: 'CONFIDENCE',
     confirmationWhyKcalHeading: 'KCAL',
+    confirmationWhyTopMicroHeading: 'TOP MICRONUTRIENT',
+    confirmationWhyShowAllMicros: 'SHOW ALL MICRONUTRIENTS ({count})',
+    confirmationWhyHideAllMicros: 'HIDE MICRONUTRIENTS',
+    confirmationWhyDvSuffix: '% DV',
+    confirmationApproxGrams: 'approx. {grams} g',
     confirmationErrorBanner: 'Couldn’t save. Try again.',
+    confirmationFutureTimeError: 'Choose a time that is not in the future.',
+    duplicateFoodConfirmMessage:
+      'You have already logged this item for this meal today. Are you sure you want to add another one?',
+    duplicateFoodConfirmKicker: '§ Duplicate log',
+    duplicateFoodConfirmTitle: 'Log this again?',
+    duplicateFoodConfirmCancel: 'Cancel',
+    duplicateFoodConfirmProceed: 'Log again',
+    duplicateFoodCancelled: 'Duplicate log cancelled.',
     confirmationRetryCTA: 'TRY AGAIN',
     confirmationItemsCount: '{count} items to confirm.',
     confirmationItemNameError: 'Enter a food name.',
@@ -501,6 +718,17 @@ export const t = {
     confirmationEmptyCaption: 'Add at least one item to save.',
     confirmationPortionDecrease: 'Decrease portion',
     confirmationPortionIncrease: 'Increase portion',
+    // Task C.5 (F-VERIFY-203) — Confirmation.TimeEditor compound child.
+    confirmationTimeEditorLabel: 'WHEN',
+    confirmationTimeEditorHint: 'Backfill up to 30 days. Defaults to now.',
+    confirmationTimeEditorOutsideWindow: 'Pick a date within the last 30 days.',
+    confirmationTimeEditorCurrentTime: 'Current Time',
+    // Codex R1 Finding #2 — readonly edit-path hint. PATCH body intentionally
+    // omits logged_at (out of C.5 scope), so the TimeEditor is rendered
+    // readonly on edit to prevent the silent-drop bug where edits to the time
+    // field would not be persisted.
+    confirmationTimeEditorEditDisabledHint:
+      'Time cannot be changed when editing an existing entry — delete and re-add to change the time.',
 
     // Task 3.4 — UndoToast
     undoToastUndo: 'UNDO',
@@ -520,6 +748,7 @@ export const t = {
     copyYesterdayHeading: 'Copy yesterday’s entries',
     copyYesterdayKicker: '§ COPY YESTERDAY',
     copyYesterdayConfirm: 'COPY {count} ENTRIES',
+    copyYesterdaySubmitting: 'COPYING {count} ENTRIES',
     copyYesterdayCancel: 'CANCEL',
     copyYesterdayEmpty: 'No entries logged yesterday.',
 
@@ -536,8 +765,14 @@ export const t = {
     stubBody: 'Library index lands with Task 3.4.',
 
     // Task 4.1 sub-step 3 — /library route copy.
-    kicker: '§ 03 · Personal Library',
+    kicker: 'Personal Library',
     title: 'The Library',
+    summary:
+      'Search, edit, and re-log the foods you have already recorded, with your portions and nutrition kept in one place.',
+
+    // Bug 2 (library overhaul 2026-05-16) — loading boundary labels.
+    loadingDetail: 'Loading food detail',
+    loadingGrid: 'Loading library',
 
     // Tools rail.
     searchLabel: 'Library search',
@@ -563,16 +798,79 @@ export const t = {
     gridLabel: 'Library items',
     cardAriaLabel: '{name}, {portion} {unit}, {kcal} calories, logged {count} times.',
     letterMarkLabel: 'Thumbnail placeholder',
+    thumbnailPendingAriaLabel: 'Generating sketch for {name}',
     cardKcalSuffix: 'kcal',
+    cardApproxGrams: 'approx. {grams} g',
     paginationLabel: 'Library pages',
     paginationPrevious: 'Previous',
     paginationNext: 'Next',
     cardMacrosFormat: 'P {p} · C {c} · F {f}',
 
+    // Bug 3 (library overhaul 2026-05-16) — per-card quick-action menu.
+    cardMenuAriaLabel: 'Actions for {name}',
+    cardMenuEdit: 'Edit',
+    cardMenuDelete: 'Delete',
+    cardMenuQuickLog: 'Quick log',
+    cardMenuCreateRecipe: 'Create recipe',
+    // Quick-log per-card meal picker (mirrors bulk-log pattern).
+    quickLogMealPickerTitle: 'Log as which meal?',
+    quickLogMealPickerLoading: 'LOGGING',
+    quickLogToastSuccess: 'Logged “{name}”',
+    quickLogToastError: 'Couldn’t log “{name}” — try again',
+
+    // Bug 6 (library overhaul 2026-05-16) — Add Item form.
+    createRecipeKicker: 'Recipe',
+    createRecipeLoadingTitle: 'Creating recipe',
+    createRecipeLoadingBody: 'Reading the saved item and drafting a practical method.',
+    createRecipeIngredientsTitle: 'Ingredients',
+    createRecipeStepsTitle: 'How to make it',
+    createRecipeServings: '{N} servings',
+    createRecipeTime: '{N} min',
+    createRecipeRetry: 'Retry',
+    createRecipeClose: 'Close',
+    createRecipeError: 'Could not create the recipe. Try again when ready.',
+
+    addItemButton: 'Add Item',
+    addItemChecking: 'CHECKING',
+    addItemAriaLabel: 'Add a new library item',
+    addItemDialogKicker: '§ 08 · New entry',
+    addItemDialogTitle: 'File a new title',
+    addItemDialogBody: 'Pre-populate the library without logging a meal.',
+    addItemFieldName: 'Name',
+    addItemFieldNamePlaceholder: 'e.g. Phở Bò',
+    addItemFieldPortion: 'Default portion',
+    addItemFieldUnit: 'Unit',
+    addItemFieldUnitPlaceholder: 'piece',
+    addItemFieldKcal: 'Calories',
+    addItemFieldProtein: 'Protein (g)',
+    addItemFieldCarbs: 'Carbs (g)',
+    addItemFieldFat: 'Fat (g)',
+    addItemFieldFiber: 'Fiber (g)',
+    addItemSubmit: 'File entry',
+    addItemSubmitPending: 'Filing…',
+    addItemCancel: 'Cancel',
+    addItemErrorRequired: 'Required',
+    addItemErrorNonNegative: 'Must be ≥ 0',
+    addItemErrorPositive: 'Must be > 0',
+    addItemErrorNameLength: 'Up to 120 characters',
+    addItemDuplicateBanner: 'Already in your library — open the existing entry instead.',
+    addItemDuplicateLinkLabel: 'existing',
+    addItemServerErrorBanner: 'Could not save. Retry when ready.',
+    addItemSuccessToast: 'Filed new entry · sketch generating',
+    addItemLimitReached:
+      'Library addition limit reached. Maximum 20 new additions per day and 100 per month.',
+    emptyAddCta: 'Add your first item',
+
+    // Bug 5 (library overhaul 2026-05-16) — sketch backfill widget.
+    sketchBackfillTitle: 'Sketch backfill',
+    sketchBackfillPending: '{N} items pending sketch',
+    sketchBackfillButton: 'Generate sketches',
+    sketchBackfillRunning: 'Generating…',
+    sketchBackfillDone: 'All caught up',
+    sketchBackfillReport: '{generated} generated · {failed} failed · {remaining} remaining',
+
     // Empty states.
-    emptyFirstTimeHeading: 'No titles yet filed.',
-    emptyFirstTimeBody: 'Log a meal by text or photo and we will file it here.',
-    emptyCta: 'Open the log flow',
+    emptyFirstTimeHeading: 'No library items yet.',
     emptyFilteredHeading: 'No titles match your current view.',
     emptyFilteredBody: 'Adjust the filter or clear the search to widen the page.',
     emptyFilteredReset: 'Clear filters',
@@ -587,6 +885,17 @@ export const t = {
     selectionCountAnnouncement: '{N} items selected. Bulk actions available.',
     mergeButton: 'Merge',
     mergeDisabledTooltip: 'Select exactly 2 items to merge',
+    // Bug 2 (library bulk overhaul 2026-05-17) — bulk "Log items" replaces
+    // the bulk "Merge" CTA. Selecting N items + clicking opens a meal-slot
+    // picker; on confirm, each item is logged as a separate food_entries
+    // row via parallel calls to /api/library/[id]/log-now. Merge i18n keys
+    // remain for the orphan MergeDuplicatesDialog code path.
+    bulkLogButton: 'LOG',
+    bulkLogButtonLoading: 'LOGGING',
+    bulkLogAriaLabel: 'Log selected items as separate entries',
+    bulkLogToastSuccess: 'Logged {N} items',
+    bulkLogToastError: "Couldn't log {N} items — try again",
+    bulkLogMealPickerTitle: 'Log as which meal?',
     bulkDeleteButton: 'Bulk delete',
     bulkDeleteKicker: '§ 07 · Delete',
     bulkDeleteTitlePlural: 'Strike {N} titles from the record?',
@@ -600,6 +909,11 @@ export const t = {
     // bulk-delete mutation fails. The dialog stays open so the user can
     // retry without re-selecting.
     bulkDeleteErrorBanner: 'Delete failed. Retry when ready.',
+    // Task E.1.1 — F-CODEX-D-R2-03 — restore-conflict copy. Surfaced when the
+    // POST /api/library/bulk-delete/undo route returns 409
+    // restore_name_conflict because a same-name row was recreated
+    // between the optimistic delete and the user's UNDO tap.
+    bulkUndoConflictToast: "Couldn't undo: a matching item already exists.",
 
     // Merge dialog.
     mergeKicker: '§ 06 · Merge',
@@ -612,6 +926,8 @@ export const t = {
     mergeFieldProtein: 'Protein (g)',
     mergeFieldCarbs: 'Carbs (g)',
     mergeFieldFat: 'Fat (g)',
+    // Codex R1 F1 fix — cholesterol picker label. Unit is `mg`, not `g`.
+    mergeFieldCholesterol: 'Cholesterol (mg)',
     mergeFieldPortion: 'Default portion',
     mergeFieldUnit: 'Default unit',
     mergeOptionA: 'Option A',
@@ -655,6 +971,9 @@ export const t = {
       macroCarbs: 'Carbs',
       macroFat: 'Fat',
       macroFiber: 'Fiber',
+      // Phase 2C — 5th macro label (unit: mg). Rendered alongside the
+      // gram-keyed macros in `<FoodDetailMacros />`.
+      macroCholesterol: 'Cholesterol',
       macroSugar: 'Sugar',
       microSodium: 'Sodium',
       macroUnitGrams: 'g',
@@ -664,6 +983,19 @@ export const t = {
       // Micros.
       noMicros: 'No micronutrients recorded.',
       showAllMicros: '* Show all micros',
+      // Bug 8 — FDA DV % suffix on each macro row (library overhaul 2026-05-16).
+      macroDvSuffix: '% DV',
+      // Bug 9 — micros collapsed-by-default expand toggle.
+      microsExpandShow: 'Show all nutrients',
+      microsExpandHide: 'Hide nutrients',
+      // Edit-mode micros collapsible. Default closed; expand reveals only
+      // micro inputs whose saved value is non-zero. If everything is zero
+      // the expanded panel renders the "no recorded micros" hint.
+      editMicrosExpandShow: 'Add micronutrient details',
+      editMicrosExpandHide: 'Hide micronutrient details',
+      editMicrosEmpty: 'No recorded micros — add values via the AI parse flow.',
+      // Bug 4 — mutation in-flight labels.
+      deleting: 'Deleting…',
 
       // History.
       firstLoggedFormat: 'First logged · {date}',
@@ -684,8 +1016,9 @@ export const t = {
 
       // Edit-mode field labels.
       nameLabel: 'Name',
-      portionLabel: 'Portion',
+      portionLabel: 'Portion value',
       unitLabel: 'Unit',
+      unitSelectPlaceholder: 'Select unit',
       kcalLabel: 'Kcal',
       sodiumLabel: 'Sodium',
       thumbnailUrlLabel: 'Thumbnail URL',
@@ -694,9 +1027,15 @@ export const t = {
       errNameRequired: 'Name is required.',
       errNameTooLong: 'Name is too long (max 120 characters).',
       errPortionPositive: 'Portion must be greater than 0.',
+      errPortionWhole: 'Portion must be a whole number for this unit.',
       errUnitTooLong: 'Unit label too long (max 16 characters).',
       errKcalInteger: 'Calories must be a whole number 0 or greater.',
       errMacroNonneg: 'Must be 0 or greater.',
+      // Codex R3 I2-R2-1 (bugfix library-micros-parse 2026-05-17) — distinct
+      // copy for NaN input on a generic micro (e.g. user typed 'abc'). The
+      // macros nonneg key already covers negative + zero, so this key is
+      // reserved for the non-finite case. Same surface as macro errors.
+      errMicroNumber: 'Must be a number.',
       errUrlInvalid: 'Must be a valid URL.',
 
       // Toast + error UX.
@@ -709,6 +1048,39 @@ export const t = {
       notFoundHeading: 'No ledger entry for this id',
       notFoundBody: 'Return to the index and pick another title.',
       notFoundLink: 'Return to index',
+
+      // Task C.2 — Log Now atomic insert (AC4).
+      logging: 'Logging…',
+      logNowSuccessToast: 'Logged · view in today’s log',
+      logNowDeeplinkLabel: 'View',
+      logNowDeeplinkHref: '/dashboard',
+      logNowErrorBanner: "Couldn't log — try again",
+      duplicateLogConfirmMessage:
+        'You have already logged this item for this meal today. Are you sure you want to add another one?',
+      // Meal-slot picker that opens above the LOG THIS NOW button.
+      // Replaces the previous immediate-log behavior — the server would
+      // otherwise time-of-day-heuristic the meal slot, which guessed
+      // wrong when re-logging last night's dinner from the morning.
+      logNowMealPickerAriaLabel: 'Pick a meal slot for this log',
+    },
+
+    // Task C.2 — Recent Entries section (AC1).
+    recentEntries: {
+      kicker: '§ 04 · Recent Entries',
+      title: 'Recent Entries',
+      meta: 'Last 14 days · {N} entries',
+      emptyHeadline: 'No entries logged yet.',
+      emptyBody: 'Log a food to see it here.',
+      groupToday: 'Today',
+      groupYesterday: 'Yesterday',
+      timeSrPrefix: 'logged at',
+      mealBreakfast: 'Breakfast',
+      mealLunch: 'Lunch',
+      mealDinner: 'Dinner',
+      mealSnack: 'Snack',
+      kcalSuffix: 'kcal',
+      rowAriaLabel: '{name}, {meal}, logged {time}, {kcal} calories',
+      errorMessage: 'Couldn’t load recent entries. Refresh the page or try again in a moment.',
     },
   },
 
@@ -717,6 +1089,7 @@ export const t = {
     // consumers during the 4.3a rollout. Task 4.3a ships the real charts.
     stubHeading: '§ 03 · Progress',
     stubBody: 'Progress charts arrive with Task 4.x.',
+    dataTableClose: 'Close',
 
     // --- Task 4.3a Progress page ---
     masthead: {
@@ -730,11 +1103,30 @@ export const t = {
         D: 'day.',
         W: 'week.',
         M: 'month.',
+        last_7: 'Last 7 days',
+        last_30: 'Last 30 days',
+        custom: 'Custom',
       },
       ariaLabel: 'Progress date range',
       ariaDescD: 'Day — rolling 24 hours',
       ariaDescW: 'Week — rolling 7 days',
       ariaDescM: 'Month — rolling 30 days',
+      ariaDesc: {
+        last_7: 'Last 7 days',
+        last_30: 'Last 30 days',
+        custom: 'Custom date range',
+      },
+      startDateLabel: 'Start date',
+      endDateLabel: 'End date',
+      applyCustom: 'Apply custom range',
+      loadingTitle: 'Refreshing range',
+      loadingBody: (range: string) => `Loading ${range.toLowerCase()} data.`,
+      errors: {
+        required: 'Choose a start and end date.',
+        startAfterEnd: 'Start date must be on or before end date.',
+        futureEnd: 'End date cannot be in the future.',
+        tooLong: 'Custom range cannot exceed 365 days.',
+      },
     },
     sections: {
       adherence: { kicker: '§ 01', title: 'Adherence', subtitle: 'a tally of calories kept.' },
@@ -769,6 +1161,7 @@ export const t = {
         carbs: 'carbs',
         fat: 'fat',
         fiber: 'fiber',
+        cholesterol: 'cholesterol (mg)',
       },
     },
     heatmap: {
@@ -791,6 +1184,9 @@ export const t = {
       viewAsTable: 'View heatmap as table',
       todayLabelSuffix: '· today, in progress',
       scrollAriaLabel: 'Micronutrient heatmap scrollable',
+      showAllMicronutrients: 'Show all micronutrients',
+      hideAllMicronutrients: 'Hide all micronutrients',
+      closeDetail: 'Close nutrient detail',
     },
     trendSummary: {
       title: 'The line, printed',
@@ -816,9 +1212,43 @@ export const t = {
         body: 'Too little logged this week for a full review.',
         emptyDaysBody: 'No days were logged in the past seven.',
       },
+      period: {
+        kicker: '§ PERIOD NOTE · FROM THE EDITOR',
+        masthead: {
+          D: 'DAILY NOTE',
+          M: '30-DAY NOTE',
+          custom: 'SELECTED RANGE NOTE',
+        },
+        sparse: {
+          D: {
+            kickerLabel: '§ THE EDITOR’S NOTE',
+            body: 'Too little logged today for a period note.',
+            emptyDaysBody: 'No logs recorded today.',
+          },
+          M: {
+            kickerLabel: '§ THE EDITOR’S NOTE',
+            body: 'Too little logged in this 30-day window for a period note.',
+            emptyDaysBody: 'No logs recorded in this 30-day window.',
+          },
+          custom: {
+            kickerLabel: '§ THE EDITOR’S NOTE',
+            body: 'Too little logged in this selected range for a period note.',
+            emptyDaysBody: 'No logs recorded in this selected range.',
+          },
+        },
+      },
       error: {
         body: 'Insights unavailable at the moment. The chart record still stands.',
       },
+      updating: 'Updating summary',
+      summaryFallback: {
+        body: 'The AI summary could not refresh. The charts above still show the selected range.',
+        nextAction: 'Log another meal or water entry, then refresh this range.',
+      },
+      aiFailedTitle: 'AI parsing failed.',
+      aiFailedBody:
+        'The latest AI summary could not be generated and no previous summary is available.',
+      retryAiSummary: 'Retry AI summary',
       viewAsTable: 'View weekly review as data table',
     },
     footer: {
@@ -842,6 +1272,16 @@ export const t = {
     displayHeading: 'Display',
     reduceMotionLabel: 'Reduce motion',
     reduceMotionDescription: 'Disable transitions and animations across the app.',
+    aiSummary: {
+      label: 'AI nutrition summaries',
+      description:
+        'Allow dashboard and progress summaries to send food, water, weight, and goal context to Gemini.',
+      error: 'The setting could not be saved. Try again.',
+    },
+    profileHeading: 'Profile',
+    birthdayLabel: 'Birthday',
+    ageLabel: 'Age',
+    profileMissingValue: '\u2014',
 
     // Task 5.2 — Settings § 04 DATA + § 05 ACCOUNT (synthesis §2.3).
     data: {
@@ -1026,6 +1466,7 @@ export const t = {
     logTodayFormat: 'TODAY · {date}',
     weightLabel: 'WEIGHT',
     dateLabel: 'DATE',
+    unitChoiceLabel: 'UNIT',
     noteLabel: 'NOTE (OPTIONAL)',
     notePlaceholder: 'after morning coffee, pre-breakfast',
     saveEntryCta: 'SAVE ENTRY',
@@ -1147,8 +1588,8 @@ export const t = {
     // --- step titles + subtitles (ux-specialist §1) ---
     step1Title: 'Biological sex',
     step1Subtitle: 'Used only for the metabolism equation. Choose what fits.',
-    step2Title: 'Your age',
-    step2Subtitle: 'In years.',
+    step2Title: 'Your birthday',
+    step2Subtitle: 'Pick the date. We calculate your age from it.',
     step3Title: 'How tall are you?',
     step3Subtitle: 'We store metric. Switch if you prefer.',
     step4Title: "What's your current weight?",
@@ -1163,7 +1604,7 @@ export const t = {
 
     // --- eyebrows (design-lead §4 "STEP 03 \u00B7 HEIGHT") ---
     eyebrow1: 'STEP 01 \u00B7 BIO SEX',
-    eyebrow2: 'STEP 02 \u00B7 AGE',
+    eyebrow2: 'STEP 02 \u00B7 BIRTHDAY',
     eyebrow3: 'STEP 03 \u00B7 HEIGHT',
     eyebrow4: 'STEP 04 \u00B7 WEIGHT',
     eyebrow5: 'STEP 05 \u00B7 GOAL',
@@ -1173,6 +1614,8 @@ export const t = {
 
     // --- field labels + placeholders ---
     ageLabel: 'AGE',
+    birthdayLabel: 'BIRTHDAY',
+    birthdayAgePreview: 'AGE {age}',
     agePlaceholder: '\u2014',
     heightLabel: 'HEIGHT',
     weightLabel: 'WEIGHT',
@@ -1268,6 +1711,7 @@ export const t = {
     // --- validation errors (ux-specialist §1) ---
     errorBioSexRequired: 'Choose an option to continue.',
     errorAgeRange: 'Enter an age between 13 and 120.',
+    errorBirthdayRange: 'Choose a birthday that makes your age 13 to 120.',
     errorHeightRange:
       'Enter a height between 100 and 250 cm (3\u20323\u2033 \u2013 8\u20322\u2033).',
     errorWeightRange: 'Enter a weight between 30 and 350 kg (66 \u2013 772 lb).',
@@ -1388,6 +1832,7 @@ export const t = {
       titleId: 'pwa-install-title',
       bodyId: 'pwa-install-body',
     },
+
     bar: {
       // Note: copy is composed at render time so the {HH:mm} / {N} substitution
       // happens once. Keep the templates here for the i18n rule; consumers join

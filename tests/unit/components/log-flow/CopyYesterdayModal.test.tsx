@@ -79,6 +79,32 @@ describe('<CopyYesterdayModal />', () => {
     expect(refreshMock).toHaveBeenCalledTimes(1);
   });
 
+  it('shows semantic busy feedback and prevents duplicate copy submits while pending', async () => {
+    let resolveCopy!: (value: unknown) => void;
+    authPost.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveCopy = resolve;
+        }),
+    );
+
+    render(<CopyYesterdayModal entries={baseEntries} />);
+    const user = userEvent.setup();
+    await user.click(screen.getAllByRole('checkbox')[0]!);
+
+    const confirm = screen.getByTestId('copy-yesterday-confirm');
+    await user.click(confirm);
+    await user.click(confirm);
+
+    expect(confirm).toHaveAttribute('aria-busy', 'true');
+    expect(confirm).toHaveTextContent('COPYING 1 ENTRIES');
+    expect(confirm).toBeDisabled();
+    expect(screen.getAllByRole('checkbox')[0]).toBeDisabled();
+    expect(authPost).toHaveBeenCalledTimes(1);
+
+    resolveCopy({ created: [] });
+  });
+
   it('Cancel with no selections navigates back immediately', async () => {
     render(<CopyYesterdayModal entries={baseEntries} />);
     const user = userEvent.setup();

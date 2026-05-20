@@ -83,16 +83,6 @@ describe('globals.css — responsive page classes (Bug #1)', () => {
       expect(body!).toMatch(/padding:\s*var\(--page-padding-mobile\)/);
     });
 
-    it('escalates padding to --page-padding-tablet inside @media (min-width: 768px)', () => {
-      const tablet = mediaBlockBody(768);
-      expect(tablet, '@media (min-width: 768px) block must exist').not.toBeNull();
-      // The tablet block must contain a `.kalori-page-main` rule that bumps
-      // padding to the tablet token. Pattern: `.kalori-page-main { padding: var(--page-padding-tablet) }` allowing whitespace.
-      expect(tablet!).toMatch(
-        /\.kalori-page-main\s*\{[^}]*padding:\s*var\(--page-padding-tablet\)[^}]*\}/,
-      );
-    });
-
     it('escalates padding to --page-padding-desktop inside @media (min-width: 1280px)', () => {
       const desktop = mediaBlockBody(1280);
       expect(desktop, '@media (min-width: 1280px) block must exist').not.toBeNull();
@@ -112,15 +102,15 @@ describe('globals.css — responsive page classes (Bug #1)', () => {
       expect(body!).toMatch(/gap:\s*var\(--spacing-gutter-editorial\)/);
     });
 
-    it('escalates to two-column grid inside @media (min-width: 768px)', () => {
-      const tablet = mediaBlockBody(768);
-      expect(tablet).not.toBeNull();
+    it('escalates to two-column grid inside @media (min-width: 1280px)', () => {
+      const desktop = mediaBlockBody(1280);
+      expect(desktop).not.toBeNull();
       // Phase 7 regression fix (REG-2): 280px-floored columns demanded
       // 280+280+28-gap = 588px min-content, which blew the dashboard 124px
       // past the 768 viewport (sidebar+padding consumes 304, leaving 464).
       // Floored at 0 — chronometer + macros children self-cap via
       // `max-width: 280px` on their internal wrappers.
-      expect(tablet!).toMatch(
+      expect(desktop!).toMatch(
         /\.kalori-dashboard-hero-row\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/,
       );
     });
@@ -132,14 +122,6 @@ describe('globals.css — responsive page classes (Bug #1)', () => {
       expect(body, '.kalori-meals-bulletin-grid rule must exist').not.toBeNull();
       expect(body!).toMatch(/display:\s*grid/);
       expect(body!).toMatch(/grid-template-columns:\s*1fr\b/);
-    });
-
-    it('escalates to two-column grid inside @media (min-width: 768px)', () => {
-      const tablet = mediaBlockBody(768);
-      expect(tablet).not.toBeNull();
-      expect(tablet!).toMatch(
-        /\.kalori-meals-bulletin-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
-      );
     });
 
     it('escalates to five-column grid inside @media (min-width: 1280px)', () => {

@@ -23,13 +23,14 @@
 import { useId, useMemo, useState } from 'react';
 
 import { t } from '@/lib/i18n/en';
+import { kgToLb, roundToOneDecimal } from '@/lib/units/conversion';
 
 export interface WeightEntry {
   date: string; // YYYY-MM-DD
   weightKg: number;
 }
 
-export type WeightRange = '7d' | '30d' | '90d' | '1y';
+export type WeightRange = '7d' | '30d' | '90d' | '1y' | 'custom';
 
 export interface WeightTrajectoryLineProps {
   entries: WeightEntry[];
@@ -42,37 +43,51 @@ export interface WeightTrajectoryLineProps {
 
 const VIEWBOX_W = 840;
 const VIEWBOX_H = 360;
-const PADDING = { top: 24, right: 16, bottom: 32, left: 40 };
+const PADDING = { top: 24, right: 16, bottom: 64, left: 40 };
 const INNER_W = VIEWBOX_W - PADDING.left - PADDING.right;
 const INNER_H = VIEWBOX_H - PADDING.top - PADDING.bottom;
 const GAP_DAYS_THRESHOLD = 14;
 
 export function WeightTrajectoryLine(props: WeightTrajectoryLineProps) {
   const { entries, goalWeightKg, range } = props;
+  const unitPref = props.unitPref ?? 'metric';
+  const unitLabel = unitPref === 'imperial' ? t.weight.unitLb : t.weight.unitKg;
+  const unitWord = unitPref === 'imperial' ? 'pounds' : 'kilograms';
   const figId = useId();
   const summaryId = useId();
   const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
 
   const sorted = useMemo(() => [...entries].sort((a, b) => (a.date < b.date ? -1 : 1)), [entries]);
+  const displaySorted = useMemo(
+    () =>
+      sorted.map((entry) => ({
+        date: entry.date,
+        weightKg: formatDisplayWeight(entry.weightKg, unitPref),
+      })),
+    [sorted, unitPref],
+  );
+  const displayGoalWeight =
+    goalWeightKg === null ? null : formatDisplayWeight(goalWeightKg, unitPref);
 
   const axisRangeLabel = useMemo(() => {
     if (range === '7d') return t.weight.chartAxisRange7d;
     if (range === '30d') return t.weight.chartAxisRange30d;
     if (range === '90d') return t.weight.chartAxisRange90d;
+    if (range === 'custom') return 'Selected range';
     return t.weight.chartAxisRange1y;
   }, [range]);
 
   const stats = useMemo(() => {
-    if (sorted.length === 0) return null;
-    const first = sorted[0]!;
-    const last = sorted[sorted.length - 1]!;
-    const delta = Math.round((last.weightKg - first.weightKg) * 10) / 10;
+    if (displaySorted.length === 0) return null;
+    const first = displaySorted[0]!;
+    const last = displaySorted[displaySorted.length - 1]!;
+    const delta = roundToOneDecimal(last.weightKg - first.weightKg);
     return {
       start: first.weightKg,
       current: last.weightKg,
       delta,
     };
-  }, [sorted]);
+  }, [displaySorted]);
 
   // React Compiler memoizes this automatically — no manual useMemo.
   const srSummary = !stats
@@ -89,28 +104,29 @@ export function WeightTrajectoryLine(props: WeightTrajectoryLineProps) {
           .replace('{current}', String(stats.current))
           .replace('{delta}', deltaStr)
           .replace('{range}', axisRangeLabel.toLowerCase())
-          .replace('{count}', String(sorted.length));
+          .replace('{count}', String(sorted.length))
+          .replaceAll('kilograms', unitWord);
       })();
 
   // Y-axis domain
   const { yMin, yMax, yScale, xScale } = useMemo(() => {
-    if (sorted.length === 0) {
+    if (displaySorted.length === 0) {
       return {
-        yMin: 60,
-        yMax: 80,
+        yMin: formatDisplayWeight(60, unitPref),
+        yMax: formatDisplayWeight(80, unitPref),
         yScale: (): number => PADDING.top + INNER_H / 2,
         xScale: (): number => PADDING.left + INNER_W / 2,
       };
     }
-    const weights = sorted.map((e) => e.weightKg);
-    if (goalWeightKg !== null) weights.push(goalWeightKg);
+    const weights = displaySorted.map((e) => e.weightKg);
+    if (displayGoalWeight !== null) weights.push(displayGoalWeight);
     const minW = Math.min(...weights);
     const maxW = Math.max(...weights);
     const pad = Math.max(1, (maxW - minW) * 0.2);
     const yMin = Math.floor((minW - pad) * 2) / 2;
     const yMax = Math.ceil((maxW + pad) * 2) / 2;
     const span = yMax - yMin || 1;
-    const count = Math.max(1, sorted.length - 1);
+    const count = Math.max(1, displaySorted.length - 1);
     const localYMin = yMin;
     return {
       yMin,
@@ -119,22 +135,22 @@ export function WeightTrajectoryLine(props: WeightTrajectoryLineProps) {
       xScale: (i: number): number =>
         PADDING.left + (count === 0 ? INNER_W / 2 : (i / count) * INNER_W),
     };
-  }, [sorted, goalWeightKg]);
+  }, [displaySorted, displayGoalWeight, unitPref]);
 
   // Build measured line path with 14-day gap breaks.
   const pathSegments = useMemo(() => {
-    if (sorted.length < 2) return [] as Array<{ d: string; dashed: boolean }>;
+    if (displaySorted.length < 2) return [] as Array<{ d: string; dashed: boolean }>;
     const segments: Array<{ d: string; dashed: boolean }> = [];
     let buffer = '';
     const dashedSegments: Array<{ d: string }> = [];
-    for (let i = 0; i < sorted.length; i++) {
-      const point = sorted[i]!;
+    for (let i = 0; i < displaySorted.length; i++) {
+      const point = displaySorted[i]!;
       const x = xScale(i);
       const y = yScale(point.weightKg);
       if (i === 0) {
         buffer = `M ${x} ${y}`;
       } else {
-        const prev = sorted[i - 1]!;
+        const prev = displaySorted[i - 1]!;
         const daysApart = daysBetween(prev.date, point.date);
         if (daysApart > GAP_DAYS_THRESHOLD) {
           if (buffer) {
@@ -152,14 +168,14 @@ export function WeightTrajectoryLine(props: WeightTrajectoryLineProps) {
     if (buffer) segments.push({ d: buffer, dashed: false });
     for (const d of dashedSegments) segments.push({ d: d.d, dashed: true });
     return segments;
-  }, [sorted, xScale, yScale]);
+  }, [displaySorted, xScale, yScale]);
 
   // Simple linear regression for trend line (slope-intercept).
   const trend = useMemo(() => {
-    if (sorted.length < 5) return null;
-    const n = sorted.length;
-    const xs = sorted.map((_, i) => i);
-    const ys = sorted.map((e) => e.weightKg);
+    if (displaySorted.length < 5) return null;
+    const n = displaySorted.length;
+    const xs = displaySorted.map((_, i) => i);
+    const ys = displaySorted.map((e) => e.weightKg);
     const xMean = xs.reduce((a, b) => a + b, 0) / n;
     const yMean = ys.reduce((a, b) => a + b, 0) / n;
     let num = 0;
@@ -171,59 +187,59 @@ export function WeightTrajectoryLine(props: WeightTrajectoryLineProps) {
     const slope = den === 0 ? 0 : num / den;
     const intercept = yMean - slope * xMean;
     return { slope, intercept };
-  }, [sorted]);
+  }, [displaySorted]);
 
   // Projection — extends trend 30% past the last measurement; splits at goal.
   const projection = useMemo(() => {
-    if (!trend || sorted.length < 5) return null;
-    const lastIdx = sorted.length - 1;
-    const projectEnd = lastIdx + Math.ceil(sorted.length * 0.3);
+    if (!trend || displaySorted.length < 5) return null;
+    const lastIdx = displaySorted.length - 1;
+    const projectEnd = lastIdx + Math.ceil(displaySorted.length * 0.3);
     const projValueAt = (i: number) => trend.intercept + trend.slope * i;
     const endVal = projValueAt(projectEnd);
     const segments: Array<{ d: string; color: 'ember' | 'plum' }> = [];
-    if (goalWeightKg === null) {
+    if (displayGoalWeight === null) {
       segments.push({
-        d: `M ${xScale(lastIdx)} ${yScale(sorted[lastIdx]!.weightKg)} L ${xScale(projectEnd)} ${yScale(endVal)}`,
+        d: `M ${xScale(lastIdx)} ${yScale(displaySorted[lastIdx]!.weightKg)} L ${xScale(projectEnd)} ${yScale(endVal)}`,
         color: 'ember',
       });
       return segments;
     }
     // Find crossing of goal between lastIdx and projectEnd (if any).
-    const startVal = sorted[lastIdx]!.weightKg;
+    const startVal = displaySorted[lastIdx]!.weightKg;
     const crossesGoal =
-      (startVal >= goalWeightKg && endVal <= goalWeightKg) ||
-      (startVal <= goalWeightKg && endVal >= goalWeightKg);
+      (startVal >= displayGoalWeight && endVal <= displayGoalWeight) ||
+      (startVal <= displayGoalWeight && endVal >= displayGoalWeight);
     if (!crossesGoal) {
       const pastGoal =
-        (trend.slope < 0 && startVal < goalWeightKg) ||
-        (trend.slope > 0 && startVal > goalWeightKg);
+        (trend.slope < 0 && startVal < displayGoalWeight) ||
+        (trend.slope > 0 && startVal > displayGoalWeight);
       segments.push({
         d: `M ${xScale(lastIdx)} ${yScale(startVal)} L ${xScale(projectEnd)} ${yScale(endVal)}`,
         color: pastGoal ? 'plum' : 'ember',
       });
     } else {
       const denom = endVal - startVal;
-      const tFrac = denom === 0 ? 0 : (goalWeightKg - startVal) / denom;
+      const tFrac = denom === 0 ? 0 : (displayGoalWeight - startVal) / denom;
       const crossIdx = lastIdx + tFrac * (projectEnd - lastIdx);
       segments.push({
-        d: `M ${xScale(lastIdx)} ${yScale(startVal)} L ${xScale(crossIdx)} ${yScale(goalWeightKg)}`,
+        d: `M ${xScale(lastIdx)} ${yScale(startVal)} L ${xScale(crossIdx)} ${yScale(displayGoalWeight)}`,
         color: 'ember',
       });
       segments.push({
-        d: `M ${xScale(crossIdx)} ${yScale(goalWeightKg)} L ${xScale(projectEnd)} ${yScale(endVal)}`,
+        d: `M ${xScale(crossIdx)} ${yScale(displayGoalWeight)} L ${xScale(projectEnd)} ${yScale(endVal)}`,
         color: 'plum',
       });
     }
     return segments;
-  }, [trend, sorted, xScale, yScale, goalWeightKg]);
+  }, [trend, displaySorted, xScale, yScale, displayGoalWeight]);
 
   const yTicks = useMemo(() => buildYTicks(yMin, yMax), [yMin, yMax]);
 
   const gapAnnotations = useMemo(() => {
     const annotations: Array<{ x: number; y: number; label: string }> = [];
-    for (let i = 1; i < sorted.length; i++) {
-      const prev = sorted[i - 1]!;
-      const cur = sorted[i]!;
+    for (let i = 1; i < displaySorted.length; i++) {
+      const prev = displaySorted[i - 1]!;
+      const cur = displaySorted[i]!;
       const days = daysBetween(prev.date, cur.date);
       if (days > GAP_DAYS_THRESHOLD) {
         const midX = (xScale(i - 1) + xScale(i)) / 2;
@@ -236,7 +252,7 @@ export function WeightTrajectoryLine(props: WeightTrajectoryLineProps) {
       }
     }
     return annotations;
-  }, [sorted, xScale, yScale]);
+  }, [displaySorted, xScale, yScale]);
 
   const isEmpty = sorted.length === 0;
   const isSingle = sorted.length === 1;
@@ -320,20 +336,20 @@ export function WeightTrajectoryLine(props: WeightTrajectoryLineProps) {
         })}
 
         {/* Goal rule (ochre dashed) */}
-        {goalWeightKg !== null && goalWeightKg >= yMin && goalWeightKg <= yMax ? (
+        {displayGoalWeight !== null && displayGoalWeight >= yMin && displayGoalWeight <= yMax ? (
           <g>
             <line
               x1={PADDING.left}
-              y1={yScale(goalWeightKg)}
+              y1={yScale(displayGoalWeight)}
               x2={VIEWBOX_W - PADDING.right}
-              y2={yScale(goalWeightKg)}
+              y2={yScale(displayGoalWeight)}
               stroke="var(--color-ochre)"
               strokeWidth="0.75"
               strokeDasharray="4 3"
             />
             <text
               x={VIEWBOX_W - PADDING.right - 4}
-              y={yScale(goalWeightKg) - 4}
+              y={yScale(displayGoalWeight) - 4}
               textAnchor="end"
               style={{
                 fontFamily: 'var(--font-serif)',
@@ -342,7 +358,7 @@ export function WeightTrajectoryLine(props: WeightTrajectoryLineProps) {
                 fill: 'var(--color-ochre)',
               }}
             >
-              {t.weight.chartGoalLineLabel}
+              {t.weight.chartGoalLineLabel} {displayGoalWeight} {unitLabel}
             </text>
           </g>
         ) : null}
@@ -353,8 +369,8 @@ export function WeightTrajectoryLine(props: WeightTrajectoryLineProps) {
             data-testid="weight-trajectory-trend"
             x1={xScale(0)}
             y1={yScale(trend.intercept + trend.slope * 0)}
-            x2={xScale(sorted.length - 1)}
-            y2={yScale(trend.intercept + trend.slope * (sorted.length - 1))}
+            x2={xScale(displaySorted.length - 1)}
+            y2={yScale(trend.intercept + trend.slope * (displaySorted.length - 1))}
             stroke="var(--color-dust)"
             strokeWidth="0.75"
             strokeDasharray="2 3"
@@ -410,18 +426,19 @@ export function WeightTrajectoryLine(props: WeightTrajectoryLineProps) {
 
         {/* Data points */}
         <g role="list">
-          {sorted.map((point, i) => {
-            const isLast = i === sorted.length - 1;
+          {displaySorted.map((point, i) => {
+            const isLast = i === displaySorted.length - 1;
             const x = xScale(i);
             const y = yScale(point.weightKg);
-            const prev = i > 0 ? sorted[i - 1] : null;
-            const delta = prev ? Math.round((point.weightKg - prev.weightKg) * 10) / 10 : 0;
+            const prev = i > 0 ? displaySorted[i - 1] : null;
+            const delta = prev ? roundToOneDecimal(point.weightKg - prev.weightKg) : 0;
             const deltaStr =
               delta > 0 ? `up ${delta}` : delta < 0 ? `down ${Math.abs(delta)}` : 'unchanged';
             const a11y = t.weight.chartPointA11yFormat
               .replace('{date}', point.date)
               .replace('{weight}', String(point.weightKg))
-              .replace('{delta}', deltaStr);
+              .replace('{delta}', deltaStr)
+              .replace('kilograms', unitWord);
             return (
               <g key={`pt-${i}`} role="listitem">
                 <circle
@@ -441,6 +458,28 @@ export function WeightTrajectoryLine(props: WeightTrajectoryLineProps) {
               </g>
             );
           })}
+        </g>
+
+        {/* Recorded-date labels */}
+        <g aria-hidden="true">
+          {sorted.map((point, i) => (
+            <text
+              key={`date-${i}`}
+              x={xScale(i)}
+              y={PADDING.top + INNER_H + 18}
+              textAnchor="end"
+              transform={`rotate(-35 ${xScale(i)} ${PADDING.top + INNER_H + 18})`}
+              data-testid={`weight-trajectory-date-label-${i}`}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10,
+                fontVariantNumeric: 'tabular-nums',
+                fill: 'var(--color-dust)',
+              }}
+            >
+              {formatPointDate(point.date)}
+            </text>
+          ))}
         </g>
 
         {/* x-axis range label (bottom) */}
@@ -526,8 +565,8 @@ export function WeightTrajectoryLine(props: WeightTrajectoryLineProps) {
           borderWidth: 0,
         }}
       >
-        {focusedIdx !== null && sorted[focusedIdx]
-          ? `${sorted[focusedIdx]!.date} · ${sorted[focusedIdx]!.weightKg} kg`
+        {focusedIdx !== null && displaySorted[focusedIdx]
+          ? `${displaySorted[focusedIdx]!.date} · ${displaySorted[focusedIdx]!.weightKg} ${unitLabel}`
           : ''}
       </p>
     </figure>
@@ -538,6 +577,16 @@ function daysBetween(aIso: string, bIso: string): number {
   const a = Date.parse(aIso + 'T00:00:00Z');
   const b = Date.parse(bIso + 'T00:00:00Z');
   return Math.round(Math.abs(b - a) / (24 * 60 * 60 * 1000));
+}
+
+function formatPointDate(day: string): string {
+  const ms = Date.parse(`${day}T00:00:00Z`);
+  if (!Number.isFinite(ms)) return day;
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(ms));
 }
 
 function buildYTicks(min: number, max: number): number[] {
@@ -551,6 +600,10 @@ function buildYTicks(min: number, max: number): number[] {
     if (ticks.length > 10) break;
   }
   return ticks;
+}
+
+function formatDisplayWeight(kg: number, unitPref: 'metric' | 'imperial'): number {
+  return unitPref === 'imperial' ? roundToOneDecimal(kgToLb(kg)) : roundToOneDecimal(kg);
 }
 
 function niceStep(raw: number): number {

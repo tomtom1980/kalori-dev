@@ -2,7 +2,7 @@
  * E2E: responsive nav shell × 3 breakpoints + axe-core accessibility scan.
  *
  * Task 1.2 AC (briefing lines 28–39):
- *   - Mobile (375×667):    bottom tab bar 56px + centre FAB, 44×44 taps
+ *   - Mobile (375×667):    bottom tab bar 72px + centre FAB, 44×44 taps
  *   - Tablet (768×1024):   top app bar + sidebar (hover-expand is a tablet
  *                          refinement; Task 1.2 ships the basic rail — no
  *                          bottom tab bar; no FAB)
@@ -29,7 +29,7 @@
  *     the wrapper itself collapses to a 0×0 bounding box and Playwright
  *     (correctly per its visibility rules) calls it `hidden`. Fix: assert on
  *     the CHILDREN visibility (`bottom-tab-bar`, `log-fab`) — those are real
- *     56px boxes — and use `toBeHidden()` only on wrappers with CSS
+ *     fixed-position boxes — and use `toBeHidden()` only on wrappers with CSS
  *     `display: none` (which IS recognised as hidden, regardless of bounding
  *     box).
  *   - Visual regression baselines do not exist in the repo on first CI run.
@@ -99,8 +99,7 @@ type ViewportLabel = (typeof VIEWPORTS)[number]['label'];
 // Pick the visible nav-shell wrapper per breakpoint. CSS media queries in
 // `app/globals.css` hide the other wrappers.
 function getVisibleNav(page: Page, viewport: ViewportLabel): Locator {
-  if (viewport === 'mobile') return page.getByTestId('nav-shell-mobile');
-  // tablet + desktop both show the sidebar surface.
+  if (viewport !== 'desktop') return page.getByTestId('nav-shell-mobile');
   return page.getByTestId('nav-shell-sidebar');
 }
 
@@ -132,7 +131,7 @@ for (const viewport of VIEWPORTS) {
     }) => {
       await page.goto('/dashboard');
 
-      if (viewport.label === 'mobile') {
+      if (viewport.label !== 'desktop') {
         // Mobile: bottom-tab-bar + FAB are visible; sidebar wrapper is hidden
         // via CSS (display: none). Assert on the real interactive children —
         // the `.nav-shell-mobile` wrapper has 0 bounding box because its
@@ -146,13 +145,13 @@ for (const viewport of VIEWPORTS) {
         await expect(page.getByTestId('log-fab-water')).toBeVisible();
         await expect(page.getByTestId('nav-shell-sidebar')).toBeHidden();
         await assertDashboardActiveWithinVisibleNav(page, viewport.label);
-        // Bottom tab bar at 56px.
+        // Bottom tab bar at 72px.
         const height = await page
           .getByTestId('bottom-tab-bar')
           .evaluate((el) => el.getBoundingClientRect().height);
-        expect(height).toBeGreaterThanOrEqual(56);
+        expect(height).toBeGreaterThanOrEqual(72);
       } else {
-        // Tablet + desktop: sidebar visible; mobile wrapper hidden via CSS.
+        // Desktop: sidebar visible; mobile wrapper hidden via CSS.
         await expect(page.getByTestId('nav-shell-sidebar')).toBeVisible();
         await expect(page.getByTestId('nav-shell-mobile')).toBeHidden();
         await assertDashboardActiveWithinVisibleNav(page, viewport.label);
@@ -187,7 +186,7 @@ for (const viewport of VIEWPORTS) {
       // Mobile surface also exposes the centre FAB pair — both 56×56
       // squares (≥ the 44×44 AAA floor). Bug #5 dual-FAB pattern per
       // tiebreaker #24.
-      if (viewport.label === 'mobile') {
+      if (viewport.label !== 'desktop') {
         for (const fabTestId of ['log-fab-food', 'log-fab-water'] as const) {
           const fab = page.getByTestId(fabTestId);
           await expect(fab).toBeVisible();

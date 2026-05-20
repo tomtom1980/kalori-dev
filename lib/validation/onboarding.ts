@@ -18,7 +18,9 @@
  */
 import { z } from 'zod';
 
-export const BIO_SEX_VALUES = ['male', 'female', 'other'] as const;
+import { isIsoDay } from '@/lib/profile/age';
+
+export const BIO_SEX_VALUES = ['male', 'female'] as const;
 export const ACTIVITY_LEVEL_VALUES = [
   'sedentary',
   'light',
@@ -33,6 +35,7 @@ export const UNIT_SYSTEM_VALUES = ['metric', 'imperial'] as const;
 export const OnboardingPatchSchema = z
   .object({
     bio_sex: z.enum(BIO_SEX_VALUES),
+    birthday: z.string().refine(isIsoDay, 'Birthday must be YYYY-MM-DD'),
     age: z.number().int().min(13).max(120),
     height_cm: z.number().min(100).max(250),
     current_weight_kg: z.number().min(30).max(350),
@@ -47,7 +50,8 @@ export const OnboardingPatchSchema = z
 
 /** Per-step projection — each step only carries the column(s) it captures. */
 export const Step1BioSexSchema = OnboardingPatchSchema.pick({ bio_sex: true });
-export const Step2AgeSchema = OnboardingPatchSchema.pick({ age: true });
+export const Step2BirthdaySchema = OnboardingPatchSchema.pick({ birthday: true, age: true });
+export const Step2AgeSchema = Step2BirthdaySchema;
 export const Step3HeightSchema = OnboardingPatchSchema.pick({ height_cm: true });
 export const Step4WeightSchema = OnboardingPatchSchema.pick({ current_weight_kg: true });
 export const Step5GoalWeightSchema = OnboardingPatchSchema.pick({ goal_weight_kg: true });
@@ -57,6 +61,7 @@ export const Step7ActivitySchema = OnboardingPatchSchema.pick({ activity_level: 
 /** Step 8 finalize: all 7 input fields present + the completion timestamp. */
 export const Step8FinalizeSchema = OnboardingPatchSchema.pick({
   bio_sex: true,
+  birthday: true,
   age: true,
   height_cm: true,
   current_weight_kg: true,

@@ -9,9 +9,10 @@
  */
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { X } from 'lucide-react';
+import { Info, X } from 'lucide-react';
 import { useState } from 'react';
 
+import { buildMacroHoverText } from '@/lib/dashboard/build-hover-text-utils';
 import { t } from '@/lib/i18n/en';
 import { m, motion, useReducedMotion } from '@/lib/motion/defaults';
 import {
@@ -22,11 +23,24 @@ import {
   type MealCategory,
 } from '@/lib/dashboard/types';
 
+// Phase 2A (2026-05-16) — cholesterol is the 5th macro row.
+//
+// 2026-05-16 fix: original swatch was `--color-rule-strong`, the same
+// token applied to the bar's track/rail background. The fill rendered
+// at the correct width but was invisible against the identical-coloured
+// rail — users reported "cholesterol bar has no color and no fill".
+//
+// Switched to `--color-plum` (#5d3a44), the 5th-series data palette
+// token reserved in `globals.css` for exactly this purpose. Still muted
+// (signals "limit, not target") but visually distinct from the rail.
+// Over-target still falls through to the oxblood warning used for
+// fat-over / carbs-over.
 const MACRO_COLORS: Record<MacroRow['key'], string> = {
   protein: 'var(--color-ivory)',
   carbs: 'var(--color-ochre)',
   fat: 'var(--color-ember)',
   fiber: 'var(--color-slate)',
+  cholesterol: 'var(--color-plum)',
 };
 
 const MACRO_TEXT_COLORS: Record<MacroRow['key'], string> = {
@@ -34,6 +48,7 @@ const MACRO_TEXT_COLORS: Record<MacroRow['key'], string> = {
   carbs: 'var(--color-ochre)',
   fat: 'var(--color-ember)',
   fiber: 'color-mix(in srgb, var(--color-slate) 55%, var(--color-ivory))',
+  cholesterol: 'var(--color-dust)',
 };
 
 const MACRO_LABELS: Record<MacroRow['key'], string> = {
@@ -41,6 +56,7 @@ const MACRO_LABELS: Record<MacroRow['key'], string> = {
   carbs: t.dashboard.macros.carbs,
   fat: t.dashboard.macros.fat,
   fiber: t.dashboard.macros.fiber,
+  cholesterol: t.dashboard.macros.cholesterol,
 };
 
 const MACRO_LABEL_TITLE: Record<MacroRow['key'], string> = {
@@ -48,33 +64,59 @@ const MACRO_LABEL_TITLE: Record<MacroRow['key'], string> = {
   carbs: t.dashboard.macros.carbsTitle,
   fat: t.dashboard.macros.fatTitle,
   fiber: t.dashboard.macros.fiberTitle,
+  cholesterol: t.dashboard.macros.cholesterolTitle,
 };
+
+/**
+ * Returns the row's display unit (`'g'` or `'mg'`). Defaults to `'g'`
+ * for legacy fixtures where `unit` is omitted — aggregator-produced rows
+ * always populate it.
+ */
+function rowUnit(row: Pick<MacroRow, 'unit'>): 'g' | 'mg' {
+  return row.unit ?? 'g';
+}
+
+/**
+ * Returns the per-contribution numeric value (g or mg, same scale as
+ * `row.unit`). Prefer `amount` (unit-aware sibling added 2026-05-16);
+ * fall back to legacy `grams` for older fixtures.
+ */
+function contributionAmount(item: Pick<MacroContribution, 'amount' | 'grams'>): number {
+  return item.amount ?? item.grams;
+}
 
 function buildAriaValueText(row: MacroRow): string {
   if (row.status === 'empty') {
     return t.dashboard.macros.ariaLabelEmpty.replace('{macro}', MACRO_LABELS[row.key]);
   }
+  // Codex R1 F3 fix — branch aria templates on `row.unit`. Cholesterol
+  // (unit `mg`) previously announced through the grams template as
+  // "250 grams of 300 target" — a 1000x unit error for assistive tech.
+  // Pick the milligram-aware variant when the row is mg-denominated.
+  const isMg = (row.unit ?? 'g') === 'mg';
   if (row.status === 'over') {
+    const template = isMg ? t.dashboard.macros.ariaLabelOverMg : t.dashboard.macros.ariaLabelOver;
     return (
       'Over target - ' +
-      t.dashboard.macros.ariaLabelOver
+      template
         .replace('{macro}', MACRO_LABELS[row.key])
         .replace('{consumed}', String(row.consumedG))
         .replace('{target}', String(row.targetG))
         .replace('{over}', String(Math.max(0, row.consumedG - row.targetG)))
     );
   }
+  const template = isMg ? t.dashboard.macros.ariaLabelMg : t.dashboard.macros.ariaLabel;
   if (row.status === 'on-target') {
     return (
       'On target - ' +
-      t.dashboard.macros.ariaLabel
+      template
         .replace('{macro}', MACRO_LABELS[row.key])
         .replace('{consumed}', String(row.consumedG))
         .replace('{target}', String(row.targetG))
         .replace('{pct}', String(row.pct))
     );
   }
-  return t.dashboard.macros.ariaLabel
+  return template
     .replace('{macro}', MACRO_LABELS[row.key])
     .replace('{consumed}', String(row.consumedG))
     .replace('{target}', String(row.targetG))
@@ -83,19 +125,6 @@ function buildAriaValueText(row: MacroRow): string {
 
 function formatGrams(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
-
-function buildHoverText(row: MacroRow): string {
-  if (row.contributions.length === 0) {
-    return t.dashboard.macros.breakdownHoverEmpty.replace('{macro}', MACRO_LABEL_TITLE[row.key]);
-  }
-  return t.dashboard.macros.breakdownHoverTop.replace(
-    '{items}',
-    row.contributions
-      .slice(0, 3)
-      .map((item) => `${item.itemName} ${formatGrams(item.grams)}${t.dashboard.ring.gramsUnit}`)
-      .join(', '),
-  );
 }
 
 function byMeal(rows: MacroContribution[]): Record<MealCategory, MacroContribution[]> {
@@ -109,25 +138,33 @@ function byMeal(rows: MacroContribution[]): Record<MealCategory, MacroContributi
 }
 
 function mealTotal(rows: MacroContribution[]): number {
-  return rows.reduce((sum, row) => sum + row.grams, 0);
+  return rows.reduce((sum, row) => sum + contributionAmount(row), 0);
 }
 
-function MacroRowView({ row, onOpen }: { row: MacroRow; onOpen: (row: MacroRow) => void }) {
+function MacroRowView({
+  row,
+  onOpen,
+  collisionBoundary,
+}: {
+  row: MacroRow;
+  onOpen: (row: MacroRow) => void;
+  collisionBoundary: Element | null;
+}) {
   const fillPct = Math.min(100, row.pct);
   const fillColor = row.status === 'over' ? 'var(--color-oxblood)' : MACRO_COLORS[row.key];
   const pctColor = row.status === 'over' ? 'var(--color-ember)' : 'var(--color-sand)';
   const valueText = buildAriaValueText(row);
   const isEmpty = row.status === 'empty';
-  const hoverText = buildHoverText(row);
+  const hoverText = buildMacroHoverText(row);
+  const unit = rowUnit(row);
 
   return (
     <Tooltip.Root>
       <Tooltip.Trigger asChild>
         <button
           type="button"
+          className="kalori-nutrition-trigger kalori-nutrition-trigger--macro"
           data-testid={`macro-row-${row.key}`}
-          className="kalori-macro-row"
-          title={hoverText}
           aria-label={t.dashboard.macros.breakdownTriggerA11y
             .replace('{macro}', MACRO_LABEL_TITLE[row.key])
             .replace('{summary}', valueText)}
@@ -155,7 +192,11 @@ function MacroRowView({ row, onOpen }: { row: MacroRow; onOpen: (row: MacroRow) 
             }}
           >
             <span
+              className="kalori-nutrition-label-with-cue"
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-2)',
                 fontSize: 'var(--type-label)',
                 fontWeight: 500,
                 letterSpacing: '0.22em',
@@ -164,6 +205,10 @@ function MacroRowView({ row, onOpen }: { row: MacroRow; onOpen: (row: MacroRow) 
               }}
             >
               {MACRO_LABELS[row.key]}
+              <span className="kalori-nutrition-info-cue" aria-hidden="true">
+                <Info size={13} strokeWidth={1.8} />
+                <span>{t.dashboard.macros.detailsCue}</span>
+              </span>
             </span>
             <span
               className="num"
@@ -195,9 +240,7 @@ function MacroRowView({ row, onOpen }: { row: MacroRow; onOpen: (row: MacroRow) 
               <span className="num">{t.dashboard.macros.emptyValue}</span>
             ) : (
               <>
-                <span className="num">
-                  {t.dashboard.macros.valueFormat.replace('{consumed}', String(row.consumedG))}
-                </span>
+                <span className="num">{`${row.consumedG}${unit}`}</span>
                 <span
                   style={{
                     fontStyle: 'italic',
@@ -207,7 +250,7 @@ function MacroRowView({ row, onOpen }: { row: MacroRow; onOpen: (row: MacroRow) 
                   }}
                   className="num"
                 >
-                  {t.dashboard.macros.targetSuffix.replace('{target}', String(row.targetG))}
+                  {`/ ${row.targetG}${unit}`}
                 </span>
               </>
             )}
@@ -243,7 +286,15 @@ function MacroRowView({ row, onOpen }: { row: MacroRow; onOpen: (row: MacroRow) 
           side="top"
           align="center"
           sideOffset={8}
+          avoidCollisions
           collisionPadding={16}
+          // Constrain the tooltip to the MacroBars column so it cannot
+          // overflow into the ChronometerRing column at the 768px+
+          // side-by-side hero breakpoint. The prop is only spread when
+          // the ref is set (post-mount) to satisfy
+          // `exactOptionalPropertyTypes`; on first render Radix falls
+          // back to viewport boundary.
+          {...(collisionBoundary ? { collisionBoundary: [collisionBoundary] } : {})}
           style={{
             zIndex: 52,
             maxWidth: 280,
@@ -276,12 +327,12 @@ function MacroBreakdownDialog({
   const grouped = byMeal(row.contributions);
   const title = t.dashboard.macros.breakdownTitle.replace('{macro}', MACRO_LABEL_TITLE[row.key]);
   const hasContributions = row.contributions.length > 0;
+  const unit = rowUnit(row);
 
   return (
     <Dialog.Root open={true} onOpenChange={onOpenChange} modal>
       <Dialog.Portal>
         <Dialog.Overlay
-          className="radix-overlay"
           data-testid="macro-breakdown-overlay"
           style={{
             position: 'fixed',
@@ -291,7 +342,6 @@ function MacroBreakdownDialog({
           }}
         />
         <Dialog.Content
-          className="radix-content"
           data-testid="macro-breakdown-dialog"
           style={{
             position: 'fixed',
@@ -364,9 +414,10 @@ function MacroBreakdownDialog({
                       color: 'var(--color-sand)',
                     }}
                   >
-                    {t.dashboard.macros.breakdownTargetLine
+                    {t.dashboard.macros.breakdownTargetLineUnit
                       .replace('{consumed}', String(row.consumedG))
-                      .replace('{target}', String(row.targetG))}
+                      .replace('{target}', String(row.targetG))
+                      .replace(/\{unit\}/g, unit)}
                   </p>
                 </Dialog.Description>
               </div>
@@ -375,17 +426,7 @@ function MacroBreakdownDialog({
                   type="button"
                   aria-label={t.dashboard.macros.breakdownClose}
                   data-testid="macro-breakdown-close"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minWidth: 44,
-                    minHeight: 44,
-                    color: 'var(--color-ivory)',
-                    background: 'transparent',
-                    border: '1px solid var(--color-rule)',
-                    cursor: 'pointer',
-                  }}
+                  className="kalori-log-close"
                 >
                   <X size={18} strokeWidth={1.5} aria-hidden="true" />
                 </button>
@@ -456,7 +497,7 @@ function MacroBreakdownDialog({
                           }}
                         >
                           {formatGrams(total)}
-                          {t.dashboard.ring.gramsUnit}
+                          {unit}
                         </span>
                       </div>
                       <div
@@ -519,8 +560,8 @@ function MacroBreakdownDialog({
                                   color: MACRO_TEXT_COLORS[row.key],
                                 }}
                               >
-                                {formatGrams(item.grams)}
-                                {t.dashboard.ring.gramsUnit}
+                                {formatGrams(contributionAmount(item))}
+                                {unit}
                               </span>
                               <span
                                 className="num"
@@ -557,14 +598,32 @@ export interface MacroBarsProps {
 
 export function MacroBars({ macros }: MacroBarsProps) {
   const [activeRow, setActiveRow] = useState<MacroRow | null>(null);
+  // Column-boundary element: serves as the Radix Tooltip
+  // `collisionBoundary` so hover tooltips on macro rows cannot overflow
+  // into the ChronometerRing column at the 768px+ side-by-side hero
+  // breakpoint. `useState` + callback ref instead of `useRef` because
+  // React 19 + the `react-hooks` lint rule forbid reading `.current`
+  // during render. State updates only when the node identity changes,
+  // so this does not produce render loops.
+  const [boundaryEl, setBoundaryEl] = useState<HTMLDivElement | null>(null);
 
   return (
     <Tooltip.Provider delayDuration={250}>
-      <div data-testid="macro-bars">
-        <MacroRowView row={macros.protein} onOpen={setActiveRow} />
-        <MacroRowView row={macros.carbs} onOpen={setActiveRow} />
-        <MacroRowView row={macros.fat} onOpen={setActiveRow} />
-        <MacroRowView row={macros.fiber} onOpen={setActiveRow} />
+      <div ref={setBoundaryEl} data-testid="macro-bars" data-collision-boundary="macros-column">
+        <MacroRowView row={macros.protein} onOpen={setActiveRow} collisionBoundary={boundaryEl} />
+        <MacroRowView row={macros.carbs} onOpen={setActiveRow} collisionBoundary={boundaryEl} />
+        <MacroRowView row={macros.fat} onOpen={setActiveRow} collisionBoundary={boundaryEl} />
+        <MacroRowView row={macros.fiber} onOpen={setActiveRow} collisionBoundary={boundaryEl} />
+        {/* Phase 2A (2026-05-16) — cholesterol 5th row. Optional on the
+            MacrosByKey type so legacy fixtures still compile; the
+            aggregator always produces it. */}
+        {macros.cholesterol ? (
+          <MacroRowView
+            row={macros.cholesterol}
+            onOpen={setActiveRow}
+            collisionBoundary={boundaryEl}
+          />
+        ) : null}
       </div>
       <MacroBreakdownDialog row={activeRow} onOpenChange={(open) => !open && setActiveRow(null)} />
     </Tooltip.Provider>

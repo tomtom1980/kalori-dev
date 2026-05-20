@@ -27,94 +27,53 @@
  *   - profile lookup throws (network)       → same: `/login?error=profile_lookup_failed`
  *
  * Public route — middleware lets this through even when unauthenticated so
- * the code exchange can run. We do NOT log anything here (Sentry scrubber
- * from Task 1.1 catches unexpected throws).
+ * the code exchange can run. Every error surface explicitly reports to
+ * Sentry (captureException with route + auth_flow tags) so production
+ * magic-link / OAuth regressions are observable — historically this route
+ * swallowed errors and a PKCE code_verifier cookie mismatch produced zero
+ * Sentry events.
  */
+import * as Sentry from '@sentry/nextjs';
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { safeRedirectTarget } from '@/lib/auth/safe-redirect';
 import { getServerSupabase } from '@/lib/supabase/server';
 
 /**
- * Guard against open-redirects + assorted smuggling on the `?redirect_to=`
- * parameter that survives the OAuth round-trip. Rejects anything that isn't a
- * plain same-origin pathname, including:
+ * HEAD handler — prefetch defense.
  *
- *   1. Empty / null input
- *   2. Control characters (`\n`, `\r`, `\t`, `\0`) — prevents CRLF / header
- *      injection once Location header is serialized
- *   3. Backslashes (`\`) — some browsers treat `\` as `/` and would interpret
- *      `/\evil.com` as an origin-crossing redirect
- *   4. Non-root-absolute paths (must start with a single `/`, not `//` or
- *      schemes like `https:` / `javascript:` / `data:`)
- *   5. Protocol-relative (`//`) — standard open-redirect vector
- *   6. Cross-origin after URL normalization against a dummy origin — belt-and-
- *      suspenders check in case URL parser re-interprets the path
- *   7. Path traversal (`..` or `.` segments) in either raw OR percent-decoded
- *      form — blocks `/%2e%2e/admin`, `/login/../admin`, etc.
- *   8. Any remaining `%00` (null byte) after a single decode pass
+ * Email link scanners (Gmail, Facebook, Microsoft Defender, anti-phishing
+ * services) send HEAD requests to validate magic-link URLs before delivery
+ * or on link preview. If we let those requests fall through to the GET
+ * handler, Next.js would execute the full verifyOtp/exchangeCodeForSession
+ * flow, which consumes the one-time token. When the real user then clicks
+ * (GET), the token is gone → "invalid or expired".
  *
- * On acceptance, returns the normalized pathname + search + hash. The
- * normalization round-trips through `URL` so callers get the parser's
- * canonical serialization (resolves stray `./` segments the parser already
- * collapses safely).
+ * Returning 200 with no body and zero side effects satisfies the prefetcher
+ * without consuming the token. The user's real click (GET) still triggers
+ * verification normally.
+ *
+ * Takes no arguments — the response is deterministic regardless of query
+ * params or headers. Next.js will pass a Request when invoking; JS drops
+ * the extra arg.
  */
-function safeRedirectTarget(raw: string | null): string | null {
-  if (!raw) return null;
-  // Reject control chars + backslashes before any URL parsing — these are
-  // structural hazards that URL parsers do NOT uniformly reject.
-  if (/[\\\n\r\t\0]/.test(raw)) return null;
-  // Must be root-absolute pathname.
-  if (!raw.startsWith('/')) return null;
-  // Protocol-relative `//evil.com/...` — reject.
-  if (raw.startsWith('//')) return null;
-
-  // Pre-parser traversal check: the URL parser silently collapses `../` into
-  // a normalized path (e.g. `/login/../admin` becomes `/admin`). We MUST
-  // detect traversal on the raw input BEFORE normalization, otherwise the
-  // attack surface we reject below is empty.
-  //
-  // We also decode once up-front so percent-encoded dots (`%2e%2e`) count as
-  // traversal — catches `/%2e%2e/admin` and `/%2e/admin` variants.
-  let decodedRaw: string;
-  try {
-    decodedRaw = decodeURIComponent(raw);
-  } catch {
-    // Malformed percent-encoding — reject.
-    return null;
-  }
-  if (decodedRaw.includes('\0')) return null;
-  if (decodedRaw.includes('\\')) return null;
-  // Reject traversal in either raw or decoded form. The regex catches `..` or
-  // single-dot segments between slashes (or at path boundaries).
-  if (/(^|\/)\.\.(\/|$)/.test(decodedRaw)) return null;
-  if (/(^|\/)\.(\/|$)/.test(decodedRaw)) return null;
-  // Also reject encoded traversal directly on the raw input — defense in
-  // depth in case a future tweak to the decode logic loses fidelity.
-  if (/%2e/i.test(raw)) return null;
-
-  // Parse against a dummy origin so we can use the URL parser's normalization
-  // + cross-origin detection. If parsing throws (malformed URL), reject.
-  let parsed: URL;
-  try {
-    parsed = new URL(raw, 'http://dummy.local');
-  } catch {
-    return null;
-  }
-  if (parsed.origin !== 'http://dummy.local') return null;
-  // Post-parse sanity — the parser must not have produced control-char or
-  // null-byte content in the pathname portion (encoded forms like `%00`
-  // survive as `%00` in `parsed.pathname` until decoded).
-  if (/%00/i.test(parsed.pathname)) return null;
-
-  return parsed.pathname + parsed.search + parsed.hash;
+export async function HEAD(): Promise<NextResponse> {
+  return new NextResponse(null, { status: 200 });
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const url = request.nextUrl;
   const code = url.searchParams.get('code');
   const redirectParam = safeRedirectTarget(url.searchParams.get('redirect_to'));
+  const ua = request.headers.get('user-agent');
+  const referer = request.headers.get('referer');
 
   if (!code) {
+    Sentry.captureMessage('auth/callback hit without ?code parameter', {
+      level: 'warning',
+      tags: { route: 'auth/callback', auth_flow: 'oauth_or_pkce' },
+      extra: { ua, referer },
+    });
     return NextResponse.redirect(new URL('/login?error=callback', request.url));
   }
 
@@ -123,11 +82,38 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { data: exchangeData, error: exchangeError } =
     await supabase.auth.exchangeCodeForSession(code);
 
-  if (exchangeError || !exchangeData.session) {
+  if (exchangeError) {
+    Sentry.captureException(exchangeError, {
+      tags: { route: 'auth/callback', auth_flow: 'oauth_or_pkce' },
+      extra: { code_present: true, ua },
+    });
+    return NextResponse.redirect(new URL('/login?error=callback', request.url));
+  }
+  if (!exchangeData.session) {
+    // PKCE / OAuth edge case: Supabase returns no error but a null session
+    // (e.g. the code_verifier cookie was missing). Synthesize an Error so
+    // the Sentry alert fires — silent failure here is what hid the recent
+    // prod regression.
+    Sentry.captureException(
+      new Error('auth/callback: exchangeCodeForSession returned null session without error'),
+      {
+        tags: { route: 'auth/callback', auth_flow: 'oauth_or_pkce' },
+        extra: { code_present: true, ua },
+      },
+    );
     return NextResponse.redirect(new URL('/login?error=callback', request.url));
   }
 
-  const userId = exchangeData.session.user.id;
+  const sessionUser = exchangeData.session.user;
+  const userId = sessionUser.id;
+
+  // Happy path so far — attribute subsequent Sentry events in this request
+  // context to the authenticated user. Omit `email` rather than set it to
+  // `undefined` because Sentry's `User` type rejects explicit `undefined`
+  // under `exactOptionalPropertyTypes: true`.
+  Sentry.setUser(
+    sessionUser.email !== undefined ? { id: userId, email: sessionUser.email } : { id: userId },
+  );
 
   // Look up onboarding completion to pick the right landing surface.
   //
@@ -146,12 +132,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .eq('id', userId)
       .maybeSingle();
     if (lookupError) {
+      Sentry.captureException(lookupError, {
+        tags: { route: 'auth/callback', auth_flow: 'profile_lookup' },
+        extra: { ua },
+      });
       return NextResponse.redirect(new URL('/login?error=profile_lookup_failed', request.url));
     }
     profile = data;
-  } catch {
+  } catch (err) {
     // Network / connection failure — same fallback as an explicit lookup
     // error. Do NOT silently treat as onboarded or not-onboarded.
+    Sentry.captureException(err, {
+      tags: { route: 'auth/callback', auth_flow: 'profile_lookup' },
+      extra: { ua },
+    });
     return NextResponse.redirect(new URL('/login?error=profile_lookup_failed', request.url));
   }
 

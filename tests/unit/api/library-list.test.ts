@@ -138,10 +138,14 @@ describe('GET /api/library/list', () => {
       kcal: 520,
       lastUsedIso: '2026-04-20T12:00:00.000Z',
       logCount: 12,
+      defaultPortion: 350,
       proteinG: 32,
       carbsG: 48,
       fatG: 14,
       fiberG: 3,
+      micros: {},
+      // Phase 2C — fixture row lacks cholesterol_mg → mapper defaults to 0.
+      cholesterolMg: 0,
       unit: 'g',
       thumbnailUrl: 'https://cdn/pho.jpg',
     });
@@ -186,7 +190,7 @@ describe('GET /api/library/list', () => {
     expect(json.error).toBe('profile_lookup_unavailable');
   });
 
-  it('returns 401 unauthorized when no session', async () => {
+  it('returns 401 unauthenticated when no session (US-STAB-D2 canonical envelope)', async () => {
     const { from, getUser } = buildMocks({ user: null });
     vi.doMock('@/lib/supabase/server', () => ({
       getServerSupabase: async () => ({ auth: { getUser }, from }),
@@ -194,6 +198,10 @@ describe('GET /api/library/list', () => {
     const res = await get();
     expect(res.status).toBe(401);
     const json = (await res.json()) as { error: string };
-    expect(json.error).toBe('unauthorized');
+    // Task D.2 (US-STAB-D2): body string flipped from 'unauthorized' to
+    // 'unauthenticated' to match the canonical JSON 401 envelope. The
+    // status remains 401 and the fence path remains the source of the
+    // response.
+    expect(json.error).toBe('unauthenticated');
   });
 });

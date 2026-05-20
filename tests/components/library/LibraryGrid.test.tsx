@@ -56,7 +56,12 @@ describe('<LibraryGrid />', () => {
     expect(list).toHaveAttribute('role', 'list');
   });
 
-  it('renders each item as <li> with a <button> child', () => {
+  it('renders each item as <li> with a role=button card child', () => {
+    // Bug 3 (library overhaul 2026-05-16) — card root refactored from
+    // `<button>` to `<div role="button">` so the kebab quick-action menu
+    // trigger can legally nest inside without an invalid-HTML
+    // nested-interactive a11y violation. Keyboard semantics preserved
+    // via `tabIndex` + Enter/Space keydown handler.
     render(
       <LibraryGrid
         items={[mk('a'), mk('b')]}
@@ -66,8 +71,12 @@ describe('<LibraryGrid />', () => {
         onToggleSelect={() => {}}
       />,
     );
-    expect(screen.getByTestId('library-card-a').tagName).toBe('BUTTON');
-    expect(screen.getByTestId('library-card-b').tagName).toBe('BUTTON');
+    const a = screen.getByTestId('library-card-a');
+    const b = screen.getByTestId('library-card-b');
+    expect(a).toHaveAttribute('role', 'button');
+    expect(b).toHaveAttribute('role', 'button');
+    // Still focusable via roving tabindex (first card gets tabIndex=0).
+    expect(a).toHaveAttribute('tabindex');
   });
 
   it('renders letter-mark fallback when thumbnail is missing', () => {
@@ -155,5 +164,39 @@ describe('<LibraryGrid />', () => {
     await user.keyboard('{ArrowRight}');
     // The next card receives focus through the roving tabindex mechanism.
     expect(screen.getByTestId('library-card-b')).toHaveAttribute('tabindex', '0');
+  });
+
+  // Bug 11 (library overhaul 2026-05-16) — separator hairline strength.
+  // Lock in the `rule-strong` (4:1 card-frame) token for the grid frame +
+  // cell borders so a future refactor can't silently regress to the
+  // 3:1 ambient `rule` divider. JSDOM cannot compute the cascade-resolved
+  // border-color reliably, so use CSS-rule-existence assertions against
+  // `app/globals.css` (same pattern as Bug 10 in LibraryCard.test.tsx).
+  describe('grid separator hairlines (Bug 11)', () => {
+    async function loadGlobalsCss(): Promise<string> {
+      const { readFile } = await import('node:fs/promises');
+      const { resolve } = await import('node:path');
+      return readFile(resolve(process.cwd(), 'app/globals.css'), 'utf8');
+    }
+
+    it('library-grid frame uses --color-rule-strong on top + left borders', async () => {
+      const css = await loadGlobalsCss();
+      expect(css).toMatch(
+        /\.kalori-library-grid\s*\{[^}]*border-top:\s*1px solid var\(--color-rule-strong\)/,
+      );
+      expect(css).toMatch(
+        /\.kalori-library-grid\s*\{[^}]*border-left:\s*1px solid var\(--color-rule-strong\)/,
+      );
+    });
+
+    it('library-cell uses --color-rule-strong on right + bottom borders', async () => {
+      const css = await loadGlobalsCss();
+      expect(css).toMatch(
+        /\.kalori-library-cell\s*\{[^}]*border-right:\s*1px solid var\(--color-rule-strong\)/,
+      );
+      expect(css).toMatch(
+        /\.kalori-library-cell\s*\{[^}]*border-bottom:\s*1px solid var\(--color-rule-strong\)/,
+      );
+    });
   });
 });

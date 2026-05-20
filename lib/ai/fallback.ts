@@ -99,6 +99,7 @@ export interface CallGeminiWithFallbackInput {
   readonly generationConfig?: {
     readonly responseMimeType?: 'application/json';
     readonly maxOutputTokens?: number;
+    readonly responseSchema?: Record<string, unknown>;
   };
 }
 

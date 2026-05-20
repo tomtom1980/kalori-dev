@@ -29,6 +29,7 @@ const VIEWPORTS = [
   { name: 'mobile-360', width: 360, height: 640 }, // Smallest target
   { name: 'mobile-375', width: 375, height: 667 }, // iPhone SE
   { name: 'mobile-414', width: 414, height: 896 }, // iPhone XR
+  { name: 'tablet-768', width: 768, height: 1024 }, // iPad/tablet follows phone chrome
 ] as const;
 
 test.describe('Bug #5 — dual FAB layout (food + water)', () => {

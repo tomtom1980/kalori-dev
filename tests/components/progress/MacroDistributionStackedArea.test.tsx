@@ -24,6 +24,8 @@ function makeData(): MacroDistributionData {
         carbsTargetG: 225,
         fatTargetG: 67,
         fiberTargetG: 30,
+        cholesterolMg: 180,
+        cholesterolTargetMg: 300,
       },
       {
         bucket: '2026-04-19',
@@ -35,6 +37,8 @@ function makeData(): MacroDistributionData {
         carbsTargetG: 225,
         fatTargetG: 67,
         fiberTargetG: 30,
+        cholesterolMg: 220,
+        cholesterolTargetMg: 300,
       },
     ],
     sparse: { daysLogged: 2, threshold: 3, isSparse: true },

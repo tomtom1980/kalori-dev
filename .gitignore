@@ -11,6 +11,11 @@ out/
 # Environment
 .env*
 !.env.example
+# Test-only Playwright env override (task E.1.4b) — kalori-dev Supabase creds
+# sourced from Planning/devapikeys.txt. Loaded by tests/e2e/fixtures/global-
+# setup.ts with override=true so dev creds win over .env.local's PROD creds.
+# Local-only; CI uses GitHub Actions secrets.
+.env.test.local
 
 # Editor
 .vscode/
@@ -34,6 +39,7 @@ test-results/
 tests/results/
 playwright-report/
 tsconfig.tsbuildinfo
+.lighthouseci/
 
 # Claude Code
 .remember/
@@ -42,6 +48,36 @@ tsconfig.tsbuildinfo
 
 # Ephemeral smoke-test screenshots (evidence captured in sweep reports)
 /smoke-*.png
+
+# Ephemeral Playwright auth-fixture artifacts (debug runs)
+/prod-*-state.png
+
+# Ephemeral runtime evidence — D.1 standalone spec captures these on every
+# `playwright test` run (per `tests/screenshots/user-stories/US-STAB-D1/
+# evidence.md` lines 187-192: "captured at E2E + visual run-time, NOT
+# committed at this implementation step"). evidence.md remains tracked.
+tests/screenshots/user-stories/US-STAB-D1/*.png
+
+# Playwright evidence captures (FU-E13-EVIDENCE-PNG-IDEMPOTENCY) — written
+# unconditionally via page.screenshot({path:...}) on every `playwright test`
+# run. Bytes differ between runs due to anti-aliasing / font-rendering /
+# frame-timing variance, dirtying the working tree on every run. These are
+# observational records (one per AC step) of how the UI looked when the
+# spec executed, NOT test assertions — the assertions are the
+# expect(...) calls in the specs themselves. Regenerable by re-running the
+# suite locally. evidence.md narratives remain TRACKED.
+#
+# NOT ignored: tests/screenshots/audit-2026-*/  (one-shot historical
+# manual-audit captures; no spec auto-overwrites them).
+# NOT ignored: tests/**/*-snapshots/  +  tests/**/__snapshots__/  (Playwright
+# toHaveScreenshot() + Vitest snapshot baselines — these ARE test assertions
+# and must stay tracked).
+tests/screenshots/user-stories/US-*/**/*.png
+tests/screenshots/reduced-motion/*.png
+tests/screenshots/smoke/**/*.png
+
+# Supabase CLI local link state (machine-specific; should not be committed)
+supabase/.temp/linked-project.json
 
 # Mockup screenshots (regenerable from HTML)
 Design/mockups-brainstorm/*/screenshot.png

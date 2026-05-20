@@ -18,6 +18,8 @@ function makeData(overrides?: Partial<TrendSummaryData>): TrendSummaryData {
     carbsAvgG: 205,
     fatAvgG: 62,
     fiberAvgG: 22,
+    cholesterolAvgMg: 220,
+    cholesterolTargetMg: 300,
     microTrends: [
       { nutrient: 'iron', direction: 'up', delta: 2.5 },
       { nutrient: 'calcium', direction: 'flat', delta: 0.1 },

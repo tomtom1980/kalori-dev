@@ -30,14 +30,36 @@
  */
 import { z } from 'zod';
 
+import { canonicalizeMicroKey } from '@/lib/dashboard/micros-rda-resolver';
+import {
+  CANONICAL_CODE_TO_DISPLAY_NAME,
+  DEFAULT_MICROS_LIST,
+  type MicroCode,
+} from '@/lib/nutrition/micros-rda';
 import { userTzDayFrom } from '@/lib/time/day';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-/** URL range param. D = rolling 24h, W = rolling 7d, M = rolling 30d. */
-export type ProgressRange = 'D' | 'W' | 'M';
+/** Legacy internal ranges kept for existing tests and non-URL compatibility. */
+export type LegacyProgressRange = 'D' | 'W' | 'M';
+
+/** Canonical preset ranges used by the /progress URL. */
+export type ProgressPresetRange = 'last_7' | 'last_30';
+
+export interface ProgressCustomRange {
+  readonly mode: 'custom';
+  readonly startOn: string;
+  readonly endOn: string;
+}
+
+export type ProgressRange = LegacyProgressRange | ProgressPresetRange | ProgressCustomRange;
+
+export interface ParsedProgressRange {
+  readonly range: ProgressPresetRange | ProgressCustomRange;
+  readonly needsRedirect: boolean;
+}
 
 /** Input row shape — matches the Supabase `food_entries` row the reader pulls. */
 export interface FoodEntryRow {
@@ -55,6 +77,10 @@ export interface FoodEntryRow {
       readonly carbs_g?: number;
       readonly fat_g?: number;
       readonly fiber_g?: number;
+      // Phase 2D — 5th tracked macro. Tracked in mg (USDA Daily Value 300 mg/day).
+      // Legacy rows pre-date the field; `numOr0` coerces missing/non-finite to 0
+      // so the aggregator stays backwards compatible.
+      readonly cholesterol_mg?: number;
     };
     readonly micros?: Record<string, number>;
     readonly confidence?: number;
@@ -68,7 +94,18 @@ export interface ProgressProfile {
   readonly carbs_target_g: number;
   readonly fat_target_g: number;
   readonly fiber_target_g: number;
+  // Phase 2D — optional explicit cholesterol target (mg). Defaults to
+  // CHOLESTEROL_TARGET_MG (USDA Daily Value 300 mg/day) when omitted.
+  readonly cholesterol_target_mg?: number;
 }
+
+/**
+ * USDA Daily Value reference: 300 mg/day. Phase 1 introduced
+ * `cholesterol_mg` in the food-entry schema; the dashboard MacroBars use
+ * the same 300 mg default. Re-exported so callers passing a profile that
+ * lacks `cholesterol_target_mg` get a consistent fallback.
+ */
+export const CHOLESTEROL_TARGET_MG = 300;
 
 export interface AggregateProgressInput {
   readonly range: ProgressRange;
@@ -109,19 +146,17 @@ export interface MacroBucket {
   readonly carbsTargetG: number;
   readonly fatTargetG: number;
   readonly fiberTargetG: number;
+  // Phase 2D — 5th macro: cholesterol (mg, NOT g). Default target = 300 mg
+  // (USDA DV); profile may override via `cholesterol_target_mg`.
+  readonly cholesterolMg: number;
+  readonly cholesterolTargetMg: number;
 }
 
 export type HeatmapRampClass = 'c0' | 'c1' | 'c2' | 'c3' | 'c4' | 'c5' | 'c6' | 'c7' | 'c8' | 'c9';
 
-export const HEATMAP_NUTRIENTS = [
-  'vitamin_a',
-  'vitamin_c',
-  'vitamin_d',
-  'iron',
-  'calcium',
-] as const;
+export const HEATMAP_NUTRIENTS = DEFAULT_MICROS_LIST.map((micro) => micro.code);
 
-export type HeatmapNutrient = (typeof HEATMAP_NUTRIENTS)[number];
+export type HeatmapNutrient = MicroCode;
 
 export interface HeatmapCell {
   readonly nutrient: HeatmapNutrient;
@@ -165,8 +200,9 @@ export interface MacroDistributionData {
 export interface MicronutrientHeatmapData {
   readonly range: ProgressRange;
   readonly tz: string;
-  readonly nutrients: typeof HEATMAP_NUTRIENTS;
-  readonly targets: Readonly<Record<HeatmapNutrient, number>>;
+  readonly nutrients: readonly HeatmapNutrient[];
+  readonly allNutrients: readonly HeatmapNutrient[];
+  readonly targets: Readonly<Record<string, number>>;
   readonly cells: ReadonlyArray<HeatmapCell>;
   readonly footerCommentary: string;
   readonly scanMeta: {
@@ -187,6 +223,11 @@ export interface TrendSummaryData {
   readonly carbsAvgG: number;
   readonly fatAvgG: number;
   readonly fiberAvgG: number;
+  // Phase 2D — 5th macro: cholesterol (mg, NOT g). Daily-average over the
+  // same logged-bucket denominator as the other four macros so weekly /
+  // monthly trends read as "avg intake vs daily limit".
+  readonly cholesterolAvgMg: number;
+  readonly cholesterolTargetMg: number;
   readonly microTrends: ReadonlyArray<{
     readonly nutrient: string;
     readonly direction: 'up' | 'down' | 'flat';
@@ -220,13 +261,11 @@ export interface ProgressAggregate {
 // Heatmap target defaults (DV per briefing §5)
 // ---------------------------------------------------------------------------
 
-const HEATMAP_DEFAULT_TARGETS: Readonly<Record<HeatmapNutrient, number>> = {
-  vitamin_a: 900, // μg RAE
-  vitamin_c: 90, // mg
-  vitamin_d: 20, // μg / 800 IU
-  iron: 18, // mg
-  calcium: 1000, // mg
-};
+const HEATMAP_DEFAULT_TARGETS: Readonly<Record<string, number>> = Object.freeze(
+  Object.fromEntries(DEFAULT_MICROS_LIST.map((micro) => [micro.code, micro.rda])),
+);
+
+const UPPER_LIMIT_NUTRIENTS: ReadonlySet<string> = new Set(['sodium', 'chloride']);
 
 // ---------------------------------------------------------------------------
 // Zod schemas for strict boundary (briefing §7 carried context #4)
@@ -249,6 +288,8 @@ const MacroBucketZ = z.object({
   carbsTargetG: z.number(),
   fatTargetG: z.number(),
   fiberTargetG: z.number(),
+  cholesterolMg: z.number(),
+  cholesterolTargetMg: z.number(),
 });
 
 const SparseZ = z.object({
@@ -306,7 +347,26 @@ export function computeWindow(range: ProgressRange, nowIso: string, tz: string):
   }
 
   // W = 7 days, M = 30 days — both inclusive of today.
-  const spanDays = range === 'W' ? 7 : 30;
+  if (isCustomRange(range)) {
+    const buckets = dayBucketsBetween(range.startOn, range.endOn);
+    const startUtc = new Date(userTzMidnightUtcMs(range.startOn, tz)).toISOString();
+    const isEndingToday = range.endOn === endDay;
+    const endUtc = isEndingToday
+      ? nowIso
+      : new Date(userTzMidnightUtcMs(nextDayIso(range.endOn), tz) - 1).toISOString();
+    return {
+      range,
+      tz,
+      startUtc,
+      endUtc,
+      userTzStartDay: range.startOn,
+      userTzEndDay: range.endOn,
+      bucketCount: buckets.length,
+      buckets,
+    };
+  }
+
+  const spanDays = range === 'W' || range === 'last_7' ? 7 : 30;
   const buckets = rollingDayBuckets(endDay, spanDays);
   const startDay = buckets[0]!;
   const startUtc = new Date(userTzMidnightUtcMs(startDay, tz)).toISOString();
@@ -320,6 +380,38 @@ export function computeWindow(range: ProgressRange, nowIso: string, tz: string):
     userTzEndDay: endDay,
     bucketCount: spanDays,
     buckets,
+  };
+}
+
+export function parseProgressRangeParams(
+  params: { readonly range?: string; readonly start?: string; readonly end?: string },
+  today: string,
+): ParsedProgressRange {
+  if (params.range === 'last_30') {
+    return { range: 'last_30', needsRedirect: false };
+  }
+  if (params.range === 'M') {
+    return { range: 'last_30', needsRedirect: true };
+  }
+  if (params.range === 'custom') {
+    const start = params.start;
+    const end = params.end;
+    if (
+      start &&
+      end &&
+      isIsoDay(start) &&
+      isIsoDay(end) &&
+      start <= end &&
+      end <= today &&
+      inclusiveDayCount(start, end) <= 365
+    ) {
+      return { range: { mode: 'custom', startOn: start, endOn: end }, needsRedirect: false };
+    }
+    return { range: 'last_7', needsRedirect: true };
+  }
+  return {
+    range: 'last_7',
+    needsRedirect: params.range !== undefined && params.range !== 'last_7',
   };
 }
 
@@ -476,6 +568,34 @@ function nextDayIso(day: string): string {
   return `${dt.getUTCFullYear()}-${pad2(dt.getUTCMonth() + 1)}-${pad2(dt.getUTCDate())}`;
 }
 
+function isCustomRange(range: ProgressRange): range is ProgressCustomRange {
+  return typeof range === 'object' && range.mode === 'custom';
+}
+
+function isIsoDay(day: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  const ms = Date.parse(`${day}T00:00:00Z`);
+  return Number.isFinite(ms) && new Date(ms).toISOString().slice(0, 10) === day;
+}
+
+function inclusiveDayCount(startDay: string, endDay: string): number {
+  const startMs = Date.parse(`${startDay}T00:00:00Z`);
+  const endMs = Date.parse(`${endDay}T00:00:00Z`);
+  return Math.floor((endMs - startMs) / (24 * 60 * 60 * 1000)) + 1;
+}
+
+function dayBucketsBetween(startDay: string, endDay: string): string[] {
+  const days = inclusiveDayCount(startDay, endDay);
+  if (days <= 0) return [];
+  const buckets: string[] = [];
+  const startMs = Date.parse(`${startDay}T00:00:00Z`);
+  for (let i = 0; i < days; i += 1) {
+    const d = new Date(startMs + i * 24 * 60 * 60 * 1000);
+    buckets.push(`${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`);
+  }
+  return buckets;
+}
+
 /** Produce an inclusive descending range of N days ending on `endDay`. */
 function rollingDayBuckets(endDay: string, spanDays: number): string[] {
   const buckets: string[] = [];
@@ -555,12 +675,13 @@ export function aggregateProgress(input: AggregateProgressInput): ProgressAggreg
       acc.carbs_g += numOr0(item.macros?.carbs_g);
       acc.fat_g += numOr0(item.macros?.fat_g);
       acc.fiber_g += numOr0(item.macros?.fiber_g);
+      acc.cholesterol_mg += numOr0(item.macros?.cholesterol_mg);
       const micros = item.micros ?? {};
-      for (const nutrient of HEATMAP_NUTRIENTS) {
-        const raw = micros[nutrient];
-        if (typeof raw === 'number' && Number.isFinite(raw)) {
-          acc.micros[nutrient] = (acc.micros[nutrient] ?? 0) + raw;
-        }
+      for (const [rawKey, raw] of Object.entries(micros)) {
+        if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) continue;
+        const nutrient = canonicalizeMicroKey(rawKey) as HeatmapNutrient | undefined;
+        if (nutrient === undefined || HEATMAP_DEFAULT_TARGETS[nutrient] === undefined) continue;
+        acc.micros[nutrient] = (acc.micros[nutrient] ?? 0) + raw;
       }
       dataPoints += 1;
     }
@@ -594,6 +715,7 @@ export function aggregateProgress(input: AggregateProgressInput): ProgressAggreg
   };
 
   // --- MacroDistribution ---
+  const cholesterolTargetMg = input.profile.cholesterol_target_mg ?? CHOLESTEROL_TARGET_MG;
   const macroPoints: MacroBucket[] = window.buckets.map((b) => {
     const acc = perBucket.get(b)!;
     const point: MacroBucket = {
@@ -606,6 +728,8 @@ export function aggregateProgress(input: AggregateProgressInput): ProgressAggreg
       carbsTargetG: input.profile.carbs_target_g,
       fatTargetG: input.profile.fat_target_g,
       fiberTargetG: input.profile.fiber_target_g,
+      cholesterolMg: round1(acc.cholesterol_mg),
+      cholesterolTargetMg,
     };
     return MacroBucketZ.parse(point) as MacroBucket;
   });
@@ -619,17 +743,18 @@ export function aggregateProgress(input: AggregateProgressInput): ProgressAggreg
   };
 
   // --- MicronutrientHeatmap ---
-  const targets: Record<HeatmapNutrient, number> = {
+  const targets: Record<string, number> = {
     ...HEATMAP_DEFAULT_TARGETS,
   };
-  const heatmapCells: HeatmapCell[] = [];
+  const cellsByNutrient = new Map<HeatmapNutrient, HeatmapCell[]>();
   for (const nutrient of HEATMAP_NUTRIENTS) {
+    const nutrientCells: HeatmapCell[] = [];
     for (const b of window.buckets) {
       const acc = perBucket.get(b)!;
       const actual = valueForNutrient(acc, nutrient);
-      const target = targets[nutrient];
+      const target = targets[nutrient] ?? 0;
       const pctDv = target > 0 ? Math.round((actual / target) * 100) : 0;
-      heatmapCells.push({
+      nutrientCells.push({
         nutrient,
         bucket: b,
         actual: round1(actual),
@@ -638,11 +763,22 @@ export function aggregateProgress(input: AggregateProgressInput): ProgressAggreg
         isToday: bucketIsToday(b, todayTz),
       });
     }
+    cellsByNutrient.set(nutrient, nutrientCells);
   }
+  const eligibleNutrients = HEATMAP_NUTRIENTS.filter((nutrient) =>
+    (cellsByNutrient.get(nutrient) ?? []).some((cell) => {
+      const target = targets[nutrient] ?? 0;
+      return cell.actual > 0 && target > 0 && (cell.actual / target) * 100 >= 1;
+    }),
+  );
+  const allNutrients = rankHeatmapNutrientsWorstFirst(eligibleNutrients, cellsByNutrient);
+  const heatmapCells = allNutrients.flatMap((nutrient) => cellsByNutrient.get(nutrient) ?? []);
+  const nutrients = rankDefaultHeatmapNutrients(allNutrients, cellsByNutrient);
   const heatmap: MicronutrientHeatmapData = {
     range: input.range,
     tz: input.tz,
-    nutrients: HEATMAP_NUTRIENTS,
+    nutrients,
+    allNutrients,
     targets,
     cells: heatmapCells,
     footerCommentary: buildHeatmapCommentary(heatmapCells, sparse),
@@ -671,15 +807,20 @@ export function aggregateProgress(input: AggregateProgressInput): ProgressAggreg
       s.c += acc.carbs_g;
       s.f += acc.fat_g;
       s.fiber += acc.fiber_g;
+      s.chol += acc.cholesterol_mg;
       return s;
     },
-    { kcal: 0, p: 0, c: 0, f: 0, fiber: 0 },
+    { kcal: 0, p: 0, c: 0, f: 0, fiber: 0, chol: 0 },
   );
   const caloriesAvg = Math.round(sums.kcal / loggedCount);
   const proteinAvg = Math.round(sums.p / loggedCount);
   const carbsAvg = Math.round(sums.c / loggedCount);
   const fatAvg = Math.round(sums.f / loggedCount);
   const fiberAvg = Math.round(sums.fiber / loggedCount);
+  // Phase 2D — same averaging method as the four energy macros. Empty
+  // windows (no logged buckets) produce 0 via the loggedCount=Math.max(1)
+  // floor combined with sums.chol = 0.
+  const cholesterolAvg = loggedBuckets.length === 0 ? 0 : Math.round(sums.chol / loggedCount);
   const trend: TrendSummaryData = {
     range: input.range,
     tz: input.tz,
@@ -688,14 +829,25 @@ export function aggregateProgress(input: AggregateProgressInput): ProgressAggreg
     carbsAvgG: carbsAvg,
     fatAvgG: fatAvg,
     fiberAvgG: fiberAvg,
+    cholesterolAvgMg: cholesterolAvg,
+    cholesterolTargetMg,
     microTrends: deriveMicroTrends(perBucket, window),
-    commentary: buildTrendCommentary(caloriesAvg, proteinAvg, carbsAvg, fatAvg, fiberAvg, sparse),
+    commentary: buildTrendCommentary(
+      caloriesAvg,
+      proteinAvg,
+      carbsAvg,
+      fatAvg,
+      fiberAvg,
+      cholesterolAvg,
+      sparse,
+    ),
     srSummary: buildTrendSrSummary(
       caloriesAvg,
       proteinAvg,
       carbsAvg,
       fatAvg,
       fiberAvg,
+      cholesterolAvg,
       input.range,
       sparse,
     ),
@@ -727,12 +879,23 @@ interface BucketAccumulator {
   carbs_g: number;
   fat_g: number;
   fiber_g: number;
+  // Phase 2D — cholesterol (mg).
+  cholesterol_mg: number;
   entryCount: number;
   micros: Partial<Record<HeatmapNutrient, number>>;
 }
 
 function emptyAccumulator(): BucketAccumulator {
-  return { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0, entryCount: 0, micros: {} };
+  return {
+    kcal: 0,
+    protein_g: 0,
+    carbs_g: 0,
+    fat_g: 0,
+    fiber_g: 0,
+    cholesterol_mg: 0,
+    entryCount: 0,
+    micros: {},
+  };
 }
 
 function numOr0(v: unknown): number {
@@ -824,6 +987,48 @@ function fallBackTransitionMs(day: string, tz: string): number | null {
 
 function valueForNutrient(acc: BucketAccumulator, nutrient: HeatmapNutrient): number {
   return acc.micros[nutrient] ?? 0;
+}
+
+function rankDefaultHeatmapNutrients(
+  nutrients: readonly HeatmapNutrient[],
+  cellsByNutrient: ReadonlyMap<HeatmapNutrient, readonly HeatmapCell[]>,
+): HeatmapNutrient[] {
+  return nutrients
+    .filter((nutrient) => !UPPER_LIMIT_NUTRIENTS.has(nutrient))
+    .slice(0, 4)
+    .map((nutrient) => nutrient);
+}
+
+function rankHeatmapNutrientsWorstFirst(
+  nutrients: readonly HeatmapNutrient[],
+  cellsByNutrient: ReadonlyMap<HeatmapNutrient, readonly HeatmapCell[]>,
+): HeatmapNutrient[] {
+  return nutrients
+    .map((nutrient) => {
+      const cells = cellsByNutrient.get(nutrient) ?? [];
+      const nonzero = cells.filter((cell) => cell.actual > 0);
+      const avgPct =
+        nonzero.length > 0
+          ? nonzero.reduce((sum, cell) => sum + cell.pctDv, 0) / nonzero.length
+          : 0;
+      const isUpperLimit = UPPER_LIMIT_NUTRIENTS.has(nutrient);
+      const failingScore = isUpperLimit ? Math.max(0, avgPct - 100) : Math.max(0, 100 - avgPct);
+      const bucket = failingScore > 0 ? (isUpperLimit ? 1 : 0) : 2;
+      return {
+        nutrient,
+        bucket,
+        failingScore,
+        avgPct,
+        order: HEATMAP_NUTRIENTS.indexOf(nutrient),
+      };
+    })
+    .sort((a, b) => {
+      if (a.bucket !== b.bucket) return a.bucket - b.bucket;
+      if (b.failingScore !== a.failingScore) return b.failingScore - a.failingScore;
+      if (a.avgPct !== b.avgPct) return a.avgPct - b.avgPct;
+      return a.order - b.order;
+    })
+    .map((row) => row.nutrient);
 }
 
 function bucketIsToday(bucket: string, todayTz: string): boolean {
@@ -921,7 +1126,8 @@ function buildMacroSrSummary(
   const totalC = points.reduce((a, b) => a + b.carbsG, 0);
   const totalF = points.reduce((a, b) => a + b.fatG, 0);
   const totalFiber = points.reduce((a, b) => a + b.fiberG, 0);
-  return `Macro distribution, ${label}: total protein ${formatG(totalP)} grams, carbs ${formatG(totalC)}, fat ${formatG(totalF)}, fiber ${formatG(totalFiber)}.`;
+  const totalChol = points.reduce((a, b) => a + b.cholesterolMg, 0);
+  return `Macro distribution, ${label}: total protein ${formatG(totalP)} grams, carbs ${formatG(totalC)}, fat ${formatG(totalF)}, fiber ${formatG(totalFiber)}, cholesterol ${formatG(totalChol)} milligrams.`;
 }
 
 function buildHeatmapCommentary(cells: readonly HeatmapCell[], sparse: Sparse): string {
@@ -956,7 +1162,8 @@ function buildHeatmapSrSummary(
   if (sparse.isSparse) {
     return `Micronutrient heatmap, ${label}: not enough data. Log three or more days.`;
   }
-  return `Micronutrient heatmap, ${label}: ${HEATMAP_NUTRIENTS.length} nutrients by ${window.bucketCount} time buckets.`;
+  const nutrientCount = new Set(cells.map((cell) => cell.nutrient)).size;
+  return `Micronutrient heatmap, ${label}: ${nutrientCount} nutrients by ${window.bucketCount} time buckets.`;
 }
 
 function buildTrendCommentary(
@@ -965,12 +1172,13 @@ function buildTrendCommentary(
   c: number,
   f: number,
   fiber: number,
+  chol: number,
   sparse: Sparse,
 ): string {
   if (sparse.isSparse) {
     return 'At least three days are needed before the ledger can speak of trends.';
   }
-  return `avg protein ${p}g · carbs ${c}g · fat ${f}g · fiber ${fiber}g · calories ${formatThousands(kcal)}.`;
+  return `avg protein ${p}g · carbs ${c}g · fat ${f}g · fiber ${fiber}g · cholesterol ${chol}mg · calories ${formatThousands(kcal)}.`;
 }
 
 function buildTrendSrSummary(
@@ -979,6 +1187,7 @@ function buildTrendSrSummary(
   c: number,
   f: number,
   fiber: number,
+  chol: number,
   range: ProgressRange,
   sparse: Sparse,
 ): string {
@@ -986,7 +1195,7 @@ function buildTrendSrSummary(
   if (sparse.isSparse) {
     return `Trend summary, ${label}: not enough data.`;
   }
-  return `Trend summary, ${label}: avg protein ${p} grams, carbs ${c} grams, fat ${f} grams, fiber ${fiber} grams, calories ${kcal}.`;
+  return `Trend summary, ${label}: avg protein ${p} grams, carbs ${c} grams, fat ${f} grams, fiber ${fiber} grams, cholesterol ${chol} milligrams, calories ${kcal}.`;
 }
 
 function buildLoggingSrSummary(
@@ -1009,16 +1218,13 @@ function buildLoggingSrSummary(
 
 function rangeLabel(range: ProgressRange): string {
   if (range === 'D') return 'today';
-  if (range === 'W') return 'this week';
+  if (range === 'W' || range === 'last_7') return 'last 7 days';
+  if (isCustomRange(range)) return `${range.startOn} to ${range.endOn}`;
   return 'rolling 30 days';
 }
 
 function humanize(nutrient: HeatmapNutrient): string {
-  if (nutrient === 'vitamin_a') return 'Vitamin A';
-  if (nutrient === 'vitamin_c') return 'Vitamin C';
-  if (nutrient === 'vitamin_d') return 'Vitamin D';
-  if (nutrient === 'iron') return 'Iron';
-  return 'Calcium';
+  return CANONICAL_CODE_TO_DISPLAY_NAME[nutrient] ?? nutrient;
 }
 
 function formatG(n: number): string {

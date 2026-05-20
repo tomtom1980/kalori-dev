@@ -48,35 +48,56 @@ describe('F12 — single-item undo via /api/library/bulk-delete/undo', () => {
   it('401 → refresh → retry → deleted_at nulled exactly once for length-1 payload', async () => {
     const calls = { updateCount: 0, revalidatedCount: 0 };
 
+    // Route now does tombstone-select + conflict-probe + update. Use null
+    // normalized_name in the tombstone result so the conflict probe is
+    // skipped (partial unique index predicate excludes null names anyway).
     vi.doMock('@/lib/supabase/server', () => ({
       getServerSupabase: async () => ({
         auth: { getUser: async () => ({ data: { user: { id: 'u-1' } }, error: null }) },
-        from: (table: string) =>
-          table === 'profiles'
-            ? {
-                select: () => ({
-                  eq: () => ({
-                    maybeSingle: async () => ({ data: { deleting_at: null }, error: null }),
-                  }),
+        from: (table: string) => {
+          if (table === 'profiles') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: { deleting_at: null }, error: null }),
                 }),
-              }
-            : {
-                update: () => ({
-                  in: () => ({
-                    eq: () => ({
-                      not: () => ({
-                        select: async () => {
-                          calls.updateCount += 1;
-                          return {
-                            data: [{ id: 'row-1' }],
-                            error: null,
-                          };
+              }),
+            };
+          }
+          return {
+            select: () => ({
+              in: () => ({
+                eq: () => ({
+                  not: () =>
+                    Promise.resolve({
+                      data: [
+                        {
+                          client_id: '22222222-2222-4222-8222-222222222222',
+                          normalized_name: null,
                         },
-                      }),
+                      ],
+                      error: null,
                     }),
+                }),
+              }),
+            }),
+            update: () => ({
+              in: () => ({
+                eq: () => ({
+                  not: () => ({
+                    select: async () => {
+                      calls.updateCount += 1;
+                      return {
+                        data: [{ id: 'row-1' }],
+                        error: null,
+                      };
+                    },
                   }),
                 }),
-              },
+              }),
+            }),
+          };
+        },
       }),
     }));
 
@@ -134,27 +155,39 @@ describe('F12 — single-item undo via /api/library/bulk-delete/undo', () => {
     vi.doMock('@/lib/supabase/server', () => ({
       getServerSupabase: async () => ({
         auth: { getUser: async () => ({ data: { user: { id: 'u-1' } }, error: null }) },
-        from: (table: string) =>
-          table === 'profiles'
-            ? {
-                select: () => ({
-                  eq: () => ({
-                    maybeSingle: async () => ({ data: { deleting_at: null }, error: null }),
+        from: (table: string) => {
+          if (table === 'profiles') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: { deleting_at: null }, error: null }),
+                }),
+              }),
+            };
+          }
+          return {
+            // Tombstone fetch returns empty (row already restored / swept),
+            // skipping the conflict probe and falling through to the UPDATE
+            // (which itself returns 0 rows → replayed=true).
+            select: () => ({
+              in: () => ({
+                eq: () => ({
+                  not: () => Promise.resolve({ data: [], error: null }),
+                }),
+              }),
+            }),
+            update: () => ({
+              in: () => ({
+                eq: () => ({
+                  not: () => ({
+                    // Row already had deleted_at=null → filter excluded it.
+                    select: async () => ({ data: [], error: null }),
                   }),
                 }),
-              }
-            : {
-                update: () => ({
-                  in: () => ({
-                    eq: () => ({
-                      not: () => ({
-                        // Row already had deleted_at=null → filter excluded it.
-                        select: async () => ({ data: [], error: null }),
-                      }),
-                    }),
-                  }),
-                }),
-              },
+              }),
+            }),
+          };
+        },
       }),
     }));
     vi.doMock('next/cache', () => ({ revalidateTag: vi.fn() }));

@@ -73,7 +73,7 @@ describe('<LoginForm />', () => {
       | { email: string; options?: { emailRedirectTo?: string } }
       | undefined;
     expect(call?.email).toBe('user@example.com');
-    expect(call?.options?.emailRedirectTo).toContain('/auth/callback');
+    expect(call?.options?.emailRedirectTo).toContain('/auth/confirm');
   });
 
   it('shows the magic-link sent message after a successful dispatch', async () => {

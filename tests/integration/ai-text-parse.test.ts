@@ -115,7 +115,7 @@ function stubGeminiSuccess() {
             unit: 'bowl',
             kcal: 520,
             macros: { protein_g: 32, carbs_g: 65, fat_g: 14, fiber_g: 3 },
-            micros: {},
+            micros: { sodium: 900 },
             confidence: 0.85,
           },
         ],
@@ -128,9 +128,11 @@ function stubGeminiSuccess() {
 describe('POST /api/ai/text-parse — integration', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.stubEnv('GEMINI_API_KEY', 'test-gemini-key');
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.doUnmock('@/lib/supabase/server');
     vi.doUnmock('@/lib/supabase/admin');
   });
@@ -173,7 +175,7 @@ describe('POST /api/ai/text-parse — integration', () => {
           unit: 'bowl',
           kcal: 500,
           macros: { protein_g: 30, carbs_g: 60, fat_g: 12, fiber_g: 2 },
-          micros: {},
+          micros: { sodium: 900 },
           confidence: 0.9,
         },
       ],
@@ -250,7 +252,7 @@ describe('POST /api/ai/text-parse — integration', () => {
               unit: 'bowl',
               kcal: 500,
               macros: { protein_g: 30, carbs_g: 60, fat_g: 10, fiber_g: 2 },
-              micros: {},
+              micros: { sodium: 900 },
               confidence: 0.8,
             },
           ],

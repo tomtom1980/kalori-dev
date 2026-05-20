@@ -89,6 +89,23 @@ export const motion = {
 } as const;
 
 /**
+ * Spring transition for entrance animations — used by
+ * `components/motion/FadeUpCard` for the dashboard tile staggered
+ * fade-up. Tuned for a deliberate-but-subtle settle: medium-stiff
+ * stiffness, slightly under-damped so the card eases in without
+ * visible overshoot.
+ *
+ * Spread into a `transition` prop alongside any per-call overrides:
+ *   `transition={{ ...SPRING, delay }}`.
+ */
+export const SPRING: Transition = {
+  type: 'spring',
+  stiffness: 240,
+  damping: 28,
+  mass: 1,
+};
+
+/**
  * Reusable variants. Names match `Planning/ui-design.md` §2.7
  * line 228: `variants.{inkFade,emberPulse,pageSettle}`.
  *

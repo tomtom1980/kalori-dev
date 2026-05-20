@@ -18,7 +18,35 @@ vi.mock('@/lib/supabase/server', () => ({
     auth: {
       getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } }, error: null })),
     },
+    // app/(app)/layout.tsx queries `profiles.timezone` via
+    // `.from('profiles').select('timezone').eq('id', user.id).maybeSingle()`.
+    // The provider-mount test renders the layout but doesn't care about the
+    // timezone — return a benign stub so the chain resolves cleanly.
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(async () => ({ data: { timezone: 'UTC' }, error: null })),
+        })),
+      })),
+    })),
   })),
+}));
+
+// `<DeviceTimezoneSync>` (mounted in the layout) calls `useRouter()` from
+// `next/navigation`. The app-router invariant is not satisfied in vitest's
+// happy-dom render. Stub the router with a no-op so the provider-mount
+// assertion focuses purely on the OfflineQueueProvider contract.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    refresh: vi.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 const subscribers = new Set<() => void>();

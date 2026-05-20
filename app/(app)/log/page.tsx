@@ -31,16 +31,25 @@ import { LogPageClient } from './_components/LogPageClient';
  */
 function toLogLibraryItem(it: LibraryItem): LogLibraryItem {
   const macros = it.nutrition.macros ?? { protein_g: 0, carbs_g: 0, fat_g: 0 };
+  const defaultPortion =
+    typeof it.default_portion === 'number' &&
+    Number.isFinite(it.default_portion) &&
+    it.default_portion > 0
+      ? it.default_portion
+      : null;
   return {
     id: it.id,
     name: it.display_name,
     kcal: it.nutrition.kcal,
     lastUsedIso: it.last_used_at,
     logCount: it.log_count,
+    ...(defaultPortion !== null ? { defaultPortion } : {}),
     proteinG: macros.protein_g,
     carbsG: macros.carbs_g,
     fatG: macros.fat_g,
     fiberG: macros.fiber_g ?? 0,
+    // Phase 2C — 5th macro (unit: mg). Default 0 for legacy rows.
+    cholesterolMg: macros.cholesterol_mg ?? 0,
     unit: it.default_unit ?? 'g',
     thumbnailUrl: it.thumbnail_url,
   };

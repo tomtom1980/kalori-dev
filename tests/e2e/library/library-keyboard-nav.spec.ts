@@ -79,7 +79,24 @@ test.describe('/library · keyboard navigation', () => {
       .evaluateAll((els) =>
         (els as HTMLElement[])
           .map((el) => el.getAttribute('data-testid')?.replace(/^library-card-/, '') ?? '')
-          .filter((id) => id && !id.startsWith('thumb-') && !id.startsWith('lettermark-')),
+          // F6 fix (2026-05-16) — several testid families share the
+          // `library-card-` prefix and would pollute the roving-tabindex
+          // assertion set. Excluded:
+          //   - `library-card-thumb-<uuid>` (image element inside card)
+          //   - `library-card-lettermark-<uuid>` (fallback avatar)
+          //   - `library-card-pending-<uuid>` (sketch placeholder, sketch
+          //     pipeline commit 54e269b — role="status" non-focusable div)
+          //   - `library-card-menu-trigger-<uuid>` (kebab menu button,
+          //     library-overhaul commit b362c90 — has its own tab cycle
+          //     INSIDE the card, not in the roving set across cards)
+          .filter(
+            (id) =>
+              id &&
+              !id.startsWith('thumb-') &&
+              !id.startsWith('lettermark-') &&
+              !id.startsWith('pending-') &&
+              !id.startsWith('menu-trigger-'),
+          ),
       );
     expect(renderedCardIds.length).toBeGreaterThanOrEqual(4);
 

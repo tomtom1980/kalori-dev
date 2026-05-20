@@ -86,6 +86,10 @@ export function TrendSummary({ data }: TrendSummaryProps) {
               { cells: ['Carbs avg (g)', data.carbsAvgG] },
               { cells: ['Fat avg (g)', data.fatAvgG] },
               { cells: ['Fiber avg (g)', data.fiberAvgG] },
+              // Phase 2D — 5th macro: cholesterol (mg, NOT g). Mirrors
+              // MacroDistributionStackedArea's data-table treatment so the
+              // accessible fallback exposes the same fifth series.
+              { cells: ['Cholesterol avg (mg)', data.cholesterolAvgMg] },
               ...microTrends.map((mt) => ({
                 cells: [
                   `${mt.nutrient} trend`,

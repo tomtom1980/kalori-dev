@@ -52,12 +52,17 @@ export interface MergeFieldChoices {
   protein_g: MergeChoiceTag;
   carbs_g: MergeChoiceTag;
   fat_g: MergeChoiceTag;
+  // Cholesterol (mg/day) merge choice — added 2026-05-16 alongside the
+  // 5th-macro extension. Fiber intentionally omitted (out of scope for the
+  // cholesterol feature; fiber merge handling is a separate followup).
+  cholesterol_mg?: MergeChoiceTag;
   default_portion: MergeChoiceTag;
   default_unit: 'a' | 'b';
   kcal_custom: number | null;
   protein_custom: number | null;
   carbs_custom: number | null;
   fat_custom: number | null;
+  cholesterol_custom?: number | null;
   portion_custom: number | null;
 }
 

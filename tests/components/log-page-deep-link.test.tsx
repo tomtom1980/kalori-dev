@@ -84,6 +84,30 @@ describe('<LogPageClient /> — deep-link confirmation (Task 4.7.4)', () => {
     expect(state.confirmationPayload?.libraryItemIds).toEqual([MOCK_DEEP_LINK_ITEM.id]);
   });
 
+  it('deep-link custom quantity scales nutrition from the saved default serving', () => {
+    render(
+      <LogPageClient
+        initialTab="library"
+        initialItemId={MOCK_DEEP_LINK_ITEM.id}
+        initialQuantity={1400}
+        libraryItems={[]}
+        deepLinkItem={MOCK_DEEP_LINK_ITEM}
+      />,
+    );
+
+    const state = useLogFlowStore.getState();
+    const item = state.confirmationPayload!.items[0]!;
+    expect(item.portion).toBe(1400);
+    expect(item.kcal).toBe(2080);
+    expect(item.macros).toMatchObject({
+      protein_g: 128,
+      carbs_g: 192,
+      fat_g: 56,
+      fiber_g: 12,
+    });
+    expect(state.confirmationPayload?.libraryItemIds).toEqual([MOCK_DEEP_LINK_ITEM.id]);
+  });
+
   it('null deepLinkItem (tombstoned/RLS miss) falls through to library tab WITHOUT crash', () => {
     render(
       <LogPageClient

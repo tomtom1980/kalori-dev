@@ -84,7 +84,7 @@ describe('R1 — log-flow text-parse refresh reinforcement', () => {
               unit: 'bowl',
               kcal: 520,
               macros: { protein_g: 32, carbs_g: 65, fat_g: 14, fiber_g: 3 },
-              micros: {},
+              micros: { sodium: 1 },
               confidence: 0.85,
             },
           ],

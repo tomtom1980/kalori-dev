@@ -2,7 +2,7 @@
  * `useIsMobile()` — viewport breakpoint hook (Bug 4 / bugfix-tomi
  * 2026-05-08-mobile-ui-overhaul).
  *
- * Returns `true` when the viewport matches `(max-width: 767px)`. Wired
+ * Returns `true` when the viewport matches `(max-width: 1279px)`. Wired
  * via `useSyncExternalStore` so React 19 concurrent rendering observes
  * the same `MediaQueryList` snapshot every commit (no tearing) and we
  * subscribe / unsubscribe deterministically with the component
@@ -22,11 +22,11 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * The single source-of-truth media query for "mobile viewport". Kept in
+ * The single source-of-truth media query for "mobile/tablet viewport". Kept in
  * a constant so consumers can reference it (e.g., `Planning/ui-design.md`
  * §13 tiebreaker #23 cites the literal string).
  */
-export const MOBILE_QUERY = '(max-width: 767px)';
+export const MOBILE_QUERY = '(max-width: 1279px)';
 
 type MQ = MediaQueryList & {
   // Legacy Safari < 14 / older WebKit shims expose addListener / removeListener

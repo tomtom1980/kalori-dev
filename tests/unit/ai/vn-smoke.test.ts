@@ -77,7 +77,7 @@ function calibratedGeminiStub(fx: AccuracyFixture) {
       unit: it.unit,
       kcal: it.kcal,
       macros: it.macros,
-      micros: {},
+      micros: { sodium: 900 },
       confidence: 0.82,
     })),
     reasoning: `Calibrated MSW stub for ${fx.name} — test-only; never shipped.`,
@@ -95,9 +95,11 @@ describe('VN accuracy smoke suite (merge-blocking)', () => {
 
   beforeEach(() => {
     vi.resetModules();
+    vi.stubEnv('GEMINI_API_KEY', 'test-gemini-key');
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.doUnmock('@/lib/supabase/server');
     vi.doUnmock('@/lib/supabase/admin');
   });

@@ -21,6 +21,27 @@
  * below are the single place that maps slug → on-disk folder. The loader
  * imports them rather than hardcoding `./vn-smoke/${slug}.json`, so adding
  * a Western or photo fixture is a one-row edit instead of a loader patch.
+ *
+ * --------------------------------------------------------------------------
+ * Task C.1 Codex Round 1 Finding 4 — invariant reconciliation (2026-05-14).
+ * --------------------------------------------------------------------------
+ *
+ * Current critical-tier count: 8 fixtures (5 VN + 3 Western). The Task C.1
+ * briefing referenced a "30 fixtures" target but no such expansion is in
+ * scope for the AI-prompt micros directive change. The C.1 prompt change is
+ * additive (it adds a `micros` directive to the system prompt; macros /
+ * portions / item counts are unchanged) so the existing 8-fixture suite is
+ * the correct pre/post invariant gate.
+ *
+ * **Invariant (NON-NEGOTIABLE):** This `CRITICAL_FIXTURE_NAMES` suite MUST
+ * pass BEFORE and AFTER any AI prompt change. Verified for Task C.1 — see
+ * `tests/unit/ai/vn-smoke.test.ts` + `tests/unit/ai/critical-registry.test.ts`
+ * pre/post baselines in `Planning/.tmp/task-C.1-output.md`.
+ *
+ * Expansion of the critical suite to 30 fixtures is deferred to followup
+ * `F-AI-CRITICAL-EXPAND-30` (target MVP+1). DO NOT expand this array as
+ * a side-effect of a prompt-tuning task — promotion is a deliberate
+ * decision tied to fixture coverage analysis.
  */
 
 export const CRITICAL_FIXTURE_NAMES = [

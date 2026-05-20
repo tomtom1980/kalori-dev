@@ -12,6 +12,7 @@
  */
 import type { LibraryItem } from './fetch';
 import type { LibraryFilter, LibrarySort } from './types';
+import { normalizeName } from '@/lib/text/normalize';
 
 /**
  * Filter a library item list by `filter` + search substring.
@@ -28,7 +29,7 @@ export function applyFilter(
 
   return items.filter((item) => {
     if (normalizedQuery) {
-      const hay = `${item.display_name.toLowerCase()} ${item.normalized_name.toLowerCase()}`;
+      const hay = `${normalizeName(item.display_name)} ${item.normalized_name.toLowerCase()}`;
       if (!hay.includes(normalizedQuery)) return false;
     }
 

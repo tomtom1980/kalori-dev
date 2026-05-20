@@ -1,7 +1,9 @@
 'use client';
 
 /**
- * `<BulkDeleteConfirmDialog />` — Task 4.1 sub-step 3 §7.13.
+ * `<BulkDeleteConfirmDialog />` — Task 4.1 sub-step 3 §7.13 + Task C.2
+ * (US-STAB-C2 AC3) a11y upgrades for the N=1 variant + library overhaul
+ * 2026-05-16 Bug 4 mutation feedback.
  *
  * Radix Dialog with CANCEL default focus + Enter-activates-CANCEL
  * destructive convention (ux-auditor §1.6). Hard requirement: this module
@@ -16,9 +18,20 @@
  * `BulkConfirmResult` discriminated union. On `{ ok: false }` the dialog
  * stays open and renders an inline role=alert banner so the user sees
  * the failure + can retry without re-selecting.
+ *
+ * Bug 4 (2026-05-16):
+ *   - CONFIRM label swaps to a real word ("DELETING…") while pending —
+ *     replaces the bare "…" ellipsis that failed the ux-design
+ *     loading-buttons Quick-Pick spec.
+ *   - CANCEL is disabled while pending so the user cannot close the
+ *     dialog mid-flight.
+ *   - `onOpenChange` is gated so Radix's built-in ESC + scrim-click
+ *     close paths no-op while pending. ESC + scrim are the single
+ *     Radix chokepoint for non-button close events.
+ *   - `aria-busy={pending}` on Content + CONFIRM.
  */
 import * as Dialog from '@radix-ui/react-dialog';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { t } from '@/lib/i18n/en';
 
@@ -50,16 +63,24 @@ export function BulkDeleteConfirmDialog({
       if (result.ok) {
         onOpenChange(false);
       } else {
-        // IF-2: keep the dialog open + surface the error inline so the
-        // user can retry. Prior behavior swallowed failures, closed the
-        // dialog, and left the user with no signal that the mutation
-        // failed.
         setError(result.error);
       }
     } finally {
       setPending(false);
     }
   };
+
+  // Bug 4 — gate Radix's open-state changes so ESC + scrim-click cannot
+  // close the dialog mid-POST. The Confirm + Cancel buttons have their
+  // own `disabled` gates above; this handler is the safety net for the
+  // single Radix chokepoint.
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (pending) return;
+      onOpenChange(next);
+    },
+    [onOpenChange, pending],
+  );
 
   const title =
     totalCount === 1
@@ -69,21 +90,34 @@ export function BulkDeleteConfirmDialog({
   const shownPreview = previewNames.slice(0, 3);
   const moreCount = Math.max(0, totalCount - shownPreview.length);
 
+  const isSingle = totalCount === 1;
+  const singleName = isSingle ? (previewNames[0] ?? '') : '';
+
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="kalori-library-dialog-overlay" />
         <Dialog.Content
+          role="alertdialog"
           className="kalori-library-dialog-content"
           aria-describedby="library-bulk-delete-body"
+          aria-busy={pending || undefined}
           data-testid="library-bulk-delete-dialog"
         >
           <p className="kalori-library-dialog-kicker">{t.library.bulkDeleteKicker}</p>
           <Dialog.Title className="kalori-library-dialog-title">{title}</Dialog.Title>
+          {isSingle ? (
+            <p
+              data-testid="library-bulk-delete-name"
+              className="kalori-library-dialog-name kalori-library-dialog-name--italic"
+            >
+              {singleName}
+            </p>
+          ) : null}
           <Dialog.Description id="library-bulk-delete-body" className="kalori-library-dialog-body">
             {t.library.bulkDeleteWarning}
           </Dialog.Description>
-          {shownPreview.length > 0 ? (
+          {!isSingle && shownPreview.length > 0 ? (
             <ul className="kalori-library-dialog-list">
               {shownPreview.map((name) => (
                 <li key={name}>{name}</li>
@@ -93,10 +127,6 @@ export function BulkDeleteConfirmDialog({
               ) : null}
             </ul>
           ) : null}
-          {/* IF-2 (Codex adversarial round 1): inline role=alert banner
-              on mutation failure. Reuses the oxblood-on-ivory token used
-              by MergeDuplicatesDialog so the visual language is
-              consistent. */}
           {error ? (
             <div
               role="alert"
@@ -107,10 +137,16 @@ export function BulkDeleteConfirmDialog({
             </div>
           ) : null}
           <div className="kalori-library-dialog-actions">
+            {/* Bug 4 — CANCEL is disabled while pending so the user cannot
+                close the dialog mid-flight. `Dialog.Close asChild` still
+                wires the `onOpenChange(false)` path on click; the gate is
+                also enforced by `handleOpenChange` above for ESC/scrim. */}
             <Dialog.Close asChild>
               <button
                 type="button"
                 autoFocus
+                disabled={pending}
+                aria-disabled={pending || undefined}
                 data-testid="library-bulk-delete-cancel"
                 className="kalori-library-btn-ghost"
               >
@@ -122,10 +158,13 @@ export function BulkDeleteConfirmDialog({
               onClick={handleConfirm}
               disabled={pending}
               aria-disabled={pending}
+              aria-busy={pending || undefined}
               data-testid="library-bulk-delete-confirm"
               className="kalori-library-pill"
             >
-              {pending ? '…' : strikeLabel}
+              {/* Bug 4 — real loading label per ux-design loading-buttons
+                  spec; replaces the prior bare "…" ellipsis. */}
+              {pending ? t.library.detail.deleting : strikeLabel}
             </button>
           </div>
         </Dialog.Content>

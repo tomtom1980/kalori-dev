@@ -355,6 +355,18 @@ User explicitly asked at Q2/Q5: "are we fixing all the bugs?" Locked answer per 
 - AC4: GIVEN the dashboard reads RDA values from `lib/nutrition/micros-rda.ts::DEFAULT_MICROS_LIST` code constants (per-user `profiles.micros_rda_override` column DEFERRED per DT-5 / O-2 — see `F-MICROS-RDA-OVERRIDE-COLUMN`), WHEN the dashboard computes `% of RDA`, THEN the default code constant is used for every micronutrient. *(test-planned: tests/unit/dashboard/micros-rda-resolver.test.ts::reads-default-constants)*
 - AC5: GIVEN the RDA panel renders, WHEN the values are 0/null (sparse data), THEN the panel renders the empty-state described in `ui-design.md` (NOT a chart with 0% for all 30 micros). *(test-planned: tests/integration/dashboard-micros-panel.test.tsx::sparse-data-empty-state)*
 
+##### US-STAB-C1 AC3+AC5 Addendum (2026-05-16)
+
+Original AC text references the 30-chip RDA grid layout of today's micros + RDA% (the Task C.1 `<MicrosRdaPanel />` component, testid `micros-rda-panel`). The dashboard implementation evolved on 2026-05-16 to use `<MicronutrientPanel />` (Task 3.5 / 3.7 + Phase 2A — testid `micronutrient-panel`, day-scoped, top-10 sorted by %-of-RDA descending, "More elements" overflow toggle, zero-consumption rows filtered upstream in `aggregateMicros`). The Phase 2A commits (`c0a89ca`, `b808dfa`) removed the `<MicrosRdaPanel />` instantiation from `app/(app)/dashboard/page.tsx` while retaining the component file for a potential future weekly / monthly view.
+
+E2E spec assertions in `tests/e2e/web/user-stories/US-STAB-C1.spec.ts` updated accordingly; AC intent ("micros + RDA% visible on dashboard with sparse-data empty state") preserved. AC1, AC2, AC4 remain unaffected (covered at unit / fixture level per their existing test-planned markers). Mapping:
+
+- Panel root testid: `micros-rda-panel` → `micronutrient-panel`
+- Empty-state testid: `micros-rda-empty` → `micros-empty`
+- 30-chip count invariant dropped (the new panel filters zero-consumption rows upstream; a fixed-30 count is meaningless under the new contract)
+- Per-row testids: `micros-rda-chip-${code}` → `micro-row-${display-name-with-dashes}` (e.g. `micro-row-Iron`, `micro-row-Vitamin-C`)
+- Populated-branch sentinel: spec now asserts `micros-overflow-toggle` count = 0 in the empty-state path (replaces the absent `micros-rda-grid` assertion)
+
 #### US-STAB-C2 — Library CRUD UI (issuelog #5 + #10, P1, Complex)
 
 **As a** Library page user,

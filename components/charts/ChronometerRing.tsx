@@ -8,15 +8,15 @@
  *
  * A11y: wrapper carries `role="img"` with an `aria-label` covering
  * consumed, target, pct, status in plain words. SVG subtree is
- * `aria-hidden="true"`. `<details><summary>View as data table</summary>`
- * below the ring renders the same numbers as an SR-navigable table for
- * users who prefer non-visual data access.
+ * `aria-hidden="true"`. The shared data-table modal renders the same
+ * numbers as a structured table for users who prefer non-visual data access.
  *
  * Center calorie number uses `clamp()` so it scales with 200% zoom
  * without breaking layout (ux-auditor §5.3).
  */
 import { ChronometerArcDraw } from './ChronometerArcDraw';
-import { AnimatedNumber } from '@/components/primitives/AnimatedNumber';
+import { DataTableDrawer } from './DataTableDrawer';
+import { NumericTicker } from './NumericTicker';
 
 import { t } from '@/lib/i18n/en';
 import { formatTimeInTimeZone } from '@/lib/time/format';
@@ -149,12 +149,33 @@ export function ChronometerRing({ data, timezone = 'UTC' }: ChronometerRingProps
   const fiberCirc = 2 * Math.PI * FIBER_R;
   const fiberOffset =
     fiberCirc * (1 - Math.max(0, Math.min(1, fiberConsumed / Math.max(fiberTarget, 1))));
+  const dataTableRows = [
+    {
+      cells: [
+        t.dashboard.ring.dataTableRowConsumed,
+        `${formatNumber(consumed)} ${t.dashboard.ring.kcalUnit}`,
+      ],
+    },
+    {
+      cells: [
+        t.dashboard.ring.dataTableRowTarget,
+        `${formatNumber(rawTarget)} ${t.dashboard.ring.kcalUnit}`,
+      ],
+    },
+    { cells: [t.dashboard.ring.dataTableRowPercent, `${pct}%`] },
+    {
+      cells: [
+        t.dashboard.ring.dataTableRowFiber,
+        `${fiberConsumed} / ${fiberTarget} ${t.dashboard.ring.gramsUnit}`,
+      ],
+    },
+    { cells: [t.dashboard.ring.dataTableRowEntries, entryCount] },
+    { cells: [t.dashboard.ring.dataTableRowLastLogged, formatLastLogged(lastLoggedAt, timezone)] },
+  ];
 
   return (
     <div
       data-testid="chronometer-ring"
-      role="img"
-      aria-label={ariaLabel}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -169,233 +190,200 @@ export function ChronometerRing({ data, timezone = 'UTC' }: ChronometerRingProps
         minWidth: 0,
       }}
     >
+      {/*
+       * Task D.1 (US-STAB-D1) — the role="img" wrapper now contains ONLY
+       * the visual chart + center numerics + delta + footer line. The
+       * `<details>` data-table fallback below is a sibling, NOT a child,
+       * so axe `nested-interactive` (Critical, WCAG 4.1.2) no longer
+       * fires from the `<summary>` focusable descendant inside `role="img"`.
+       */}
       <div
+        role="img"
+        aria-label={ariaLabel}
         style={{
-          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
           width: '100%',
-          maxWidth: 280,
-          aspectRatio: '1 / 1',
         }}
       >
-        <svg
-          viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
-          width="100%"
-          height="100%"
-          aria-hidden="true"
-          style={{ display: 'block' }}
-        >
-          {/* Outer compass circle */}
-          <circle
-            cx={CENTER}
-            cy={CENTER}
-            r={OUTER_R}
-            fill="none"
-            stroke="var(--color-rule)"
-            strokeWidth={1}
-          />
-          {/* Consumed arc background track */}
-          <circle
-            cx={CENTER}
-            cy={CENTER}
-            r={CONSUMED_R}
-            fill="none"
-            stroke="var(--color-rule)"
-            strokeWidth={CONSUMED_STROKE}
-          />
-          {/* Consumed arc (client-drawn) */}
-          <ChronometerArcDraw
-            cx={CENTER}
-            cy={CENTER}
-            r={CONSUMED_R}
-            circumference={circumference}
-            offset={offset}
-            stroke={stroke}
-            strokeWidth={CONSUMED_STROKE}
-          />
-          {/* Fiber arc track */}
-          <circle
-            cx={CENTER}
-            cy={CENTER}
-            r={FIBER_R}
-            fill="none"
-            stroke="var(--color-rule)"
-            strokeWidth={2}
-          />
-          {/* Fiber arc fill */}
-          <circle
-            cx={CENTER}
-            cy={CENTER}
-            r={FIBER_R}
-            fill="none"
-            stroke={FIBER_STROKE}
-            strokeWidth={2}
-            strokeDasharray={fiberCirc}
-            strokeDashoffset={fiberOffset}
-            transform={`rotate(-90 ${CENTER} ${CENTER})`}
-          />
-          {/* Hour numerals (I / IV / VII / X) */}
-          {[
-            { x: CENTER, y: 30, text: 'I' },
-            { x: VIEWBOX_SIZE - 22, y: CENTER + 4, text: 'IV' },
-            { x: CENTER, y: VIEWBOX_SIZE - 18, text: 'VII' },
-            { x: 24, y: CENTER + 4, text: 'X' },
-          ].map((p) => (
-            <text
-              key={p.text}
-              x={p.x}
-              y={p.y}
-              textAnchor="middle"
-              fontFamily="var(--font-serif)"
-              fontSize={11}
-              fontStyle="italic"
-              fill="var(--color-dust)"
-            >
-              {p.text}
-            </text>
-          ))}
-        </svg>
-        {/* Center stack overlay */}
         <div
           style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
+            position: 'relative',
+            width: '100%',
+            maxWidth: 280,
+            aspectRatio: '1 / 1',
           }}
         >
-          <AnimatedNumber
-            value={consumed}
-            data-testid="chrono-consumed"
-            className="num"
+          <svg
+            viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
+            width="100%"
+            height="100%"
+            aria-hidden="true"
+            style={{ display: 'block' }}
+          >
+            {/* Outer compass circle */}
+            <circle
+              cx={CENTER}
+              cy={CENTER}
+              r={OUTER_R}
+              fill="none"
+              stroke="var(--color-rule)"
+              strokeWidth={1}
+            />
+            {/* Consumed arc background track */}
+            <circle
+              cx={CENTER}
+              cy={CENTER}
+              r={CONSUMED_R}
+              fill="none"
+              stroke="var(--color-rule)"
+              strokeWidth={CONSUMED_STROKE}
+            />
+            {/* Consumed arc (client-drawn) */}
+            <ChronometerArcDraw
+              cx={CENTER}
+              cy={CENTER}
+              r={CONSUMED_R}
+              circumference={circumference}
+              offset={offset}
+              stroke={stroke}
+              strokeWidth={CONSUMED_STROKE}
+            />
+            {/* Fiber arc track */}
+            <circle
+              cx={CENTER}
+              cy={CENTER}
+              r={FIBER_R}
+              fill="none"
+              stroke="var(--color-rule)"
+              strokeWidth={2}
+            />
+            {/* Fiber arc fill */}
+            <circle
+              cx={CENTER}
+              cy={CENTER}
+              r={FIBER_R}
+              fill="none"
+              stroke={FIBER_STROKE}
+              strokeWidth={2}
+              strokeDasharray={fiberCirc}
+              strokeDashoffset={fiberOffset}
+              transform={`rotate(-90 ${CENTER} ${CENTER})`}
+            />
+            {/* Hour numerals (I / IV / VII / X) */}
+            {[
+              { x: CENTER, y: 30, text: 'I' },
+              { x: VIEWBOX_SIZE - 22, y: CENTER + 4, text: 'IV' },
+              { x: CENTER, y: VIEWBOX_SIZE - 18, text: 'VII' },
+              { x: 24, y: CENTER + 4, text: 'X' },
+            ].map((p) => (
+              <text
+                key={p.text}
+                x={p.x}
+                y={p.y}
+                textAnchor="middle"
+                fontFamily="var(--font-serif)"
+                fontSize={11}
+                fontStyle="italic"
+                fill="var(--color-dust)"
+              >
+                {p.text}
+              </text>
+            ))}
+          </svg>
+          {/* Center stack overlay */}
+          <div
             style={{
-              fontFamily: 'var(--font-serif)',
-              fontSize: 'clamp(48px, 14vw, 82px)',
-              fontWeight: 300,
-              lineHeight: 1,
-              color: 'var(--color-ivory)',
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none',
             }}
-          />
-          <span
+          >
+            <span
+              data-testid="chrono-consumed"
+              className="num"
+              style={{
+                fontFamily: 'var(--font-serif)',
+                fontSize: 'clamp(48px, 14vw, 82px)',
+                fontWeight: 300,
+                lineHeight: 1,
+                color: 'var(--color-ivory)',
+              }}
+            >
+              <NumericTicker value={consumed || 0} />
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-serif)',
+                fontStyle: 'italic',
+                fontSize: 14,
+                color: 'var(--color-sand)',
+                marginTop: 4,
+              }}
+            >
+              {t.dashboard.ring.fractionOfTarget.replace('{target}', formatNumber(rawTarget))}
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: 'var(--type-label)',
+                fontWeight: 500,
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+                color: 'var(--color-dust)',
+                marginTop: 6,
+              }}
+            >
+              {isEmpty ? t.dashboard.ring.emptyCaption : t.dashboard.ring.subLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Delta line */}
+        {!isEmpty && deltaCopy ? (
+          <p
+            data-testid="chrono-delta"
             style={{
               fontFamily: 'var(--font-serif)',
               fontStyle: 'italic',
-              fontSize: 14,
+              fontSize: 15,
               color: 'var(--color-sand)',
-              marginTop: 4,
+              marginTop: 'var(--spacing-3)',
             }}
           >
-            {t.dashboard.ring.fractionOfTarget.replace('{target}', formatNumber(rawTarget))}
-          </span>
-          <span
+            {deltaCopy}
+          </p>
+        ) : null}
+
+        {/* Footer annotations */}
+        {!isEmpty ? (
+          <p
+            className="num"
             style={{
-              fontFamily: 'var(--font-sans)',
-              fontSize: 'var(--type-label)',
-              fontWeight: 500,
-              letterSpacing: '0.22em',
-              textTransform: 'uppercase',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
               color: 'var(--color-dust)',
-              marginTop: 6,
+              marginTop: 'var(--spacing-2)',
             }}
           >
-            {isEmpty ? t.dashboard.ring.emptyCaption : t.dashboard.ring.subLabel}
-          </span>
-        </div>
+            {t.dashboard.ring.footerAnnotations
+              .replace('{entries}', String(entryCount))
+              .replace('{pct}', String(pct))
+              .replace('{time}', formatLastLogged(lastLoggedAt, timezone))}
+          </p>
+        ) : null}
       </div>
-
-      {/* Delta line */}
-      {!isEmpty && deltaCopy ? (
-        <p
-          data-testid="chrono-delta"
-          style={{
-            fontFamily: 'var(--font-serif)',
-            fontStyle: 'italic',
-            fontSize: 15,
-            color: 'var(--color-sand)',
-            marginTop: 'var(--spacing-3)',
-          }}
-        >
-          {deltaCopy}
-        </p>
-      ) : null}
-
-      {/* Footer annotations */}
-      {!isEmpty ? (
-        <p
-          className="num"
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11,
-            color: 'var(--color-dust)',
-            marginTop: 'var(--spacing-2)',
-          }}
-        >
-          {t.dashboard.ring.footerAnnotations
-            .replace('{entries}', String(entryCount))
-            .replace('{pct}', String(pct))
-            .replace('{time}', formatLastLogged(lastLoggedAt, timezone))}
-        </p>
-      ) : null}
-
-      {/* Data-table fallback for screen readers */}
-      <details data-testid="chrono-data-table" style={{ marginTop: 'var(--spacing-3)' }}>
-        <summary
-          style={{
-            fontFamily: 'var(--font-sans)',
-            fontSize: 'var(--type-label)',
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            color: 'var(--color-dust)',
-            cursor: 'pointer',
-            minHeight: 44,
-            padding: 'var(--spacing-3) 0',
-          }}
-        >
-          {t.dashboard.ring.dataTableSummary}
-        </summary>
-        <table
-          style={{
-            fontFamily: 'var(--font-sans)',
-            fontSize: 13,
-            color: 'var(--color-ivory)',
-          }}
-        >
-          <thead>
-            <tr>
-              <th>{t.dashboard.ring.dataTableHeadMetric}</th>
-              <th>{t.dashboard.ring.dataTableHeadValue}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>{t.dashboard.ring.dataTableRowConsumed}</td>
-              <td>{`${formatNumber(consumed)} ${t.dashboard.ring.kcalUnit}`}</td>
-            </tr>
-            <tr>
-              <td>{t.dashboard.ring.dataTableRowTarget}</td>
-              <td>{`${formatNumber(rawTarget)} ${t.dashboard.ring.kcalUnit}`}</td>
-            </tr>
-            <tr>
-              <td>{t.dashboard.ring.dataTableRowPercent}</td>
-              <td>{`${pct}%`}</td>
-            </tr>
-            <tr>
-              <td>{t.dashboard.ring.dataTableRowFiber}</td>
-              <td>{`${fiberConsumed} / ${fiberTarget} ${t.dashboard.ring.gramsUnit}`}</td>
-            </tr>
-            <tr>
-              <td>{t.dashboard.ring.dataTableRowEntries}</td>
-              <td>{entryCount}</td>
-            </tr>
-            <tr>
-              <td>{t.dashboard.ring.dataTableRowLastLogged}</td>
-              <td>{formatLastLogged(lastLoggedAt, timezone)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </details>
+      <DataTableDrawer
+        summaryLabel={t.dashboard.ring.dataTableSummary}
+        caption={t.dashboard.ring.dataTableCaption}
+        columns={[t.dashboard.ring.dataTableHeadMetric, t.dashboard.ring.dataTableHeadValue]}
+        rows={dataTableRows}
+      />
     </div>
   );
 }

@@ -59,7 +59,8 @@ test.describe('/library · populated grid', () => {
     await expect(firstCard).toContainText('Phở bò tái nạm');
     await expect(firstCard).toContainText('480 kcal');
 
-    // Letter-mark fallback renders when no thumbnail_url — verify for first.
-    await expect(authedPage.getByTestId(`library-card-lettermark-${seeded[0]!.id}`)).toBeVisible();
+    // Freshly seeded rows without thumbnails now show the sketch-pending
+    // state during the generation window instead of the old lettermark.
+    await expect(authedPage.getByTestId(`library-card-pending-${seeded[0]!.id}`)).toBeVisible();
   });
 });

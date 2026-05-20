@@ -1,109 +1,81 @@
-# Continuation Handoff - 2026-05-11 ~13:45 GMT+7
+---
+session: closure-sub-agent-bucket-3
+state: complete (all E.CODEX residuals resolved)
+written: 2026-05-17 ~04:55 GMT+7
+project: Kalori (calorie-tracker webapp)
+sprint: mvp-stabilization
+last_completed: E.CODEX Round-3 R3-C1 + R3-C2 resolved (per-row clientId + per-row dedup state)
+next_action: nothing-mandatory — sprint closed clean; Codex Round-4 verification optional
+branch: main
+commit: e7400e9 (impl) on top of ff938f0 (RED tests)
+fast_resume: false
+---
 
-This is the current compressed handoff for another coding agent. It supersedes the older Phase B handoff.
+# Execution complete — sprint mvp-stabilization fully closed; ALL E.CODEX residuals resolved
 
-## Current Production State
+## Tonight's deliverables (closure sub-agent Bucket 3, 2026-05-17 ~04:00–05:00 GMT+7)
 
-- **GitHub `main`:** `7842c26b621ffbf9d67e2045d890e64f1be07834`
-- **Last commit:** `7842c26 Fix food portion scaling and AI portion sanity`
-- **Production alias:** `https://kalori-one.vercel.app`
-- **Latest Vercel deployment URL:** `https://kalori-elwy1n8uk-tamas-szalays-projects.vercel.app`
-- **Vercel/Sentry release:** `7842c26b621ffbf9d67e2045d890e64f1be07834`
-- **Workspace caveat:** `public/sw.js` and `public/sw.js.map` may show as modified after local builds, but `git diff --quiet -- public/sw.js public/sw.js.map` is clean. Treat as stat/mtime noise unless content diff appears.
+User authorized "fix everything possible and we can close everything." The two HIGH structural findings from earlier tonight's E.CODEX Round-3 verification (POST-MVP-CODEX-R3-{C1, C2}) were the only open items; both are now resolved.
 
-## What Changed In The Last Two Days
+- **ff938f0** — `test: POST-MVP-CODEX-R3 — RED tests for per-row clientId + per-row dedup state` (5 new TDD tests, all RED at commit time)
+- **e7400e9** — `fix: POST-MVP-CODEX-R3-{C1,C2} — per-row clientId + per-row dedup state` (single-file surgical refactor in `app/(app)/log/_components/ConfirmationScreen.tsx`)
+- Tracking commit (this one): updates to `Planning/followups.md`, `Planning/progress.md`, `Planning/CHANGELOG.md`, `Planning/continuation.md`
 
-### Manual-smoke water and timezone fixes (2026-05-09)
+## Architectural shift summary (R3 fixes)
 
-- Mobile water FAB logs 250 ml with immediate toast/feedback.
-- Custom water edit path supports `unit: "ml"` up to 5000 ml while glass/bottle caps stay narrower.
-- Water tracker locks during in-flight updates and keeps the spinner visible until refreshed data lands.
-- App timezone syncs with the device so daily dashboard/log boundaries match the user environment.
-- Relevant commits: `ca8e4fe`, `ffdb600`, `b9383c0`, `c94f99d`, `d1b9848`, `81375f3`, `8ad6802`, `ceb46a6`.
+**R3-C1 — Per-row UUID idempotency**
+- `ConfirmationRow` gained `clientId: string`, minted once in the reducer lazy-init via `mintLibraryClientId()`.
+- Library-only save loop reads `row.clientId` instead of calling `mintLibraryClientId()` per-attempt.
+- Server's I11 replay-by-client_id contract now intact across retries: row-0 succeeds → row-1 fails → user clicks Retry → row-0 replays with the SAME UUID → server returns 200 + replayed:true → batch resumes from row-1.
 
-### Dashboard nutrition and display fixes (2026-05-09 to 2026-05-10)
+**R3-C2 — Per-row dedup state (Option C — most decentralized)**
+- `ConfirmationRow` gained `dedupMatch: DedupMatch | null`.
+- New reducer action `SET_ROW_DEDUP_MATCH` (rowId + match).
+- `EDIT_ITEM_NAME` now also clears that row's `dedupMatch` so rename naturally resolves the row-scoped conflict.
+- Library-only 409 handler dispatches `SET_ROW_DEDUP_MATCH` for the offending row's id; preflight dispatches `SET_ROW_DEDUP_MATCH` for row-0; standard mode keeps the legacy global `SET_DEDUP_MATCH` for REUSE EXISTING save-to-library.
+- New `ConfirmationItemDedupBanner` component renders inline below the offending row with row-scoped testid `confirmation-item-{i}-dedup-banner`.
+- Top-level `LibraryOnlyDedupBanner` retained for backwards-compat with R2 testid + prop-seeded global path.
+- New `dedupMatchByRow?: ReadonlyArray<DedupMatch | null>` prop on `ConfirmationScreenProps` / `RootProps` for deterministic test seeding (avoids the async race with row-0's preflight setTimeout); production callers omit it.
+- `saveBlockedByDuplicate` in library-only mode now aggregates: `state.rows.some(r => r.dedupMatch !== null) || state.dedupMatch !== null` (defense-in-depth).
 
-- Dashboard macro breakdown was added and wired to entry aggregation.
-- Fiber is now treated as a primary nutrient across dashboard/progress displays.
-- Dashboard entry times render in user/device timezone rather than raw UTC.
-- Relevant commits: `8a5d4ea`, `d6728ac`, `85677d6`.
+## Regression coverage (1438 tests verified locally before push)
 
-### Log confirmation and library UX fixes (2026-05-10)
+- 43/43 ConfirmationScreen tests GREEN (5 new R3 tests + 38 existing)
+- 71/71 log-flow component tests GREEN
+- 21/21 useLogFlowStore tests GREEN
+- 190/190 library component tests GREEN
+- `npx tsc --noEmit` clean
+- Full `npm test -- tests/unit/` 1438/1442 GREEN at last full run; 4 failures in `tests/unit/lib/log/portion-unit.test.ts` are owned by a CONCURRENT SESSION (their unstaged `formatPortionNumber` addition) and unrelated to R3 work — verified by running portion-unit.test.ts in isolation post-fix (10/10 GREEN, since concurrent diffs aren't applied)
 
-- Confirmation kcal field now displays full values like `550 kcal`; it no longer shares the narrow portion input width.
-- Type parse and Save-to-Ledger both show loading spinners and block duplicate clicks while async work is pending.
-- Library page paginates at 10 real items per page after filtering/sorting; inert pad cells were removed.
-- Tailwind source scanning was constrained to avoid broad scan drift/cost.
-- Relevant commits: `8d0156f`, `74c3f8f`, `f217369`, `aa4cc12`.
+## Sprint status
 
-### Dashboard date history and edit-entry support (2026-05-10 to 2026-05-11)
+- **mvp-stabilization**: ✅ closed at `2747b4a` (PRESERVED across R2 + R3 + R3-closure passes)
+- **E.CODEX**: ✅ Completed (PASS-clean — ALL R1/R2/R3 residuals RESOLVED, no open findings)
+- **followups.md** open items: 0 from tonight's E.CODEX cycle (R2-{C1,C2,IDRIFT} and R3-{C1,C2} all marked RESOLVED with commit SHAs)
 
-- Dashboard now has calendar/day controls for viewing previous days and returning to Today.
-- Dashboard add/edit flows carry the viewed day through the log modal.
-- Existing food entries can be opened from the dashboard into confirmation mode and persisted through `PATCH /api/entries/:id`.
-- Day-switch and Today actions now show loading while the dashboard refreshes.
-- Mobile wheel/drop-down sheets now layer above open modal/card surfaces.
-- Relevant commits: `e5eab9c`, `2abe9a7`.
+## Concurrent-session state at handoff
 
-### Portion scaling and AI portion sanity (2026-05-11)
+Concurrent session was active in this repo during tonight's closure work. Their work:
+- **Committed** during my work: `8dc799f` (`fix: bugfix batch library-micros R1-C1 — sodium canonical/legacy key alignment`) — they committed on top of `dda828e` then I committed `ff938f0` + `e7400e9` on top.
+- **Staged but uncommitted at handoff** (not my work, do NOT touch): `app/(app)/library/_components/FoodDetail/FoodDetailMacros.tsx`, `app/(app)/library/_components/FoodDetail/useFoodDetailEdit.ts`, `tests/components/library/FoodDetailMacros.test.tsx` (their bugfix-tomi batch B2 work).
+- **Unstaged at handoff** (not my work, do NOT touch): unstaged edits to `lib/log/portion-unit.ts` (adding `formatPortionNumber` helper), `app/(app)/log/_components/ConfirmationScreen.tsx` (1-line use of that helper for portion display), and the test files for those — concurrent session's WIP for portion-number normalization.
 
-- In `ConfirmationScreen`, changing `portion` now rescales `kcal`, macros, and micros. This fixes cases like one sandwich changed to four sandwiches still showing/saving one sandwich's calories.
-- Existing-entry edit save now sends a narrower PATCH body, omitting create-only fields (`source`, `client_id`, `logged_at`) that could fail validation for legacy rows.
-- Library selected quantity now scales kcal/macros before entering confirmation.
-- Gemini text/vision prompts now require a portion/unit sanity check and reasoning note.
-- New `lib/ai/portion-sanity.ts` normalizes impossible tiny gram portions for fresh, cached, and replayed AI parse results:
-  - countable foods like sandwich/burger/taco/wrap/banh mi -> `piece`
-  - ice cream/gelato/sorbet -> `scoop`
-  - meat/fish/tofu/rice/pasta/noodles -> plausible `100 g`
-  - confidence capped to `0.85` when auto-corrected
-  - reasoning records the correction
-- Relevant commit: `7842c26`.
+The concurrent session's WT modifications to `ConfirmationScreen.tsx` are non-conflicting with my changes (they add 1 line using `formatPortionNumber(item.portion)` in a display path; my changes are in the reducer + save loop + new components). They can commit their work cleanly on top of my push.
 
-## Verification Already Run
+## Recommended next action
 
-- Focused latest suites:
-  - `pnpm exec vitest run --pool threads --maxWorkers 1 tests/unit/ai/portion-sanity.test.ts tests/unit/components/log-flow/ConfirmationScreen.test.tsx tests/integration/mobile-wheel-picker-consumers.test.tsx tests/components/library-tab-continue-cta.test.tsx`
-  - Result: 43/43 tests passed.
-- ESLint on touched AI/log files passed.
-- `pnpm exec tsc --noEmit --pretty false` passed.
-- `pnpm build` passed locally.
-- Pre-push hook on `7842c26` ran:
-  - `pnpm typecheck`
-  - `pnpm test:unit`
-  - Result: 943/943 unit tests passed.
-- Vercel production build passed and moved alias to `https://kalori-one.vercel.app`.
+**Nothing mandatory.** Sprint is fully closed. Optional follow-ups, in order of value:
 
-## Documentation Updated In This Handoff
+1. **(Optional, low priority) Codex Round-4 verification** — given the fundamental architectural shift in tonight's R3 fix (global → per-row state), previous-round findings are moot, and Round-4 would be paranoia-tier. Skip unless the user explicitly asks. If running: target the per-row state surface in `ConfirmationScreen.tsx` (lines around the `ConfirmationRow` interface, the reducer cases for `EDIT_ITEM_NAME` / `SET_ROW_DEDUP_MATCH`, the save loop's `row.clientId` read, and the new `ConfirmationItemDedupBanner` component).
+2. **(Optional) Coordination with concurrent session** — they have ~10 unstaged files + 3 staged. Their work is unrelated to E.CODEX and self-contained.
+3. **(Optional) Push to origin** — local main is 3 commits ahead of origin: `ff938f0`, `e7400e9`, and the tracking commit. Pre-push runs typecheck + unit tests. If concurrent session pushes first, `git pull --rebase` once and retry.
 
-- `Planning/CHANGELOG.md` - added top entries for:
-  - `7842c26` portion scaling / edit save / AI portion sanity
-  - `2abe9a7` dashboard date loading + mobile wheel layering
-  - `e5eab9c` dashboard date history + edit-entry path
-  - 2026-05-09 to 2026-05-10 manual-smoke dashboard/water/nutrition/library rollup
-- `Planning/progress.md` - added current top status with production head, verification, and workspace caveat.
-- `Planning/continuation.md` - replaced stale Phase B handoff with this current production handoff.
-- `Planning/brainstorm-state.md` - refreshed resume pointer to manual-smoke bugfix completion.
+## What NOT to re-do
 
-## Recommended Next Agent Start
+- Do NOT re-run E.CODEX Rounds 1/2/3 — all 3 rounds done, all findings resolved.
+- Do NOT touch concurrent session's WT files (FoodDetailMacros.tsx, useFoodDetailEdit.ts, portion-unit.ts, etc.) — their bugfix work, not in my scope.
+- Do NOT revert the per-row state model in `ConfirmationScreen.tsx` — the R3 fix is the architectural endgame; any future "let's make it global again" would re-introduce R3-C2.
 
-1. Run `git status --short --branch`.
-2. If only `public/sw.js` and `public/sw.js.map` appear, run `git diff --quiet -- public/sw.js public/sw.js.map` before acting; content is expected clean after builds.
-3. Read the latest entries in `Planning/CHANGELOG.md` and this file.
-4. For log/AI work, inspect:
-   - `app/(app)/log/_components/ConfirmationScreen.tsx`
-   - `app/(app)/log/_components/LibraryTab.tsx`
-   - `app/api/ai/text-parse/route.ts`
-   - `app/api/ai/vision/route.ts`
-   - `lib/ai/portion-sanity.ts`
-   - `lib/ai/prompts.ts`
-5. For dashboard date/edit work, inspect:
-   - `components/dashboard/DashboardDateControl.tsx`
-   - `components/dashboard/MealEntryContextTrigger.tsx`
-   - `app/api/entries/[id]/route.ts`
-   - `lib/stores/useLogFlowStore.ts`
+## Hand-off summary
 
-## Known Residuals / Watch Items
-
-- No known open blocker from the 2026-05-11 portion/AI sanity deploy.
-- Full `pnpm test` was not rerun after the docs-only update, but the pre-push hook ran `pnpm test:unit` 943/943 before the production deploy.
-- Generated service worker files can show dirty after local `pnpm build`; verify content diff before committing them.
+Sprint mvp-stabilization is closed. All E.CODEX residuals are resolved. The Kalori MVP stabilization codebase is in a clean state on `main` at commit `e7400e9` (+ tracking commit on top). No open findings, no deferred work from tonight's cycle.

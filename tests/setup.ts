@@ -34,6 +34,7 @@ import { afterAll, afterEach, beforeAll, expect } from 'vitest';
 import * as matchers from 'vitest-axe/matchers';
 
 import { server } from './mocks/server';
+import { loadEnvFile as parseEnvFileContent } from './_utils/env-loader';
 
 // Register vitest-axe matchers so `expect(await axe(container)).toHaveNoViolations()`
 // works in every component test (a11y C1 fix + ux-auditor §12.1 mandate).
@@ -57,23 +58,18 @@ afterAll(() => {
   server.close();
 });
 
+// F-LIBOVR-E2E-INFRA-DRIFT — the inline parser was extracted to
+// `tests/_utils/env-loader.ts` so Vitest + Playwright share one chokepoint
+// (the prior byte-identical duplicates between this file and
+// `tests/e2e/fixtures/global-setup.ts` were the root cause of the drift).
+// We retain the file-IO + `process.env` write here because those concerns
+// are setup-specific (CI never reads `.env.local`; missing-file is OK).
 function loadEnvFile(path: string): void {
   if (!existsSync(path)) return;
   const raw = readFileSync(path, 'utf8');
-  for (const rawLine of raw.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
-    const eq = line.indexOf('=');
-    if (eq < 0) continue;
-    const key = line.slice(0, eq).trim();
-    if (!key || key in process.env) continue; // never override an already-set var
-    let value = line.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
+  const parsed = parseEnvFileContent(raw);
+  for (const [key, value] of Object.entries(parsed)) {
+    if (key in process.env) continue; // never override an already-set var
     process.env[key] = value;
   }
 }

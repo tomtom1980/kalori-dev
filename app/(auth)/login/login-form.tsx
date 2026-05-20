@@ -73,7 +73,7 @@ export function LoginForm({ origin, initialError }: LoginFormProps) {
       const supabase = getBrowserSupabase();
       const { error: supabaseError } = await supabase.auth.signInWithOtp({
         email: trimmed,
-        options: { emailRedirectTo: `${origin}/auth/callback` },
+        options: { emailRedirectTo: `${origin}/auth/confirm` },
       });
       if (supabaseError) {
         setError(t.auth.errorGeneric);

@@ -30,7 +30,7 @@ function stubGeminiSuccess() {
             unit: 'bowl',
             kcal: 520,
             macros: { protein_g: 32, carbs_g: 65, fat_g: 14, fiber_g: 3 },
-            micros: {},
+            micros: { sodium: 900 },
             confidence: 0.85,
           },
         ],
@@ -54,9 +54,11 @@ function setupSsr() {
 describe('ai_response_cache — 30-day TTL', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.stubEnv('GEMINI_API_KEY', 'test-gemini-key');
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.doUnmock('@/lib/supabase/server');
     vi.doUnmock('@/lib/supabase/admin');
   });
@@ -199,7 +201,7 @@ describe('ai_response_cache — 30-day TTL', () => {
             unit: 'bowl',
             kcal: 520,
             macros: { protein_g: 32, carbs_g: 65, fat_g: 14, fiber_g: 3 },
-            micros: {},
+            micros: { sodium: 900 },
             confidence: 0.85,
           },
         ],

@@ -6,7 +6,7 @@
  *   2. Selection mode entered (toggle on, 0 selected — SelectModeToggle shows
  *      CANCEL label, no BulkActionsBar yet)
  *   3. Filter applied (WITH PHOTOS) — dropdown closed after selection
- *   4. MergeDuplicatesDialog open (with 2 items selected)
+ *   4. Bulk actions bar visible (with 2 items selected)
  *
  * The pre-existing injectAxeAndAudit() helper at tests/axe/setup.ts is the
  * canonical entry point (testing-strategy.md §2.7). To keep this spec scoped
@@ -69,6 +69,10 @@ test.describe('/library · axe-core', () => {
     }
     // Exit select for the next state's scan baseline.
     await authedPage.getByTestId('library-select-toggle').click();
+    await expect(authedPage.getByTestId('library-select-toggle')).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
 
     // --- State 3: Filter applied (NO PHOTOS — every seeded item passes) ---
     // The reconciled spec called for WITH PHOTOS; we substitute NO PHOTOS
@@ -87,13 +91,32 @@ test.describe('/library · axe-core', () => {
     // Reset filter for the last state.
     await authedPage.getByTestId('library-filter-trigger').click();
     await authedPage.getByTestId('library-filter-option-all').click();
+    await authedPage.waitForLoadState('networkidle');
 
-    // --- State 4: MergeDuplicatesDialog open (2 items selected) ---
-    await authedPage.getByTestId('library-select-toggle').click();
+    // --- State 4: Bulk actions bar visible (2 items selected) ---
+    const selectToggle = authedPage.getByTestId('library-select-toggle');
+    if ((await selectToggle.getAttribute('aria-pressed')) !== 'true') {
+      await selectToggle.click();
+    }
+    await expect(authedPage.getByTestId('library-select-toggle')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(authedPage.getByTestId(`library-card-${seeded[1]!.id}`)).toHaveAttribute(
+      'role',
+      'checkbox',
+    );
     await authedPage.getByTestId(`library-card-${seeded[1]!.id}`).click();
+    await expect(authedPage.getByTestId(`library-card-${seeded[1]!.id}`)).toHaveAttribute(
+      'data-selected',
+      'true',
+    );
     await authedPage.getByTestId(`library-card-${seeded[2]!.id}`).click();
-    await authedPage.getByTestId('library-merge-button').click();
-    await expect(authedPage.getByTestId('library-merge-dialog')).toBeVisible();
+    await expect(authedPage.getByTestId(`library-card-${seeded[2]!.id}`)).toHaveAttribute(
+      'data-selected',
+      'true',
+    );
+    await expect(authedPage.getByTestId('library-bulk-actions-bar')).toBeVisible();
     await authedPage.waitForTimeout(200);
     {
       const { seriousAndCriticalCount, violations } = await injectAxeAndAudit(authedPage);

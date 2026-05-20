@@ -1,43 +1,36 @@
-# Project Briefing: Kalori (calorie tracker webapp)
+## Project Briefing: Kalori Calorie Tracker
 
-_Cached 2026-05-02 ~10:05 GMT+7 by `prime` skill — re-prime if stale > 2h._
+### Architecture
+- Next.js 16 App Router, React 19, strict TypeScript, Tailwind v4, Radix/shadcn-style primitives, Supabase, Gemini, Vercel, Sentry, PWA/Serwist, Zustand, Zod, Vitest, and Playwright.
+- Authenticated app routes live under `app/(app)`, with key surfaces `/dashboard`, `/log`, `/library`, `/library/[id]`, `/progress`, and `/settings`.
+- API handlers under `app/api/**/route.ts` validate with Zod, use auth/profile fences, call Supabase server/admin helpers, and revalidate typed cache tags after writes.
+- Core data tables include `profiles`, `food_entries`, `food_library_items`, `ai_response_cache`, `ai_call_log`, `weekly_reviews`, and current BAC `alcohol_logs`.
+- Library rows store normalized names, default portion/unit, nutrition JSON, thumbnails/sketch metadata, log counts, tombstones, and creation source.
+- AI routes use Gemini through `lib/ai/*`, validate responses with Zod, cache by user-scoped hash, log each AI call, and keep Gemini keys server-side.
+- Library page flow centers on `LibraryClient`, `LibraryCard`, `LibraryCardActionMenu`, and `FoodDetail`; Add Food flow centers on `AddFoodTab`, `AiParseForm`, `ConfirmationScreen`, and `useLogFlowStore`.
 
-## Architecture
+### Current Status
+- Active worktree is not clean: BAC alcohol tracking changes are implemented but not committed/pushed.
+- Branch `main` is behind `origin/main` by one commit: `36da50e Fix dashboard meal add button alignment`.
+- BAC migration `0026_bac_alcohol_tracking.sql` is documented as applied to dev and production, but code release verification is still pending.
+- Full test suite has documented pre-existing failures in wheel-picker/log-flow/library-adjacent component tests.
+- Root `AGENTS.md` is absent on disk; user-supplied AGENTS instructions in the conversation are authoritative for this session.
 
-- **Stack:** Next.js 16.2.4 (App Router, Turbopack, React Compiler v1) + React 19.2.5 + TypeScript strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) + Tailwind v4 (zero-config) + shadcn/Radix + Supabase (`@supabase/ssr` 0.10.2 cookie-bound) + Gemini `gemini-flash-latest` (custom REST client) + Vercel `iad1` + Sentry errors-only + Serwist PWA.
-- **Route groups:** `app/(app)/` authed (dashboard, library, log, onboarding, progress, settings, weight) · `app/(auth)/login` · `app/(marketing)/` landing redirect-only · `app/api/**` route handlers · `app/auth/callback/` OAuth · `app/offline/` PWA fallback.
-- **Supabase clients (3, by purpose):** `lib/supabase/server.ts` `getServerSupabase` for RSC + route handlers (cookie-bound) · `lib/supabase/client.ts` browser · `lib/supabase/admin.ts` service-role (lint-fenced from `app/**` via `kalori/no-admin-in-app`).
-- **Auth invariants:** middleware = cheap cookie `getSession()`; pages MUST re-validate via `getUser()`. R1 contract: `lib/auth/refresh-interceptor.ts#authFetch` is the ONLY F12 401-refresh-retry channel; `lib/offline/**` lint-fenced from raw `fetch`. Recently added: `lib/auth/orphan-profile-fence.ts` (page 307 + API 401 + 503 transient).
-- **Per-page:** `dynamic = 'force-dynamic'` + `runtime = 'nodejs'`; `cacheComponents` migration explicitly deferred — uses React `cache()` + `TAGS.*` invalidation.
-- **Custom ESLint rules (4):** `no-gemini-leak`, `no-admin-in-app`, `no-inline-cache-tags`, `no-inline-user-strings`.
+### Recent Activity
+- 2026-05-19: BAC Alcohol Tracking added alcohol ledger, BAC dashboard widget, profile sex tightening, migration 0026, and related tests.
+- 2026-05-19: Tablet layout hotfix deployed; tablet widths now use phone layout below 1280px.
+- 2026-05-18: Text parse all-zero micronutrient repair and vision endpoint repair were deployed.
+- 2026-05-17 to 2026-05-18: Library received pagination, detail editing, quotas, dedup, hydration, bulk logging, filters, and micronutrient fixes.
 
-## Current Status
+### Code Health
+- `ConfirmationScreen.tsx` and `LibraryClient.tsx` are large, central files; changes there need narrow tests.
+- Existing mutation callers should use `authFetch`/`authPost`.
+- New user-owned DB tables require migration, RLS, generated types, account delete/export consideration, and RLS tests.
+- Recipe generation should reuse AI route conventions: server-only Gemini, prompt/schema validation, `ai_call_log`, Sentry handling, and cache/user isolation.
+- UI should stay in the existing dark, dense, editorial style and use Radix dialog/menu accessibility patterns.
 
-- **Brainstorm state:** root project Complex tier, `execution_in_progress`. Greenfield 26-task plan COMPLETE through Phase 5.3; **Active Feature Addition sprint** `mvp-stabilization` (Complex FA, brownfield-skip Q3=A) layered on top to close Task 5.4 + Phase 5 + soft-launch.
-- **Sprint status:** Phase A 3 of 7 done — A.1 (library save cache invalidation, `97c0daa`), A.2 (sidebar identity, `9a25a75`), A.3 (orphan-profile fence, `f5ef9d0..0638e17`). Branch `main`, all pushed.
-- **Next planned (paused for this session):** **A.VERIFY** — 6-agent parallel verification dispatch over PRD features × ACs producing `verification-report.md` (10-column matrix). P0/P1 verification-found bugs mint US-STAB-Cx stories.
-- **Continuation file:** FRESH (last_written 2026-05-02 00:43, ~9.5h old < 24h) → fast-resume eligible.
-- **Infra:** all configured (Supabase prod `dryysypycsexvlbabtwq` + dev `aaiohznsqlqchsoxaqkz` SG, Vercel `iad1` ~150–200ms cross-region RTT, Sentry, Google OAuth, GitHub Actions). Migrations 0001–0017 applied to BOTH envs. ⏳ `NEXT_PUBLIC_KALORI_ENV` pending.
-
-## Recent Activity
-
-- **Last 4 commits (2026-05-02):** A.3 orphan-profile fallback (page 307 + API 401 + TOCTOU-safe LEFT-JOIN-then-two-step) — initial impl + Codex Round 1 + Codex Round 2 + CHANGELOG/continuation backfill.
-- **Earlier (2026-05-01):** A.2 sidebar identity, A.1 library save cache invalidation, MVP Stabilization sprint plan complete via brainstorm-tomi (35 tasks across phases A–E), CI redness fix bundle, production readiness audit (17 migrations to prod), Phase 5 Codex Round 1+2.
-- **Hot zones:** `lib/auth/*` (3 new modules), `app/api/**/route.ts` (16 routes touched by A.3), `app/(app)/**/page.tsx` (6 page handlers), `tests/integration/**` heavy fence coverage, Planning state files churn.
-- **Open Codex residuals (10):** 6 from A.3 (incl Critical `F-A1-PROD-RUNTIME-TRACE`), 1 from A.2, 3 from A.1.
-- **Open AC deviations (user-decision):** AC1 wording 302→307 (Next 16 SC redirect default); AC5 wording "single LEFT JOIN" → two-step impl reality.
-
-## Code Health
-
-- **Tests:** Vitest 91 unit + 103 integration + 57 components + 7 RLS files; Playwright 26 E2E + 12 visual + axe + lighthouse. Coverage 70/75/75/75 v8 thresholds (branches AT-the-line at 70.85%).
-- **TODOs:** 2 noted (`app/offline/retry-button.tsx:33`; `lib/auth/orphan-profile-fence.ts:44`). No FIXME/HACK/XXX markers.
-- **Working tree:** 2 SW artifacts (`public/sw.js[.map]`) + 13 PNG screenshot baselines under `tests/screenshots/{reduced-motion,user-stories/US-5.2}/` regenerated; 7 untracked dirs (`bugs/`, `Planning/.prime/`, `supabase/.temp/`, `tests/_helpers/`, `tests/screenshots/audit-2026-{04-25,05-02}/`, `kalori-project-report.pdf`). Per continuation.md these predate A.* tasks — do NOT touch unless explicit cleanup.
-- **Known bugs (`bugs/issuelog.txt`):** 11 user-reported manual-smoke bugs mapped to sprint US-STAB-A1..D6 (3 P0, 7 P1, 1 P2). Closed: #4 lib save (A.1), #1 root redirect, #9 sidebar identity (A.2). Remaining 8 await Phase B/C/D.
-- **R1 firewall** active for all downstream tasks (no local refresh shims).
-
-## Ready For
-
-- **Current request: troubleshoot dashboard "add from library shows empty" bug.** Hot suspect zones: `app/(app)/library/page.tsx` (works) vs `app/(app)/dashboard/page.tsx` + dashboard add-from-library component vs `/api/library/[id]` and library list endpoints (recently fenced by A.3). May involve Supabase server vs browser client mismatch, missing fence/auth context, or a deletion-filter discrepancy. **This is likely Bug #5 or #10 from `bugs/issuelog.txt`** — confirm during troubleshoot.
-- Verification dispatches (A.VERIFY) — paused
-- Phase B/C/D unblocker tasks per sprint plan
-- Codex residual cleanup
+### Ready For
+- Design decision: where to persist the `home_makeable` flag and when to compute it.
+- Design decision: dedicated recipe table versus generic AI cache for saved recipes.
+- Design decision: whether old library items get lazy eligibility checks, no recipe option, or a backfill path.
+- Implementation should wait until design approval and should not be mixed with the pending BAC release unless the user explicitly accepts that risk.

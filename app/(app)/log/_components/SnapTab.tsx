@@ -15,7 +15,8 @@
  *      persist under `food-thumbnails/{user_id}/{client_id}.{ext}`.
  *   5. Render parsed-items preview (Task 3.4 seam).
  *
- * Failure modes route to ManualEntryFallback, retaining thumbnailDataUrl (I7).
+ * Generic failure modes route to ManualEntryFallback, retaining thumbnailDataUrl (I7).
+ * Explicit no-food vision fallbacks use a separate retry/add-food state.
  *
  * Style changes (Phase-3 fixes):
  *   - Camera icon + caption + 56×56 oxblood CAPTURE square hierarchy.
@@ -36,6 +37,7 @@ import { useRef, useState, useTransition } from 'react';
 import { t } from '@/lib/i18n/en';
 import { authPost, SessionExpiredError } from '@/lib/auth/refresh-interceptor';
 import type { ParsedItemT, ParseResultT } from '@/lib/ai/schemas';
+import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { classifyError } from '@/lib/log-flow/classify-error';
 import {
   selectCurrentSnapDraft,
@@ -52,7 +54,9 @@ export interface SnapTabProps {
   onManualSubmit?: (payload: ManualSubmitPayload) => void;
 }
 
-type VisionResponse = { result: ParseResultT } | { fallback: true; originalInput: string };
+type VisionResponse =
+  | { result: ParseResultT }
+  | { fallback: true; reason?: 'no_food' | 'ai_unavailable'; originalInput: string };
 type ThumbnailResponse = { path: string; signedUrl: string; expiresAt: string };
 
 export function SnapTab({ onAnalyzeSuccess, onManualSubmit }: SnapTabProps) {
@@ -60,11 +64,15 @@ export function SnapTab({ onAnalyzeSuccess, onManualSubmit }: SnapTabProps) {
   const setSnapDraft = useLogFlowStore((s) => s.setSnapDraft);
   const setFailureMode = useLogFlowStore((s) => s.setFailureMode);
   const ensureClientId = useLogFlowStore((s) => s.ensureClientId);
+  const clearClientId = useLogFlowStore((s) => s.clearClientId);
+  const setActiveTab = useLogFlowStore((s) => s.setActiveTab);
   const failureMode = useLogFlowStore(selectFailureMode);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const isMobile = useIsMobile();
 
   async function handleFile(file: File): Promise<void> {
     if (!/^image\//.test(file.type)) {
@@ -119,6 +127,16 @@ export function SnapTab({ onAnalyzeSuccess, onManualSubmit }: SnapTabProps) {
             mimeType: visionMimeType,
           });
           if ('fallback' in vision && vision.fallback) {
+            if (vision.reason === 'no_food') {
+              setFailureMode(null, null);
+              setSnapDraft({
+                status: 'error',
+                reason: 'no_food',
+                error: t.log.snapNoFoodTitle,
+                thumbnailDataUrl: compressed.vision.base64,
+              });
+              return;
+            }
             setSnapDraft({
               status: 'error',
               error: t.log.aiFailureFallback,
@@ -193,7 +211,19 @@ export function SnapTab({ onAnalyzeSuccess, onManualSubmit }: SnapTabProps) {
 
   const onInputChange = (ev: React.ChangeEvent<HTMLInputElement>): void => {
     const file = ev.target.files?.[0];
+    ev.currentTarget.value = '';
     if (file) void handleFile(file);
+  };
+
+  const resetNoFoodSnap = (): void => {
+    setFailureMode(null, null);
+    setSnapDraft({ status: 'idle' });
+    clearClientId('snap');
+  };
+
+  const addFoodWithoutPhoto = (): void => {
+    resetNoFoodSnap();
+    setActiveTab('type');
   };
 
   const onDrop = (ev: React.DragEvent<HTMLDivElement>): void => {
@@ -207,8 +237,20 @@ export function SnapTab({ onAnalyzeSuccess, onManualSubmit }: SnapTabProps) {
     ev.preventDefault();
   };
 
+  const clickCamera = (): void => {
+    cameraInputRef.current?.click();
+  };
+
   const clickUpload = (): void => {
-    fileInputRef.current?.click();
+    uploadInputRef.current?.click();
+  };
+
+  const clickPrimaryPicker = (): void => {
+    if (isMobile) {
+      clickCamera();
+      return;
+    }
+    clickUpload();
   };
 
   const thumbnailDataUrl =
@@ -219,8 +261,17 @@ export function SnapTab({ onAnalyzeSuccess, onManualSubmit }: SnapTabProps) {
     draft.thumbnailDataUrl
       ? draft.thumbnailDataUrl
       : null;
+  const isNoFoodError = draft.status === 'error' && draft.reason === 'no_food';
 
-  const fileInputId = 'snap-tab-file-input';
+  const cameraInputId = 'snap-tab-file-input';
+  const uploadInputId = 'snap-tab-upload-input';
+  const hiddenInputStyle = {
+    position: 'absolute',
+    width: '1px',
+    height: '1px',
+    overflow: 'hidden',
+    clipPath: 'inset(100%)',
+  } as const;
 
   return (
     <div
@@ -232,16 +283,16 @@ export function SnapTab({ onAnalyzeSuccess, onManualSubmit }: SnapTabProps) {
         tabIndex={0}
         data-testid="snap-tab-dropzone"
         data-dragging={isDragging ? 'true' : 'false'}
-        aria-label={t.log.snapCaptureA11y}
+        aria-label={isMobile ? t.log.snapCaptureA11y : t.log.snapUploadPicture}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragEnter={() => setIsDragging(true)}
         onDragLeave={() => setIsDragging(false)}
-        onClick={clickUpload}
+        onClick={clickPrimaryPicker}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            clickUpload();
+            clickPrimaryPicker();
           }
         }}
         className="kalori-log-dropzone"
@@ -267,7 +318,11 @@ export function SnapTab({ onAnalyzeSuccess, onManualSubmit }: SnapTabProps) {
               textAlign: 'center',
             }}
           >
-            <Camera size={48} strokeWidth={1.5} color="var(--color-dust)" aria-hidden="true" />
+            {isMobile ? (
+              <Camera size={48} strokeWidth={1.5} color="var(--color-dust)" aria-hidden="true" />
+            ) : (
+              <ImageDown size={48} strokeWidth={1.5} color="var(--color-dust)" aria-hidden="true" />
+            )}
             <p
               style={{
                 fontFamily: 'var(--font-sans)',
@@ -278,51 +333,70 @@ export function SnapTab({ onAnalyzeSuccess, onManualSubmit }: SnapTabProps) {
                 margin: 0,
               }}
             >
-              {isDragging ? t.log.snapCaptureDrop : t.log.snapCaptureCaption}
+              {isDragging
+                ? t.log.snapCaptureDrop
+                : isMobile
+                  ? t.log.snapCaptureCaption
+                  : t.log.snapUploadPicture}
             </p>
-            <button
-              type="button"
-              className="kalori-log-capture-square"
-              aria-label={t.log.snapCaptureSquareA11y}
-              data-testid="snap-tab-capture-square"
-              onClick={(ev) => {
-                ev.stopPropagation();
-                clickUpload();
-              }}
-            />
+            {isMobile ? (
+              <button
+                type="button"
+                className="kalori-log-capture-square"
+                aria-label={t.log.snapCaptureSquareA11y}
+                data-testid="snap-tab-capture-square"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  clickCamera();
+                }}
+              />
+            ) : null}
           </div>
         )}
       </div>
 
       {/* sr-only label for the hidden file input — compliance §M2. */}
-      <label htmlFor={fileInputId} className="sr-only">
-        {t.log.snapCaptureA11y}
+      {isMobile ? (
+        <>
+          <label htmlFor={cameraInputId} className="sr-only">
+            {t.log.snapCaptureA11y}
+          </label>
+          <input
+            ref={cameraInputRef}
+            id={cameraInputId}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            capture="environment"
+            onChange={onInputChange}
+            data-testid="snap-tab-file-input"
+            style={hiddenInputStyle}
+          />
+        </>
+      ) : null}
+
+      <label htmlFor={uploadInputId} className="sr-only">
+        {isMobile ? t.log.snapUploadInstead : t.log.snapUploadPicture}
       </label>
       <input
-        ref={fileInputRef}
-        id={fileInputId}
+        ref={uploadInputRef}
+        id={uploadInputId}
         type="file"
         accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-        capture="environment"
         onChange={onInputChange}
-        data-testid="snap-tab-file-input"
-        style={{
-          position: 'absolute',
-          width: '1px',
-          height: '1px',
-          overflow: 'hidden',
-          clipPath: 'inset(100%)',
-        }}
+        data-testid="snap-tab-upload-input"
+        style={hiddenInputStyle}
       />
 
-      <button
-        type="button"
-        onClick={clickUpload}
-        data-testid="snap-tab-upload-instead"
-        className="kalori-log-link"
-      >
-        {t.log.snapUploadInstead}
-      </button>
+      {isMobile ? (
+        <button
+          type="button"
+          onClick={clickUpload}
+          data-testid="snap-tab-upload-instead"
+          className="kalori-log-link"
+        >
+          {t.log.snapUploadInstead}
+        </button>
+      ) : null}
 
       {draft.status === 'compressing' ? (
         <div
@@ -365,6 +439,55 @@ export function SnapTab({ onAnalyzeSuccess, onManualSubmit }: SnapTabProps) {
         >
           {t.log.snapAnalyzing}
         </p>
+      ) : null}
+
+      {isNoFoodError ? (
+        <section
+          role="status"
+          aria-live="polite"
+          data-testid="snap-tab-no-food"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--spacing-3)',
+            paddingTop: 'var(--spacing-2)',
+            paddingBottom: 'var(--spacing-2)',
+            borderTop: '1px solid var(--color-rule)',
+            borderBottom: '1px solid var(--color-rule)',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+            <p
+              style={{
+                fontFamily: 'var(--font-serif)',
+                fontStyle: 'italic',
+                color: 'var(--color-ivory)',
+                margin: 0,
+              }}
+            >
+              {t.log.snapNoFoodTitle}
+            </p>
+            <p
+              style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '12px',
+                lineHeight: 1.5,
+                color: 'var(--color-sand)',
+                margin: 0,
+              }}
+            >
+              {t.log.snapNoFoodBody}
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-3)' }}>
+            <button type="button" className="kalori-log-cta" onClick={addFoodWithoutPhoto}>
+              {t.log.snapNoFoodAddItemCTA}
+            </button>
+            <button type="button" className="kalori-log-retry" onClick={resetNoFoodSnap}>
+              {t.log.fallbackRetryPhotoCTA}
+            </button>
+          </div>
+        </section>
       ) : null}
 
       {failureMode ? (

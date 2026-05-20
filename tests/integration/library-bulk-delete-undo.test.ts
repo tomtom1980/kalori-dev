@@ -27,32 +27,59 @@ describe('POST /api/library/bulk-delete/undo — restores tombstoned rows', () =
     const revalidateTag = vi.fn();
     vi.doMock('next/cache', () => ({ revalidateTag }));
 
+    // Route now performs 2 selects (tombstone fetch + conflict probe) before
+    // the UPDATE. Tombstones return 2 rows w/ null normalized_name so the
+    // conflict probe is skipped — keeps this test focused on the happy
+    // restore path. (Conflict semantics are covered in
+    // `library-bulk-delete-undo-conflict.test.ts`.)
     vi.doMock('@/lib/supabase/server', () => ({
       getServerSupabase: async () => ({
         auth: { getUser: async () => ({ data: { user: { id: 'u-1' } }, error: null }) },
-        from: (table: string) =>
-          table === 'profiles'
-            ? {
-                select: () => ({
-                  eq: () => ({
-                    maybeSingle: async () => ({ data: { deleting_at: null }, error: null }),
-                  }),
+        from: (table: string) => {
+          if (table === 'profiles') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: { deleting_at: null }, error: null }),
                 }),
-              }
-            : {
-                update: () => ({
-                  in: () => ({
-                    eq: () => ({
-                      not: () => ({
-                        select: async () => ({
-                          data: [{ id: 'r-1' }, { id: 'r-2' }],
-                          error: null,
-                        }),
-                      }),
+              }),
+            };
+          }
+          return {
+            select: () => ({
+              in: () => ({
+                eq: () => ({
+                  not: () =>
+                    Promise.resolve({
+                      data: [
+                        {
+                          client_id: '11111111-1111-4111-8111-111111111111',
+                          normalized_name: null,
+                        },
+                        {
+                          client_id: '22222222-2222-4222-8222-222222222222',
+                          normalized_name: null,
+                        },
+                      ],
+                      error: null,
+                    }),
+                }),
+              }),
+            }),
+            update: () => ({
+              in: () => ({
+                eq: () => ({
+                  not: () => ({
+                    select: async () => ({
+                      data: [{ id: 'r-1' }, { id: 'r-2' }],
+                      error: null,
                     }),
                   }),
                 }),
-              },
+              }),
+            }),
+          };
+        },
       }),
     }));
 
@@ -82,26 +109,38 @@ describe('POST /api/library/bulk-delete/undo — restores tombstoned rows', () =
     vi.doMock('@/lib/supabase/server', () => ({
       getServerSupabase: async () => ({
         auth: { getUser: async () => ({ data: { user: { id: 'u-1' } }, error: null }) },
-        from: (table: string) =>
-          table === 'profiles'
-            ? {
-                select: () => ({
-                  eq: () => ({
-                    maybeSingle: async () => ({ data: { deleting_at: null }, error: null }),
+        from: (table: string) => {
+          if (table === 'profiles') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: { deleting_at: null }, error: null }),
+                }),
+              }),
+            };
+          }
+          return {
+            // Tombstone fetch returns empty (row was already swept), so the
+            // conflict probe is skipped and we fall through to the UPDATE
+            // (which also returns 0 rows → replayed=true).
+            select: () => ({
+              in: () => ({
+                eq: () => ({
+                  not: () => Promise.resolve({ data: [], error: null }),
+                }),
+              }),
+            }),
+            update: () => ({
+              in: () => ({
+                eq: () => ({
+                  not: () => ({
+                    select: async () => ({ data: [], error: null }),
                   }),
                 }),
-              }
-            : {
-                update: () => ({
-                  in: () => ({
-                    eq: () => ({
-                      not: () => ({
-                        select: async () => ({ data: [], error: null }),
-                      }),
-                    }),
-                  }),
-                }),
-              },
+              }),
+            }),
+          };
+        },
       }),
     }));
 

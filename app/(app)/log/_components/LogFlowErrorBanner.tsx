@@ -32,6 +32,7 @@ export function LogFlowErrorBanner({ onRetry }: LogFlowErrorBannerProps) {
   if (!failureMode) return null;
 
   const heading = HEADING_BY_TAB[activeTab];
+  const retryLabel = activeTab === 'snap' ? t.log.fallbackRetryPhotoCTA : t.log.fallbackRetryCTA;
 
   return (
     <div
@@ -59,7 +60,7 @@ export function LogFlowErrorBanner({ onRetry }: LogFlowErrorBannerProps) {
         data-testid="log-flow-error-retry"
         className="kalori-log-retry"
       >
-        {t.log.fallbackRetryCTA}
+        {retryLabel}
       </button>
     </div>
   );

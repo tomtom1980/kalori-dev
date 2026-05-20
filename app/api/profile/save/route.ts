@@ -45,7 +45,7 @@
  * Whitelisted columns: bio_sex, age, height_cm,
  * current_weight_kg, goal_weight_kg, activity_level, goal_pace,
  * region, unit_pref, timezone, target_mode, manual_override_value,
- * onboarding_completed_at, last_dashboard_visit_at. `.strict()` zod
+ * ai_summary_opt_in, onboarding_completed_at, last_dashboard_visit_at. `.strict()` zod
  * catches unknown keys with 400.
  *
  * Codex R1 C-2 (Task 4.3b): `last_dashboard_visit_at` added to the
@@ -56,13 +56,16 @@
  */
 import * as Sentry from '@sentry/nextjs';
 import { NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { calcBMR } from '@/lib/nutrition/mifflin-st-jeor';
 import { rejectIfDeletingOrUnavailable } from '@/lib/account/deleting-fence';
 import { calcCalorieTarget } from '@/lib/nutrition/target';
 import { calcTDEE } from '@/lib/nutrition/tdee';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { calculateAgeOnDate, isAgeInSupportedRange, isIsoDay } from '@/lib/profile/age';
+import { userTzDayFrom } from '@/lib/time/day';
+import { withAuth } from '@/lib/auth/with-auth';
 import {
   ACTIVITY_LEVEL_VALUES,
   BIO_SEX_VALUES,
@@ -77,7 +80,7 @@ import {
 // 23502 null-violation that surfaced as a generic "Save failed" cannot
 // recur.
 const PROFILE_TRIGGER_DEFAULTS = {
-  bio_sex: 'other' as const,
+  bio_sex: 'male' as const,
   age: 30,
   height_cm: 170,
   current_weight_kg: 70,
@@ -86,8 +89,10 @@ const PROFILE_TRIGGER_DEFAULTS = {
 
 const PatchSchema = z
   .object({
-    bio_sex: z.enum(['male', 'female', 'other']).optional(),
+    bio_sex: z.enum(BIO_SEX_VALUES).optional(),
+    birthday: z.string().refine(isIsoDay, 'Birthday must be YYYY-MM-DD').optional(),
     age: z.number().int().min(13).max(120).optional(),
+    ai_summary_opt_in: z.boolean().optional(),
     height_cm: z.number().min(100).max(250).optional(),
     current_weight_kg: z.number().min(30).max(350).optional(),
     goal_weight_kg: z.number().min(30).max(350).optional(),
@@ -122,6 +127,7 @@ const BodySchema = z.object({
  */
 const FinalizeRequiredSchema = z.object({
   bio_sex: z.enum(BIO_SEX_VALUES),
+  birthday: z.string().refine(isIsoDay, 'Birthday must be YYYY-MM-DD'),
   age: z.number().int().min(13).max(120),
   height_cm: z.number().min(100).max(250),
   current_weight_kg: z.number().min(30).max(350),
@@ -131,7 +137,24 @@ const FinalizeRequiredSchema = z.object({
   onboarding_completed_at: z.string().datetime(),
 });
 
-export async function POST(request: Request): Promise<Response> {
+function uuidFromSeed(seed: string): string {
+  const hex = createHash('sha256').update(seed).digest('hex');
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `4${hex.slice(13, 16)}`,
+    `${((parseInt(hex.slice(16, 18), 16) & 0x3f) | 0x80).toString(16)}${hex.slice(18, 20)}`,
+    hex.slice(20, 32),
+  ].join('-');
+}
+
+export const POST = withAuth(async (request, { user, supabase }): Promise<Response> => {
+  // Task D.2 (US-STAB-D2): auth check moved into `withAuth`. The wrapper
+  // emits the canonical 401 envelope (`apiUnauthenticated401()`) when no
+  // session is present, so the inner handler is guaranteed an authenticated
+  // `user` context. Body parsing now follows auth — bad body from an
+  // unauthenticated caller correctly surfaces the 401 (was 400 pre-D.2;
+  // no existing test relied on the prior 400-before-401 order).
   let parsed;
   try {
     const raw = (await request.json()) as unknown;
@@ -143,14 +166,7 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
 
-  const supabase = await getServerSupabase();
-
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  const userId = userData.user.id;
+  const userId = user.id;
 
   // Codex R1 C3 — `profiles.deleting_at` mutation fence (HTTP 423 Locked).
   // Codex Round 2 NEW-I1 — fence read errors fail closed (HTTP 503).
@@ -231,6 +247,7 @@ export async function POST(request: Request): Promise<Response> {
   //    finalize was refused.
   const finalizeCheck = FinalizeRequiredSchema.safeParse({
     bio_sex: patch.bio_sex,
+    birthday: patch.birthday,
     age: patch.age,
     height_cm: patch.height_cm,
     current_weight_kg: patch.current_weight_kg,
@@ -244,7 +261,16 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ error: 'finalize_incomplete', fields }, { status: 400 });
   }
 
-  const finalize = finalizeCheck.data;
+  const finalizeRaw = finalizeCheck.data;
+  const finalizeDay = userTzDayFrom(finalizeRaw.onboarding_completed_at, patch.timezone ?? 'UTC');
+  const finalizedAge = calculateAgeOnDate(finalizeRaw.birthday, finalizeDay);
+  if (!isAgeInSupportedRange(finalizedAge)) {
+    return NextResponse.json(
+      { error: 'finalize_incomplete', fields: ['birthday'] },
+      { status: 400 },
+    );
+  }
+  const finalize = { ...finalizeRaw, age: finalizedAge };
 
   // 2. Compute derived nutrition authoritatively. Every value used
   //    here came through the schema validation above — no nullable
@@ -275,6 +301,7 @@ export async function POST(request: Request): Promise<Response> {
       {
         id: userId,
         ...patch,
+        age: finalize.age,
         bmr,
         tdee,
         calorie_target: target,
@@ -290,8 +317,23 @@ export async function POST(request: Request): Promise<Response> {
     }
     return NextResponse.json({ error: 'db_error' }, { status: 500 });
   }
+  const onboardingWeightClientId = uuidFromSeed(
+    `onboarding-weight:${userId}:${parsed.data.client_id}`,
+  );
+  const { error: weightSeedError } = await supabase.from('weight_log').insert({
+    user_id: userId,
+    client_id: onboardingWeightClientId,
+    date: finalizeDay,
+    weight_kg: finalize.current_weight_kg,
+    note: null,
+  });
+  if (weightSeedError && (weightSeedError as { code?: string }).code !== '23505') {
+    Sentry.captureException(weightSeedError, {
+      tags: { component: 'profile-save', operation: 'onboarding_weight_seed' },
+    });
+  }
   return NextResponse.json({ ok: true, profile: finalRow }, { status: 200 });
-}
+});
 
 export function GET(): Response {
   return NextResponse.json({ error: 'method_not_allowed' }, { status: 405 });

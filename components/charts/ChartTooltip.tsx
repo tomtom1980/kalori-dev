@@ -9,7 +9,8 @@
  *   - Escape-dismissible (keyboard); blur / mouseleave dismiss (pointer)
  *
  * Positioning: caller provides `anchorRect` (DOMRect of the triggering
- * element) + `preferred` side; this component clamps within viewport.
+ * element); this fixed-position tooltip clamps within viewport so hover
+ * content never changes scroll dimensions.
  *
  * This is a client component because it attaches a keydown listener
  * to document for Escape handling and uses getBoundingClientRect.
@@ -56,7 +57,7 @@ export function ChartTooltip({
     }
     if (left < 8) left = 8;
     if (left + width > viewportW - 8) left = viewportW - width - 8;
-    setPosition({ top: Math.round(top + window.scrollY), left: Math.round(left) });
+    setPosition({ top: Math.round(top), left: Math.round(left) });
   }, [anchorRect]);
 
   // Escape key dismiss
@@ -82,6 +83,7 @@ export function ChartTooltip({
       data-testid={testid ?? 'chart-tooltip'}
       className="chart-tooltip"
       style={{
+        position: 'fixed',
         top: position?.top ?? -9999,
         left: position?.left ?? -9999,
         opacity: position ? 1 : 0,

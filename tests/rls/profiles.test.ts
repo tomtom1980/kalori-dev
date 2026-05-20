@@ -6,7 +6,7 @@
  * Contract (testing-strategy.md §2.6 + tasks.md AC line 355):
  *   - Two distinct Supabase users (A + B) created via the shared `_harness`.
  *   - Auto-create trigger (migration 0002_profiles.sql) pre-seeds each user's
- *     `profiles` row with safe defaults (bio_sex='other', age=30,
+ *     `profiles` row with safe defaults (bio_sex='male', age=30,
  *     height_cm=170, current_weight_kg=70, activity_level='moderate').
  *   - For each of the 4 DML verbs, we run the negative-path assertion in BOTH
  *     directions: User A trying to touch User B's row AND User B trying to
@@ -73,7 +73,7 @@ maybe('I1: profiles RLS — 4 verbs × 2 directions', () => {
     expect(error).toBeNull();
     expect(data).not.toBeNull();
     expect(data?.id).toBe(harness.userA.id);
-    expect(data?.bio_sex).toBe('other');
+    expect(data?.bio_sex).toBe('male');
     expect(data?.age).toBe(30);
     // numeric(5,1) / numeric(5,2) arrive as strings from PostgREST; compare loosely.
     expect(Number(data?.height_cm)).toBe(170);
@@ -92,7 +92,7 @@ maybe('I1: profiles RLS — 4 verbs × 2 directions', () => {
     expect(error).toBeNull();
     expect(data).not.toBeNull();
     expect(data?.id).toBe(harness.userB.id);
-    expect(data?.bio_sex).toBe('other');
+    expect(data?.bio_sex).toBe('male');
     expect(data?.age).toBe(30);
     expect(Number(data?.height_cm)).toBe(170);
     expect(Number(data?.current_weight_kg)).toBe(70);

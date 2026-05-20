@@ -3,13 +3,13 @@
  * 2026-05-08-mobile-ui-overhaul). RED tests first per project TDD policy.
  *
  * Contract per `Planning/ui-design.md` §4.1.10 + §13 tiebreaker #23:
- *   - Returns `true` when viewport <768px (`(max-width: 767px)` matches)
- *   - Returns `false` at >=768px
+ *   - Returns `true` when viewport <1280px (`(max-width: 1279px)` matches)
+ *   - Returns `false` at >=1280px
  *   - Reacts to `matchMedia` change events (resize across the breakpoint)
  *   - SSR-safe: returns a defined boolean before hydration (default `false`)
  *
  * The hook is a wrapper around `useSyncExternalStore` over
- * `window.matchMedia('(max-width: 767px)')`. happy-dom does NOT implement
+ * `window.matchMedia('(max-width: 1279px)')`. happy-dom does NOT implement
  * `matchMedia`, so each test stubs `globalThis.matchMedia` with a mock
  * that returns a controllable `MediaQueryList`-shaped object.
  */
@@ -27,7 +27,7 @@ function installMatchMedia(initialMatches: boolean) {
     get matches() {
       return matches;
     },
-    media: '(max-width: 767px)',
+    media: '(max-width: 1279px)',
     addEventListener: vi.fn((_evt: 'change', cb: Listener) => {
       listeners.add(cb);
     }),
@@ -67,7 +67,13 @@ describe('useIsMobile()', () => {
     vi.unstubAllGlobals();
   });
 
-  it('returns true when matchMedia matches the (max-width: 767px) query (375px viewport)', () => {
+  it('returns true when matchMedia matches the mobile/tablet query (375px viewport)', () => {
+    installMatchMedia(true);
+    const { result } = renderHook(() => useIsMobile());
+    expect(result.current).toBe(true);
+  });
+
+  it('returns true when matchMedia matches the mobile/tablet query (768px tablet viewport)', () => {
     installMatchMedia(true);
     const { result } = renderHook(() => useIsMobile());
     expect(result.current).toBe(true);
@@ -118,7 +124,7 @@ describe('useIsMobile()', () => {
           removeEventListener: ReturnType<typeof vi.fn>;
         };
       }
-    ).matchMedia('(max-width: 767px)');
+    ).matchMedia('(max-width: 1279px)');
     expect(mql.addEventListener).toHaveBeenCalledTimes(1);
     unmount();
     expect(mql.removeEventListener).toHaveBeenCalledTimes(1);

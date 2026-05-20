@@ -1,0 +1,1 @@
+- Global lessons file missing: `C:\Users\tamas\.Codex\lessonlearned.md`

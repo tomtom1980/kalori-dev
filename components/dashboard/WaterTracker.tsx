@@ -905,6 +905,7 @@ function Chip({
         letterSpacing: '0.18em',
         textTransform: 'uppercase',
         color: disabled ? 'var(--color-dust)' : 'var(--color-sand)',
+        outlineColor: 'var(--color-ivory)',
         opacity: disabled ? 0.55 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
       }}

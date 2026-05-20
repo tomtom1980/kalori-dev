@@ -1,7 +1,7 @@
 /**
  * Task 4.3b — `<WeightTrajectoryLine />` tests.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { WeightTrajectoryLine } from '@/components/charts/WeightTrajectoryLine';
@@ -57,6 +57,23 @@ describe('<WeightTrajectoryLine />', () => {
     expect(proj).toBeTruthy();
   });
 
+  it('renders recorded dates on the x-axis for each measurement point', () => {
+    render(
+      <WeightTrajectoryLine
+        entries={[
+          { date: '2026-04-20', weightKg: 72 },
+          { date: '2026-04-22', weightKg: 71.8 },
+          { date: '2026-04-24', weightKg: 71.5 },
+        ]}
+        goalWeightKg={65}
+        range="30d"
+      />,
+    );
+    expect(screen.getByTestId('weight-trajectory-date-label-0')).toHaveTextContent('Apr 20');
+    expect(screen.getByTestId('weight-trajectory-date-label-1')).toHaveTextContent('Apr 22');
+    expect(screen.getByTestId('weight-trajectory-date-label-2')).toHaveTextContent('Apr 24');
+  });
+
   it('gap >14 days renders dashed break + annotation', () => {
     const entries = [
       { date: '2026-03-01', weightKg: 72 },
@@ -75,5 +92,27 @@ describe('<WeightTrajectoryLine />', () => {
     expect(fig).toBeTruthy();
     expect(fig?.getAttribute('aria-labelledby')).toBeTruthy();
     expect(fig?.getAttribute('aria-describedby')).toBeTruthy();
+  });
+
+  it('renders point, goal, and live values in pounds when unitPref=imperial', () => {
+    render(
+      <WeightTrajectoryLine
+        entries={[
+          { date: '2026-04-20', weightKg: 75 },
+          { date: '2026-04-24', weightKg: 74 },
+        ]}
+        goalWeightKg={70}
+        range="30d"
+        unitPref="imperial"
+      />,
+    );
+
+    const firstPoint = screen.getByTestId('weight-trajectory-point-0');
+    expect(firstPoint).toHaveAttribute('aria-label', expect.stringContaining('165.3 pounds'));
+    expect(firstPoint).not.toHaveAttribute('aria-label', expect.stringContaining('75 kilograms'));
+
+    fireEvent.focus(firstPoint);
+    expect(screen.getByRole('status')).toHaveTextContent('165.3 lb');
+    expect(screen.getByTestId('weight-trajectory-line')).toHaveTextContent('154.3');
   });
 });

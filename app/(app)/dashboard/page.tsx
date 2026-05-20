@@ -29,23 +29,30 @@
  * rendering to an incomplete profile.
  */
 import { redirect } from 'next/navigation';
-import { Suspense } from 'react';
 
 import { ChronometerRing } from '@/components/charts/ChronometerRing';
 import { DashboardDateControl } from '@/components/dashboard/DashboardDateControl';
 import { DashboardInteractionLock } from '@/components/dashboard/DashboardInteractionLock';
+import { BacTracker } from '@/components/dashboard/BacTracker';
+import { DailyEditorsNote } from '@/components/dashboard/DailyEditorsNote';
 import { MacroBars } from '@/components/dashboard/MacroBars';
 import { Masthead } from '@/components/dashboard/Masthead';
 import { MealsBulletin } from '@/components/dashboard/MealsBulletin';
 import { MicronutrientPanel } from '@/components/dashboard/MicronutrientPanel';
+// MicrosRdaPanel removed 2026-05-16 — the 30-row RDA grid that sat
+// between the calorie hero row and the meals bulletin is no longer
+// rendered on the daily dashboard. Daily audit now uses the
+// MicronutrientPanel below the meals (day-scoped, sorted by %-of-RDA,
+// zero-consumption rows filtered, top 10 with "More elements" toggle).
+// The component file is retained for now in case it's reused on a
+// future weekly/monthly view.
 import { TargetUpdatedNudgeWrapper } from '@/components/dashboard/TargetUpdatedNudgeWrapper';
 import { WaterTracker } from '@/components/dashboard/WaterTracker';
-import { WeeklyInsightCard } from '@/components/dashboard/WeeklyInsightCard';
-import { WeeklyInsightSkeleton } from '@/components/dashboard/WeeklyInsightSkeleton';
 import { FadeUpCard } from '@/components/motion/FadeUpCard';
 import { requireProfileOrRedirect } from '@/lib/auth/orphan-profile-fence';
 import { fetchDaySnapshot, fetchProfile } from '@/lib/dashboard/fetch';
 import { userTzNowIso, userTzToday } from '@/lib/time/day';
+import { normalizeProfileTimezone } from '@/lib/time/device-timezone';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,14 +93,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     route: '/dashboard',
     loginRedirectTo: '/dashboard',
     selectExtras:
-      'target_mode, calorie_target, last_target_recalc_at, last_dashboard_visit_at, bio_sex, age, height_cm, current_weight_kg, goal_weight_kg, goal_pace, activity_level',
+      'target_mode, calorie_target, last_target_recalc_at, last_dashboard_visit_at, bio_sex, age, height_cm, current_weight_kg, goal_weight_kg, goal_pace, activity_level, ai_summary_opt_in',
   });
   if (!guardRow.onboarding_completed_at) {
     redirect('/onboarding');
   }
 
   const profile = await fetchProfile(user.id);
-  const tz = profile.timezone;
+  const tz = normalizeProfileTimezone(profile.timezone, {
+    sentryTag: 'dashboard-page',
+    userId: user.id,
+  });
   const now = userTzNowIso(tz);
   const today = userTzToday(tz);
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -124,6 +134,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     goal_weight_kg?: number | null;
     goal_pace?: string | null;
     activity_level?: string | null;
+    ai_summary_opt_in?: boolean | null;
   };
   const nudgeShouldRender =
     !!nudgeRow &&
@@ -187,38 +198,64 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </FadeUpCard>
         </div>
 
+        {/* Daily entries (food log per meal slot) sit directly below the
+            calorie hero row — the MicrosRdaPanel that used to live here
+            has been removed (2026-05-16). */}
         <FadeUpCard delay={0.25}>
           <MealsBulletin meals={snapshot.meals} timezone={tz} viewedDay={viewedDay} />
         </FadeUpCard>
 
-        <div className="kalori-dashboard-hero-row">
-          {/*
-          F-WATER-CHIP-STALE-LOGGEDON-2026-05-09 — drill `timezone` (IANA
-          zone) instead of a precomputed `loggedOn` date string. The chip
-          calls `userTzToday(timezone)` at tap time so a long-lived
-          dashboard tab that crosses local midnight cannot durably write
-          to yesterday's `logged_on`. Mirrors the C2 nav-shell pattern.
-        */}
+        {/* Phase 2A (2026-05-16) — minor elements (day-scoped micros) +
+            water tracker, laid out side-by-side at tablet+. Mobile keeps
+            the stacked layout (micros above water) per the
+            `.kalori-dashboard-water-micros-row` responsive contract
+            mirroring `.kalori-dashboard-hero-row`. Order: MicronutrientPanel
+            on the left (reading-order attention; gains hover/click
+            interactivity in Phase 2B), WaterTracker on the right.
+
+            Micros: top 10 sorted by %-of-RDA descending, with a "More
+            elements" toggle that reveals the rest. Zero-consumption rows
+            are filtered upstream in `aggregateMicros` so they never reach
+            this panel.
+
+            Water: F-WATER-CHIP-STALE-LOGGEDON-2026-05-09 — drill
+            `timezone` (IANA zone) instead of a precomputed `loggedOn`
+            date string. The chip calls `userTzToday(timezone)` at tap
+            time so a long-lived dashboard tab that crosses local midnight
+            cannot durably write to yesterday's `logged_on`. Mirrors the
+            C2 nav-shell pattern. */}
+        <div className="kalori-dashboard-water-micros-row">
           <FadeUpCard delay={0.35}>
-            <WaterTracker
-              initial={{
-                consumedMl: snapshot.water.consumedMl,
-                targetMl: snapshot.water.targetMl,
-                entries: snapshot.water.entries,
-              }}
-              timezone={tz}
-              viewedDay={viewedDay}
-            />
+            <MicronutrientPanel rows={snapshot.micros} visibleCount={DESKTOP_MICRO_VISIBLE} />
           </FadeUpCard>
           <FadeUpCard delay={0.45}>
-            <MicronutrientPanel rows={snapshot.micros} visibleCount={DESKTOP_MICRO_VISIBLE} />
+            <div
+              style={{
+                display: 'grid',
+                gap: 'var(--spacing-4)',
+                minWidth: 0,
+              }}
+            >
+              <WaterTracker
+                initial={{
+                  consumedMl: snapshot.water.consumedMl,
+                  targetMl: snapshot.water.targetMl,
+                  entries: snapshot.water.entries,
+                }}
+                timezone={tz}
+                viewedDay={viewedDay}
+              />
+              <BacTracker bac={snapshot.bac} timezone={tz} />
+            </div>
           </FadeUpCard>
         </div>
 
         <FadeUpCard delay={0.55}>
-          <Suspense fallback={<WeeklyInsightSkeleton />}>
-            <WeeklyInsightCard userId={user.id} tz={tz} nowIso={now} />
-          </Suspense>
+          <DailyEditorsNote
+            snapshot={snapshot}
+            viewedDay={viewedDay}
+            aiSummaryOptIn={nudgeRow.ai_summary_opt_in === true}
+          />
         </FadeUpCard>
       </DashboardInteractionLock>
     </section>

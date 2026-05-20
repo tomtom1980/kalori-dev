@@ -21,6 +21,16 @@
  *      the `.num` helper for lining/tabular numerals.
  */
 @theme {
+  /*
+   * Responsive contract: tablets use the phone layout. Tailwind's `sm:`,
+   * `md:`, `lg:`, and `xl:` variants all wait until the desktop breakpoint,
+   * matching the hand-written media queries below.
+   */
+  --breakpoint-sm: 80rem;
+  --breakpoint-md: 80rem;
+  --breakpoint-lg: 80rem;
+  --breakpoint-xl: 80rem;
+
   /* Core surfaces (warm near-black). */
   --color-bg-0: #0e0a08; /* page void */
   --color-bg-1: #15100d; /* cards, editor pane, sidebar */
@@ -315,6 +325,76 @@ label:has(input.sr-only:focus-visible) {
   outline-offset: 2px;
 }
 
+/*
+ * Mobile bottom tab bar — §6.4 state-table color contract.
+ *
+ * Bugfix-tomi 2026-05-17 batch (bug #1) — Codex Round 2 cascade-priority fix.
+ *
+ * History:
+ *   - Round 1 added `.kalori-bottom-tab:focus-visible { color: ivory }` but
+ *     <BottomTabBar /> set `color` via inline `style={{ ... }}`. CSS
+ *     specificity: inline (1000) ALWAYS beats class (010), so the
+ *     focus-visible rule never won the cascade — focus on an inactive
+ *     tab kept icon/label dust, failing §6.4 Focus row.
+ *   - Round 2 moves all three §6.4 color states OUT of the inline style
+ *     object and into CSS classes targeting `.kalori-bottom-tab` (default
+ *     inactive) and `[data-active="true"]` (active flip). The
+ *     `:focus-visible` selector now competes at the same specificity tier
+ *     as the active-state attribute selector (both 020) — and order of
+ *     appearance + cascade resolution lets focus-visible win when present.
+ *
+ * Icon color is inherited via lucide's `stroke="currentColor"` default
+ * (covered by the "inherits tab color via currentColor" test).
+ */
+.kalori-bottom-tab-bar {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-bg-2) 72%, var(--color-bg-1)) 0%,
+    var(--color-bg-1) 42%,
+    var(--color-bg-0) 100%
+  );
+  border-top-color: color-mix(in srgb, var(--color-rule-strong) 82%, var(--color-ivory));
+  box-shadow:
+    0 -18px 32px color-mix(in srgb, var(--color-bg-0) 72%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--color-ivory) 7%, transparent);
+}
+.kalori-bottom-tab {
+  color: var(--color-dust);
+  --tab-icon-color: color-mix(in srgb, var(--tab-accent) 64%, var(--color-dust));
+  --tab-icon-bg: color-mix(in srgb, var(--tab-accent) 12%, transparent);
+  --tab-icon-border: color-mix(in srgb, var(--tab-accent) 34%, var(--color-rule));
+  transition:
+    color var(--motion-micro),
+    background-color var(--motion-micro),
+    border-color var(--motion-micro);
+}
+.kalori-bottom-tab[data-active='true'] {
+  color: var(--color-ivory);
+  --tab-icon-color: color-mix(in srgb, var(--tab-accent) 82%, var(--color-ivory));
+  --tab-icon-bg: color-mix(in srgb, var(--tab-accent) 20%, var(--color-bg-2));
+  --tab-icon-border: color-mix(in srgb, var(--tab-accent) 58%, var(--color-ivory));
+}
+.kalori-bottom-tab:focus-visible {
+  color: var(--color-ivory);
+  --tab-icon-color: var(--color-ivory);
+  --tab-icon-bg: color-mix(in srgb, var(--tab-accent) 30%, var(--color-bg-2));
+  --tab-icon-border: var(--color-ivory);
+}
+.kalori-bottom-tab-icon {
+  box-sizing: border-box;
+  padding: 5px;
+  color: var(--tab-icon-color);
+  background: var(--tab-icon-bg);
+  border: 1px solid var(--tab-icon-border);
+  border-radius: 999px;
+  filter: drop-shadow(0 4px 8px color-mix(in srgb, var(--tab-accent) 24%, transparent));
+  transition:
+    color var(--motion-micro),
+    background-color var(--motion-micro),
+    border-color var(--motion-micro),
+    filter var(--motion-micro);
+}
+
 /* =====================================================================
  * Task 4.3a — Progress page styles (R1 fix 2026-04-24)
  *
@@ -364,6 +444,95 @@ label:has(input.sr-only:focus-visible) {
   outline: 2px solid var(--color-ivory);
   outline-offset: 2px;
 }
+.progress-range-toolbar[data-pending-navigation='true'] .chip:hover {
+  background-color: transparent;
+  color: var(--color-sand);
+  border-color: var(--color-rule);
+}
+
+@keyframes progressRangeLoadingPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.progress-range-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  padding: var(--spacing-6);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-bg-0) 76%, transparent),
+      color-mix(in srgb, var(--color-bg-0) 88%, transparent)
+    ),
+    color-mix(in srgb, var(--color-bg-0) 52%, transparent);
+  backdrop-filter: blur(3px) grayscale(0.3);
+  -webkit-backdrop-filter: blur(3px) grayscale(0.3);
+  cursor: wait;
+}
+.progress-range-loading-panel {
+  width: min(520px, 100%);
+  border: 1px solid var(--color-rule-strong);
+  border-left: 3px solid var(--color-oxblood);
+  background: var(--color-bg-1);
+  box-shadow: var(--shadow-float);
+  padding: var(--spacing-8);
+  display: grid;
+  gap: var(--spacing-2);
+  justify-items: start;
+}
+.progress-range-loading-panel strong {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 400;
+  color: var(--color-ivory);
+}
+.progress-range-loading-panel span {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-sand);
+}
+.progress-range-loading-kicker {
+  color: var(--color-oxblood-soft) !important;
+  font-size: 10.5px !important;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.progress-range-loading-mark {
+  display: inline-flex;
+  align-items: end;
+  gap: 4px;
+  height: 28px;
+  margin-bottom: var(--spacing-2);
+}
+.progress-range-loading-mark span {
+  width: 9px;
+  height: 28px;
+  background: var(--color-oxblood);
+  animation: progressRangeLoadingPulse 780ms ease-in-out infinite;
+}
+.progress-range-loading-mark span:nth-child(2) {
+  animation-delay: 120ms;
+}
+.progress-range-loading-mark span:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+@keyframes kalori-pull-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 /* -- Heatmap row-fade entrance animation --
  * Staggered by --row-index (set inline on each <tr className="heatmap-row">).
@@ -398,7 +567,7 @@ label:has(input.sr-only:focus-visible) {
     transform-origin: top left;
     min-height: 0;
   }
-  .heatmap-scroll[data-range-mode='M'] {
+  .heatmap-scroll[data-range-mode='M'][data-expanded='true'] {
     overflow-x: hidden;
     overflow-y: auto;
   }
@@ -478,7 +647,7 @@ label:has(input.sr-only:focus-visible) {
  * singleton invariant test, so the inline value stays and mobile rescales
  * it via the existing class.
  */
-@media (max-width: 767px) {
+@media (max-width: 1279px) {
   [data-testid='weekly-review-full'],
   [data-testid='weekly-review-sparse-full'],
   [data-testid='weekly-review-error-full'] {
@@ -653,6 +822,268 @@ html[data-reduce-motion='1'] .chart-tooltip {
   animation: none !important;
 }
 
+/* -- Sitewide clickable affordance layer ---------------------------------
+ * Desktop pointer users get a restrained 3D lift on clickable surfaces.
+ * Touch users do not get hover effects; specific ambiguous nutrition rows
+ * expose an always-visible cue below.
+ */
+@media (hover: hover) and (pointer: fine) {
+  :where(
+      button,
+      [role='button'],
+      a[href],
+      summary,
+      input[type='date'],
+      input[type='time'],
+      input[type='button'],
+      input[type='submit'],
+      .chip,
+      .kalori-library-card
+    ):where(:not(:disabled)):where(:not([aria-disabled='true'])):where(
+      :not([data-no-hover-lift='true'])
+    ) {
+    transform-style: preserve-3d;
+    transition-property:
+      transform, box-shadow, filter, outline-color, border-color, background-color, color, opacity;
+    transition-duration: var(--motion-standard);
+    transition-timing-function: var(--ease-editorial);
+  }
+
+  :where(
+      button,
+      [role='button'],
+      a[href],
+      summary,
+      input[type='date'],
+      input[type='time'],
+      input[type='button'],
+      input[type='submit'],
+      .chip,
+      .kalori-library-card
+    ):where(:not(:disabled)):where(:not([aria-disabled='true'])):where(
+      :not([data-no-hover-lift='true'])
+    ):hover {
+    transform: perspective(760px) translate3d(0, -2px, 12px) rotateX(1.4deg) rotateY(-0.8deg);
+    box-shadow:
+      0 10px 22px color-mix(in srgb, var(--color-bg-0) 58%, transparent),
+      0 1px 0 color-mix(in srgb, var(--color-ivory) 18%, transparent) inset,
+      0 0 0 1px color-mix(in srgb, var(--color-ochre) 32%, transparent);
+    filter: saturate(1.08) brightness(1.04);
+  }
+
+  :where(
+      button,
+      [role='button'],
+      a[href],
+      summary,
+      input[type='date'],
+      input[type='time'],
+      input[type='button'],
+      input[type='submit'],
+      .chip,
+      .kalori-library-card
+    ):where(:not(:disabled)):where(:not([aria-disabled='true'])):where(
+      :not([data-no-hover-lift='true'])
+    ):active {
+    transform: perspective(760px) translate3d(0, 0, 0) scale(0.985);
+    box-shadow:
+      0 3px 10px color-mix(in srgb, var(--color-bg-0) 50%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--color-ember) 38%, transparent);
+  }
+
+  .kalori-dashboard-date-trigger:hover,
+  .kalori-dashboard-date-trigger:focus-within {
+    transform: perspective(760px) translate3d(0, -2px, 12px) rotateX(1.4deg);
+    box-shadow:
+      0 10px 22px color-mix(in srgb, var(--color-bg-0) 58%, transparent),
+      0 1px 0 color-mix(in srgb, var(--color-ivory) 18%, transparent) inset,
+      0 0 0 1px color-mix(in srgb, var(--color-ochre) 32%, transparent);
+  }
+}
+
+.kalori-nutrition-trigger {
+  position: relative;
+  isolation: isolate;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kalori-nutrition-trigger::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    z-index: -1;
+    opacity: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-ivory) 9%, transparent),
+        transparent 46%
+      ),
+      color-mix(in srgb, var(--color-bg-2) 44%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-ochre) 42%, var(--color-rule));
+    box-shadow:
+      0 14px 30px color-mix(in srgb, var(--color-bg-0) 64%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--color-ivory) 7%, transparent) inset;
+    transform: translateZ(-1px);
+    transition: opacity var(--motion-standard) var(--ease-editorial);
+  }
+
+  .kalori-nutrition-trigger:hover::after,
+  .kalori-nutrition-trigger:focus-visible::after {
+    opacity: 1;
+  }
+}
+
+.kalori-nutrition-info-cue {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  color: color-mix(in srgb, var(--color-ivory) 92%, var(--color-ochre));
+  background: color-mix(in srgb, var(--color-ochre) 14%, var(--color-bg-2));
+  border: 1px solid color-mix(in srgb, var(--color-ochre) 46%, var(--color-rule));
+  font-family: var(--font-sans);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow:
+    0 6px 14px color-mix(in srgb, var(--color-bg-0) 48%, transparent),
+    0 1px 0 color-mix(in srgb, var(--color-ivory) 12%, transparent) inset;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .kalori-nutrition-info-cue {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 359px) {
+  .kalori-nutrition-info-cue > span {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(
+      button,
+      [role='button'],
+      a[href],
+      summary,
+      input[type='date'],
+      input[type='time'],
+      input[type='button'],
+      input[type='submit'],
+      .chip,
+      .kalori-library-card
+    ):where(:not([data-no-hover-lift='true'])):hover,
+  :where(
+      button,
+      [role='button'],
+      a[href],
+      summary,
+      input[type='date'],
+      input[type='time'],
+      input[type='button'],
+      input[type='submit'],
+      .chip,
+      .kalori-library-card
+    ):where(:not([data-no-hover-lift='true'])):active,
+  .kalori-dashboard-date-trigger:hover,
+  .kalori-dashboard-date-trigger:focus-within {
+    transform: none;
+    filter: none;
+  }
+}
+
+html[data-reduce-motion='1']
+  :where(
+    button,
+    [role='button'],
+    a[href],
+    summary,
+    input[type='date'],
+    input[type='time'],
+    input[type='button'],
+    input[type='submit'],
+    .chip,
+    .kalori-library-card
+  ):where(:not([data-no-hover-lift='true'])):hover,
+html[data-reduce-motion='1']
+  :where(
+    button,
+    [role='button'],
+    a[href],
+    summary,
+    input[type='date'],
+    input[type='time'],
+    input[type='button'],
+    input[type='submit'],
+    .chip,
+    .kalori-library-card
+  ):where(:not([data-no-hover-lift='true'])):active,
+html[data-reduce-motion='1'] .kalori-dashboard-date-trigger:hover,
+html[data-reduce-motion='1'] .kalori-dashboard-date-trigger:focus-within {
+  transform: none;
+  filter: none;
+}
+
+/* Dashboard meal-column +ADD CTA. Keeps the existing global hover-lift while
+   making this entry point read as a deliberate but restrained oxblood action. */
+.kalori-meal-add-button {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-oxblood) 18%, transparent) 0%,
+      transparent 52%
+    ),
+    color-mix(in srgb, var(--color-oxblood) 72%, var(--color-bg-1));
+  border: 1px solid color-mix(in srgb, var(--color-oxblood-soft) 42%, var(--color-rule));
+  color: var(--color-ivory);
+  box-shadow:
+    0 4px 0 color-mix(in srgb, var(--color-oxblood) 50%, var(--color-bg-0)),
+    0 10px 18px color-mix(in srgb, var(--color-bg-0) 42%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--color-ivory) 12%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kalori-meal-add-button:hover,
+  .kalori-meal-add-button:focus-visible {
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--color-ivory) 10%, transparent) 0%,
+        transparent 50%
+      ),
+      color-mix(in srgb, var(--color-oxblood-soft) 52%, var(--color-bg-1));
+    border-color: color-mix(in srgb, var(--color-ivory) 16%, var(--color-oxblood-soft));
+    box-shadow:
+      0 4px 0 color-mix(in srgb, var(--color-oxblood) 48%, var(--color-bg-0)),
+      0 12px 20px color-mix(in srgb, var(--color-oxblood-soft) 18%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--color-ivory) 18%, transparent);
+    filter: saturate(1.04) brightness(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kalori-meal-add-button:hover,
+  .kalori-meal-add-button:focus-visible {
+    filter: none;
+  }
+}
+
+html[data-reduce-motion='1'] .kalori-meal-add-button:hover,
+html[data-reduce-motion='1'] .kalori-meal-add-button:focus-visible {
+  filter: none;
+}
+
 /* ---- Skip-to-main link (WCAG 2.4.1, Level A) ----
    Task 4.1 Phase 3 fix (C5). Hidden off-screen until :focus-visible
    brings it into the top-left corner. Oxblood bg + ivory text — pill
@@ -741,6 +1172,24 @@ html[data-reduce-motion='1'] .chart-tooltip {
 .kalori-dashboard-hero-row > * {
   min-width: 0;
 }
+/*
+ * Phase 2A (2026-05-16) — water + micros side-by-side row. Mirrors the
+ * `.kalori-dashboard-hero-row` contract: stacked single column on mobile,
+ * two equal-width tracks at >=768px. Order in the DOM is
+ * MicronutrientPanel → WaterTracker so reading-order attention lands on
+ * micros (which gain hover/click interactivity in Phase 2B); the
+ * WaterTracker still gets a comfortable half-column at tablet+ widths.
+ */
+.kalori-dashboard-water-micros-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-gutter-editorial);
+  align-items: start;
+  min-width: 0;
+}
+.kalori-dashboard-water-micros-row > * {
+  min-width: 0;
+}
 .kalori-meals-bulletin-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -784,101 +1233,24 @@ html[data-reduce-motion='1'] .chart-tooltip {
   min-width: 0;
 }
 
-/* ---- Modern shell polish (UI redesign continuation) ----
-   These class hooks sit on shared chrome/card surfaces whose base geometry is
-   still owned by inline token styles. Keep this layer interaction-focused so
-   it does not fight layout or accessibility invariants. */
-.kalori-app-shell {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-bg-1) 38%, transparent),
-      transparent 22rem
-    ),
-    var(--color-bg-0);
-}
-
-.kalori-motion-card {
-  will-change: opacity, transform;
-}
-
-.kalori-top-app-bar,
-.kalori-bottom-tab-bar {
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.kalori-sidebar,
-.kalori-top-app-bar,
-.kalori-bottom-tab-bar,
-.kalori-dashboard-masthead,
-.kalori-chart-card {
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-ivory) 5%, transparent);
-}
-
-.kalori-sidebar-link,
-.kalori-bottom-tab-link,
-.kalori-sidebar-signout,
-.kalori-fab,
-.kalori-macro-row,
-.kalori-chart-card {
-  transition:
-    background-color var(--motion-micro) var(--ease-editorial),
-    border-color var(--motion-micro) var(--ease-editorial),
-    color var(--motion-micro) var(--ease-editorial),
-    opacity var(--motion-micro) var(--ease-editorial),
-    transform var(--motion-micro) var(--ease-editorial);
-}
-
-.kalori-sidebar-link:hover,
-.kalori-bottom-tab-link:hover,
-.kalori-sidebar-signout:hover,
-.kalori-macro-row:hover {
-  background-color: color-mix(in srgb, var(--color-ivory) 7%, transparent) !important;
-  border-color: color-mix(in srgb, var(--color-ivory) 18%, transparent) !important;
-}
-
-.kalori-chart-card:hover {
-  border-color: color-mix(in srgb, var(--color-ivory) 22%, var(--color-rule-strong)) !important;
-}
-
-.kalori-fab:not(:disabled):hover {
-  transform: translateY(-1px);
-}
-
-.kalori-fab:not(:disabled):active {
-  transform: translateY(0);
-}
-
-.kalori-fab-pair {
-  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.34));
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .kalori-motion-card,
-  .kalori-fab,
-  .kalori-fab-pair {
-    transform: none !important;
-    filter: none !important;
-  }
-}
-
-html[data-reduce-motion='1'] .kalori-motion-card,
-html[data-reduce-motion='1'] .kalori-fab,
-html[data-reduce-motion='1'] .kalori-fab-pair {
-  transform: none !important;
-  filter: none !important;
-}
-
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .nav-shell-sidebar {
     display: block;
+    /* Sticky desktop sidebar — align-self:flex-start prevents the flex
+       parent from stretching this item, which would silently defeat
+       position:sticky. overflow-y:auto guards against sidebar content
+       ever exceeding viewport height. */
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: 100vh;
+    overflow-y: auto;
   }
   .nav-shell-mobile {
     display: none;
   }
   .kalori-page-main {
-    padding: var(--page-padding-tablet);
+    padding: var(--page-padding-desktop);
   }
   /*
    * Phase 7 regression fix (REG-2): at 768px viewport, sidebar (~240px) +
@@ -892,8 +1264,17 @@ html[data-reduce-motion='1'] .kalori-fab-pair {
   .kalori-dashboard-hero-row {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
+  /*
+   * Phase 2A (2026-05-16) — water + micros side-by-side row escalates to
+   * two equal tracks at tablet+. Same `minmax(0, 1fr)` pattern as the
+   * hero row so MicronutrientPanel's internal grid and WaterTracker's
+   * 8-bullet grid + quick-add chips can shrink with the available track.
+   */
+  .kalori-dashboard-water-micros-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
   .kalori-meals-bulletin-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
   /*
    * Phase 7 regression fix (REG-1/REG-3): progress-page chart pairs (e.g.
@@ -915,6 +1296,25 @@ html[data-reduce-motion='1'] .kalori-fab-pair {
   }
   .kalori-meals-bulletin-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/*
+ * Task C.1 (US-STAB-C1) — Micros / RDA chip grid responsive rule.
+ *
+ * 1-column at mobile (<600px), 2-column at tablet+ (≥600px). Breakpoint
+ * matches the Phase 1 ux-specialist style spec (deliberately lower than
+ * the 768px hero-row breakpoint so the grid can still pack two columns
+ * inside the right-half partner at narrower tablet widths).
+ *
+ * The grid cells themselves carry inline `border-right` + `border-bottom`
+ * hairlines (see `<MicrosRdaPanel />`). The grid root carries `border-top`
+ * + `border-left` so the outer frame stays 1px without doubling at the
+ * cell intersections.
+ */
+@media (min-width: 1280px) {
+  .kalori-micros-rda-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -962,7 +1362,7 @@ html[data-reduce-motion='1'] .kalori-fab-pair {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-4);
-  border-radius: var(--radius-modal);
+  border-radius: 0;
   overflow-y: auto;
   /* Full-sheet at mobile (<768). */
   width: 100vw;
@@ -978,7 +1378,7 @@ html[data-reduce-motion='1'] .kalori-fab-pair {
    */
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-log-content {
     width: 640px;
     max-height: 80vh;
@@ -986,7 +1386,7 @@ html[data-reduce-motion='1'] .kalori-fab-pair {
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   .kalori-log-content {
     width: 720px;
   }
@@ -1061,7 +1461,7 @@ html[data-reduce-motion='1'] .kalori-fab-pair {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: var(--radius-pill);
+  border-radius: 0;
   transition: color var(--motion-micro) var(--ease-editorial);
 }
 .kalori-log-close:hover {
@@ -1086,7 +1486,7 @@ html[data-reduce-motion='1'] .kalori-fab-pair {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   cursor: pointer;
-  border-radius: var(--radius-pill);
+  border-radius: 0;
   transition: color var(--motion-micro) var(--ease-editorial);
 }
 .kalori-log-tab-trigger:hover {
@@ -1147,7 +1547,7 @@ html[data-reduce-motion='1'] .kalori-fab-pair {
   font-size: 20px;
   line-height: 1.5;
   resize: none;
-  border-radius: var(--radius-input);
+  border-radius: 0;
   caret-color: var(--color-ivory);
   transition:
     background-color var(--motion-standard) var(--ease-editorial),
@@ -1181,7 +1581,7 @@ html[data-reduce-motion='1'] .kalori-fab-pair {
   color: var(--color-ivory);
   font-family: var(--font-sans);
   font-size: 14px;
-  border-radius: var(--radius-input);
+  border-radius: 0;
   transition: border-color var(--motion-micro) var(--ease-editorial);
 }
 .kalori-log-search::placeholder {
@@ -1293,6 +1693,22 @@ html[data-reduce-motion='1'] .kalori-log-cta-spinner {
   border-right-color: transparent;
   border-radius: 999px;
   animation: kalori-water-spin 700ms linear infinite;
+}
+
+/* --- DashboardDateControl calendar trigger:
+ *     the native <input type="date"> sits inside this 44×44 wrapper with
+ *     opacity 0 + pointer-events: auto so iOS Safari opens its OS-level
+ *     picker on a real user tap (per ui-design.md §10.6.1 line 2990). The
+ *     visible calendar icon is decorative. Keyboard focus on the input
+ *     surfaces a focus-within ring on the wrapper so the trigger reads as
+ *     interactive without an extra <button>. --- */
+.kalori-dashboard-date-trigger {
+  transition: border-color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-dashboard-date-trigger:focus-within {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+  border-color: var(--color-oxblood);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1436,10 +1852,36 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
   border-left: 2px solid var(--color-oxblood);
 }
 
-/* Letter-mark fallback for missing thumbnails. */
+/* Card thumbnail (image variant) — responsive: large on mobile so the
+ * thumb fills the full-width card vertically; smaller on multi-column
+ * tablet/desktop grids. Letter-mark fallback matches the same dimensions
+ * via the rule below. */
+.kalori-log-card-thumb {
+  width: 144px;
+  height: 144px;
+  flex-shrink: 0;
+  object-fit: cover;
+  display: block;
+}
+@media (min-width: 1280px) {
+  .kalori-log-card-thumb {
+    width: 112px;
+    height: 112px;
+  }
+}
+@media (min-width: 1280px) {
+  .kalori-log-card-thumb {
+    width: 96px;
+    height: 96px;
+  }
+}
+
+/* Letter-mark fallback for missing thumbnails — same responsive sizing
+ * as the image variant; font-size scales to keep the initial visually
+ * centered. */
 .kalori-log-letter-mark {
-  width: 56px;
-  height: 56px;
+  width: 144px;
+  height: 144px;
   flex-shrink: 0;
   background-color: var(--color-bg-2);
   border-top: 2px solid var(--color-oxblood);
@@ -1449,8 +1891,52 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
   color: var(--color-sand);
   font-family: var(--font-serif);
   font-weight: 300;
-  font-size: 28px;
+  font-size: 48px;
   line-height: 1;
+}
+@media (min-width: 1280px) {
+  .kalori-log-letter-mark {
+    width: 112px;
+    height: 112px;
+    font-size: 40px;
+  }
+}
+@media (min-width: 1280px) {
+  .kalori-log-letter-mark {
+    width: 96px;
+    height: 96px;
+    font-size: 32px;
+  }
+}
+
+/* Card text column — flex column that stretches to thumb height so the
+ * lastused timestamp can pin to the bottom via marginBlockStart:auto. */
+.kalori-log-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  min-width: 0;
+  flex: 1;
+  align-self: stretch;
+}
+
+/* Kcal headline row — large mono number + small uppercase suffix on the
+ * same baseline. */
+.kalori-log-card-kcal {
+  display: flex;
+  align-items: baseline;
+}
+
+/* Macros row — 5 abbreviated macros inline (P/C/F/Fi/Ch), allowed to
+ * wrap onto a 2nd line on the narrowest viewports without breaking
+ * card alignment. */
+.kalori-log-card-macros {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--color-dust);
+  display: block;
+  word-break: break-word;
 }
 
 /* Empty-state wrapper — hairlines top/bottom + 24px vertical padding. */
@@ -1470,15 +1956,178 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
   padding: 0;
   margin: 0;
 }
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-log-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   .kalori-log-grid {
     grid-template-columns: repeat(3, 1fr);
   }
+}
+
+/* --- Library loading skeleton (Add Food tab merge) --------------------
+ * Match-to-shape rows: 56px thumb + name bar + 3 macro pills + kcal.
+ * Hairline separators top/bottom + between rows. Uses the project's
+ * shared `.skeleton-pulse` opacity animation (defined ~line 442) which
+ * is already suppressed under prefers-reduced-motion AND the Settings
+ * `data-reduce-motion='1'` mirror.
+ */
+.kalori-library-skeleton {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.kalori-library-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding-block: var(--spacing-3);
+  padding-inline: var(--spacing-3);
+  border-top: 1px solid var(--color-rule);
+}
+
+.kalori-library-skeleton-row:last-child {
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.kalori-library-skeleton-thumb {
+  width: 144px;
+  height: 144px;
+  background: var(--color-bg-2);
+  flex-shrink: 0;
+}
+@media (min-width: 1280px) {
+  .kalori-library-skeleton-thumb {
+    width: 112px;
+    height: 112px;
+  }
+}
+@media (min-width: 1280px) {
+  .kalori-library-skeleton-thumb {
+    width: 96px;
+    height: 96px;
+  }
+}
+
+.kalori-library-skeleton-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.kalori-library-skeleton-name {
+  height: 14px;
+  background: var(--color-bg-2);
+}
+
+.kalori-library-skeleton-macros {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.kalori-library-skeleton-macro {
+  width: 32px;
+  height: 9px;
+  background: var(--color-bg-2);
+  opacity: 0.65;
+}
+
+.kalori-library-skeleton-kcal {
+  width: 48px;
+  height: 11px;
+  background: var(--color-bg-2);
+  flex-shrink: 0;
+}
+
+/* --- Add new item icon button (Add Food tab merge) -------------------- */
+
+.kalori-add-food-add-new-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: 1px solid var(--color-rule);
+  color: var(--color-ivory);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kalori-add-food-add-new-icon:hover {
+  background: var(--color-bg-1);
+  border-color: var(--color-rule-strong);
+}
+
+.kalori-add-food-add-new-icon:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 1px;
+}
+
+/* --- Add new item empty-state CTA ------------------------------------- */
+
+.kalori-add-food-add-new-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  min-height: 44px;
+  padding-inline: var(--spacing-5);
+  padding-block: var(--spacing-3);
+  background: transparent;
+  border: 1px solid var(--color-oxblood);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.kalori-add-food-add-new-cta:hover {
+  background: var(--color-bg-1);
+}
+
+.kalori-add-food-add-new-cta:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 1px;
+}
+
+/* --- Add Food back button (AiParseForm subview header) ---------------- */
+
+.kalori-add-food-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  min-height: 44px;
+  padding-inline: var(--spacing-3);
+  padding-block: var(--spacing-2);
+  background: transparent;
+  border: none;
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.kalori-add-food-back-button:hover {
+  color: var(--color-sand);
+}
+
+.kalori-add-food-back-button:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 1px;
 }
 
 /* --- SNAP dropzone + capture square. --- */
@@ -1495,7 +2144,7 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
 .kalori-log-dropzone[data-dragging='true'] {
   border: 2px dashed var(--color-oxblood);
 }
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-log-dropzone {
     min-height: 360px;
     max-width: 480px;
@@ -1566,6 +2215,218 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
 }
 
 /* Error banner — lives above panel content; ember top rule + bg-2 fill. */
+.kalori-manual-fallback {
+  background-color: var(--color-bg-2);
+  border-top: 2px solid var(--color-ember);
+  padding: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.kalori-manual-fallback-context {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-3);
+}
+
+.kalori-manual-fallback-photo-frame {
+  width: 112px;
+  height: 112px;
+  background: var(--color-bg-1);
+  border: 1px solid var(--color-rule-strong);
+  overflow: hidden;
+}
+
+.kalori-manual-fallback-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.kalori-manual-fallback-copy,
+.kalori-manual-fallback-form,
+.kalori-manual-fallback-field {
+  min-width: 0;
+}
+
+.kalori-manual-fallback-heading {
+  margin: 0;
+  color: var(--color-ivory);
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.kalori-manual-fallback-note {
+  margin: var(--spacing-2) 0 0;
+  color: var(--color-sand);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.kalori-manual-fallback-summary {
+  padding: var(--spacing-3);
+  background-color: var(--color-bg-1);
+  border-left: 2px solid var(--color-ember);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.kalori-manual-fallback-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-3);
+}
+
+.kalori-manual-fallback-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.kalori-manual-fallback-label {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+}
+
+.kalori-manual-fallback-number {
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.kalori-manual-fallback-wheel-trigger {
+  min-height: 44px;
+  width: 100%;
+  padding: 0 var(--spacing-3);
+  background-color: var(--color-bg-1);
+  border: 1px solid var(--color-rule);
+  color: var(--color-ivory);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  text-align: right;
+  cursor: pointer;
+}
+
+.kalori-manual-fallback-wheel-trigger:focus-visible {
+  border-bottom: 2px solid var(--color-oxblood);
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+.kalori-manual-fallback-wheel-trigger[data-invalid='true'] {
+  border-bottom: 2px solid var(--color-oxblood);
+}
+
+.kalori-manual-fallback-unit-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.kalori-manual-fallback-units,
+.kalori-manual-fallback-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+}
+
+.kalori-manual-fallback-unit-option,
+.kalori-manual-fallback-preset,
+.kalori-manual-fallback-macro-trigger {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--spacing-3);
+  background: transparent;
+  border: 1px solid var(--color-rule-strong);
+  color: var(--color-sand);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.kalori-manual-fallback-unit-option[data-active='true'] {
+  color: var(--color-ivory);
+  border-bottom: 2px solid var(--color-oxblood);
+}
+
+.kalori-manual-fallback-unit-option:focus-within,
+.kalori-manual-fallback-preset:focus-visible,
+.kalori-manual-fallback-macro-trigger:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+.kalori-manual-fallback-macro-trigger {
+  width: 100%;
+}
+
+.kalori-manual-fallback-macro-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-3);
+  padding-top: var(--spacing-3);
+}
+
+.kalori-manual-fallback-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-2);
+}
+
+.kalori-manual-fallback-retry,
+.kalori-manual-fallback-submit {
+  width: 100%;
+  justify-content: center;
+}
+
+.kalori-manual-fallback-submit {
+  min-width: 0;
+}
+
+.kalori-manual-fallback-error {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-ember);
+}
+
+@media (min-width: 1280px) {
+  .kalori-manual-fallback {
+    padding: var(--spacing-6);
+  }
+
+  .kalori-manual-fallback-context {
+    grid-template-columns: 112px minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .kalori-manual-fallback-macro-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .kalori-manual-fallback-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
 .kalori-log-error-banner {
   display: flex;
   justify-content: space-between;
@@ -1636,9 +2497,122 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
 
 .kalori-confirmation-item-inner {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto max-content auto;
+  grid-template-columns: auto minmax(0, 1fr) auto max-content minmax(44px, max-content);
   gap: var(--spacing-3);
   align-items: center;
+}
+
+/* Phase 2C — macros summary strip (5 macros under each item row).
+   The default <dl><div><dt><dd></div></dl> blocks would stack vertically
+   and squeeze each pair into a narrow column, wrapping labels like
+   "Chol 396mg" into multiple lines. The strip lives at the <li> level
+   (sibling of .kalori-confirmation-item-inner) so it can span the full
+   row width; here we flow its sub-items horizontally with flex-wrap so
+   the line breaks at the macro boundary instead of mid-token.
+   Visual treatment matches the ledger-editorial vibe (Newsreader serif
+   labels in --color-sand, JetBrains Mono ivory values), echoing the
+   library FoodDetail macros block without re-using its bar chrome. */
+.kalori-confirmation-item-macros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--spacing-4);
+  row-gap: var(--spacing-1);
+  margin: var(--spacing-2) 0 0;
+  padding: 0;
+}
+.kalori-confirmation-item-macro {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  /* Each macro pair is a single uninterrupted token — never wrap inside. */
+  white-space: nowrap;
+}
+.kalori-confirmation-item-macro dt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--color-sand);
+  text-transform: uppercase;
+  margin: 0;
+}
+.kalori-confirmation-item-macro dd {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-ivory);
+  margin: 0;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.kalori-confirmation-approx-grams {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-dust);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.kalori-confirmation-parsed-micros {
+  margin-top: var(--spacing-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.kalori-confirmation-parsed-micros-list {
+  margin: 0;
+  display: grid;
+  gap: var(--spacing-1);
+}
+
+.kalori-confirmation-parsed-micro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--spacing-3);
+}
+
+.kalori-confirmation-parsed-micro dt {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--color-sand);
+}
+
+.kalori-confirmation-parsed-micro dd {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ivory);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.kalori-confirmation-parsed-micros-toggle {
+  appearance: none;
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  padding: var(--spacing-2) 0;
+  min-height: 44px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-oxblood-soft);
+  cursor: pointer;
+}
+
+.kalori-confirmation-parsed-micros-toggle:hover {
+  color: var(--color-ivory);
+}
+
+.kalori-confirmation-parsed-micros-toggle:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
 }
 
 .kalori-confirmation-item-section-number {
@@ -1654,6 +2628,13 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-1);
+  min-width: 0;
+}
+
+.kalori-confirmation-name-line {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
   min-width: 0;
 }
 
@@ -1694,22 +2675,64 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
   min-width: max-content;
 }
 
+/* Rounded "3D" stepper buttons — subtle raised look via gradient
+   background + inner highlight + dropped shadow. Press state inverts
+   the shadow for tactile feedback. 44×44 to satisfy WCAG touch-target
+   minimum (the visible circle IS the touch target). */
 .kalori-confirmation-stepper-btn {
-  background: transparent;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-ivory) 10%, var(--color-bg-2)) 0%,
+    var(--color-bg-2) 100%
+  );
   border: 1px solid var(--color-rule-strong);
+  border-radius: 50%;
   color: var(--color-ivory);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  width: 44px;
+  height: 44px;
   min-width: 44px;
   min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  box-shadow:
+    0 2px 3px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 color-mix(in srgb, var(--color-ivory) 18%, transparent),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+  transition:
+    transform 90ms ease,
+    background 120ms ease,
+    box-shadow 120ms ease;
 }
 .kalori-confirmation-stepper-btn:hover {
-  background: var(--color-bg-2);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-ivory) 16%, var(--color-bg-2)) 0%,
+    var(--color-bg-2) 100%
+  );
+}
+.kalori-confirmation-stepper-btn:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 0 0 rgba(0, 0, 0, 0),
+    inset 0 2px 4px rgba(0, 0, 0, 0.55);
 }
 .kalori-confirmation-stepper-btn:focus-visible {
   outline: 2px solid var(--color-ivory);
   outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kalori-confirmation-stepper-btn {
+    transition-duration: 1ms;
+  }
+}
+html[data-reduce-motion='1'] .kalori-confirmation-stepper-btn {
+  transition-duration: 1ms;
 }
 
 .kalori-confirmation-portion,
@@ -1725,8 +2748,30 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
 }
 
 .kalori-confirmation-portion {
-  width: 4ch;
-  min-width: 4ch;
+  /* Widened 2026-05-16 so multi-digit gram values (100, 150, 250…)
+     display in full. Native spin buttons are also suppressed below
+     since the surrounding UI provides custom +/− stepper buttons —
+     leaving them visible was eating ~16-20px of the content area on
+     WebKit/Chromium, clipping the value to a single digit. */
+  width: 6ch;
+  min-width: 6ch;
+  /* Center the value horizontally so it sits squarely between the
+     − and + buttons; the shared rule above sets text-align: right
+     (correct for the kcal field, wrong here). */
+  text-align: center;
+}
+/* Hide the browser's native number-input spin buttons. The app's
+   custom +/− stepper is the only intended control surface; the native
+   spinners were both visually redundant and consuming the input's
+   content width on Chromium/WebKit. */
+.kalori-confirmation-portion[type='number']::-webkit-outer-spin-button,
+.kalori-confirmation-portion[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.kalori-confirmation-portion[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
 }
 
 .kalori-confirmation-kcal {
@@ -1755,10 +2800,21 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
 
 .kalori-confirmation-unit {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  color: var(--color-sand);
+  /* Larger + bold so the unit (g, ml, piece, large eggs, sandwich…)
+     reads clearly. ~10 px of breathing room after the + button (added
+     to the parent's 4 px gap for ~14 px total) so the label doesn't
+     sit right on the button. `nowrap` keeps multi-word labels like
+     "large eggs" on one line; the auto-sized grid column lets the
+     stepper expand as needed without clipping the kcal field beside
+     it. min-width gives even short labels (g, ml) visual presence. */
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--color-ivory);
   text-transform: lowercase;
+  margin-left: 10px;
+  white-space: nowrap;
+  min-width: 4ch;
 }
 
 .kalori-confirmation-field-error {
@@ -1770,11 +2826,14 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
 }
 
 .kalori-confirmation-remove {
+  grid-column: 5;
+  justify-self: end;
+  align-self: center;
   background: transparent;
   border: 0;
   color: var(--color-sand);
   font-family: var(--font-serif);
-  font-size: 20px;
+  font-size: 16px;
   line-height: 1;
   min-width: 44px;
   min-height: 44px;
@@ -1788,9 +2847,9 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
   outline-offset: 2px;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1279px) {
   .kalori-confirmation-item-inner {
-    grid-template-columns: auto minmax(0, 1fr) max-content;
+    grid-template-columns: auto minmax(0, 1fr) max-content minmax(44px, max-content);
     row-gap: var(--spacing-2);
   }
 
@@ -1800,7 +2859,7 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
   }
 
   .kalori-confirmation-item-name-slot {
-    grid-column: 2;
+    grid-column: 2 / 4;
     grid-row: 1;
   }
 
@@ -1816,9 +2875,8 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
   }
 
   .kalori-confirmation-remove {
-    grid-column: 3;
-    grid-row: 1;
-    justify-self: end;
+    grid-column: 4;
+    grid-row: 2;
   }
 }
 
@@ -1828,6 +2886,102 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
   gap: var(--spacing-3);
   padding: var(--spacing-3) 0;
 }
+
+/* Task C.5 (F-VERIFY-203) — Confirmation.TimeEditor.
+ *
+ * Sibling-style alignment per task-C5-ui-design-lead.md §3 + briefing §5:
+ * ConfirmationScreen.tsx was NOT touched by the modern radius/shadow
+ * migration (commit 224b5ed), so the TimeEditor matches its siblings'
+ * Ledger zero-radius / 1px-rule / no-shadow visual contract — NOT the
+ * modern --radius-input / --shadow-float tokens.
+ *
+ * Robust to a future Confirmation-wide migration: the `border-radius: 0`
+ * here will swap in lockstep with the rest of the surface when the
+ * migration sweep includes ConfirmationScreen.
+ */
+.kalori-confirmation-time-editor {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) 0;
+  min-height: 44px;
+}
+.kalori-confirmation-time-editor-kicker {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-sand);
+  min-width: 4ch;
+}
+.kalori-confirmation-time-editor-input {
+  flex: 1 1 auto;
+  min-width: 200px;
+  height: 44px;
+  padding: 8px 12px;
+  background: var(--color-bg-1);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--color-ivory);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  /* Native picker accent — surfaces oxblood as the canonical CTA color
+   * across browsers that honour the property (Chromium / Firefox).
+   * Safari ignores it but falls back to its system accent. */
+  accent-color: var(--color-oxblood);
+  cursor: text;
+}
+.kalori-confirmation-time-editor-input:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 0;
+}
+.kalori-confirmation-time-editor-input[aria-invalid='true'] {
+  border-color: var(--color-oxblood);
+}
+.kalori-confirmation-time-editor-current {
+  min-height: 44px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 0;
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.kalori-confirmation-time-editor-current:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 0;
+}
+.kalori-confirmation-time-editor-hint {
+  flex-basis: 100%;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-sand);
+}
+/* Codex R1 Finding #4 — only the outsideWindow / error state uses the
+ * error-text color. The default always-visible hint and the readonly
+ * edit-path hint both use neutral sand so they read as informational
+ * rather than error.
+ */
+.kalori-confirmation-time-editor-hint.is-error {
+  color: var(--color-error-text);
+}
+/* Codex R1 Finding #2 — readonly variant pairs the hint with the muted
+ * informational tone and pairs the input with reduced contrast on the
+ * background so the user sees the field is locked.
+ */
+.kalori-confirmation-time-editor-input.is-readonly {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .kalori-confirmation-save-to-library-kicker {
   font-family: var(--font-sans);
   font-size: 11px;
@@ -1836,11 +2990,43 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
   text-transform: uppercase;
   color: var(--color-sand);
 }
+/* Editable since 2026-05-16 — the FILE UNDER value is the library row's
+   `display_name`. Keeping the serif italic look so it still reads as
+   the canonical title; adding a hairline border + focus ring so it's
+   visibly an input, plus invalid + disabled states. */
 .kalori-confirmation-save-to-library-name {
   font-family: var(--font-serif);
   font-style: italic;
   font-size: 14px;
   color: var(--color-ivory);
+  background: transparent;
+  border: 1px solid var(--color-rule);
+  border-radius: 0;
+  padding: 6px 10px;
+  min-height: 32px;
+  min-width: 160px;
+  flex: 1 1 200px;
+  transition: border-color 120ms ease;
+}
+.kalori-confirmation-save-to-library-name:focus-visible {
+  outline: none;
+  border-color: var(--color-oxblood);
+  box-shadow: 0 0 0 1px var(--color-oxblood);
+}
+.kalori-confirmation-save-to-library-name:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.kalori-confirmation-save-to-library-name.is-invalid,
+.kalori-confirmation-save-to-library-name[aria-invalid='true'] {
+  border-color: var(--color-oxblood);
+}
+.kalori-confirmation-save-to-library-error {
+  flex-basis: 100%;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--color-oxblood);
 }
 
 .kalori-confirmation-switch {
@@ -1881,6 +3067,10 @@ html[data-reduce-motion='1'] .kalori-dashboard-date-spinner {
 .kalori-confirmation-switch:focus-visible {
   outline: 2px solid var(--color-ivory);
   outline-offset: 2px;
+}
+.kalori-confirmation-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 @media (prefers-reduced-motion: reduce) {
   .kalori-confirmation-switch-knob {
@@ -2462,7 +3652,7 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   padding: var(--spacing-6) var(--spacing-4);
   animation: kalori-library-page-settle 180ms ease-out;
 }
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-library-main {
     padding: var(--spacing-6);
   }
@@ -2510,7 +3700,16 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   color: var(--color-ivory);
   margin: 0;
 }
-@media (min-width: 768px) {
+.kalori-library-masthead-summary {
+  max-width: 720px;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--color-sand);
+  margin: 0;
+}
+@media (min-width: 1280px) {
   .kalori-library-masthead-title {
     font-size: 36px;
   }
@@ -2531,7 +3730,7 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   border-bottom: 1px solid var(--color-rule-strong);
   position: relative;
 }
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-library-tools-rail {
     flex-direction: row;
     align-items: center;
@@ -2801,10 +4000,13 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0;
-  border-top: 1px solid var(--color-rule);
-  border-left: 1px solid var(--color-rule);
+  /* Bug 11 — card-frame token (`rule-strong`, 4:1) instead of ambient
+     divider (`rule`, 3:1) so library cell separators read as clear
+     boundaries on the warm near-black field. */
+  border-top: 1px solid var(--color-rule-strong);
+  border-left: 1px solid var(--color-rule-strong);
 }
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-library-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -2817,8 +4019,9 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
 
 .kalori-library-cell {
   position: relative;
-  border-right: 1px solid var(--color-rule);
-  border-bottom: 1px solid var(--color-rule);
+  /* Bug 11 — matches grid frame above; see comment on .kalori-library-grid. */
+  border-right: 1px solid var(--color-rule-strong);
+  border-bottom: 1px solid var(--color-rule-strong);
   content-visibility: auto;
   contain-intrinsic-size: auto 280px;
 }
@@ -2886,7 +4089,8 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   outline-offset: 2px;
 }
 
-/* ---- Library card button ---- */
+/* ---- Library card (Bug 3: `<div role="button">` not native button so
+   the kebab quick-action menu can legally nest inside) ---- */
 .kalori-library-card {
   width: 100%;
   height: 100%;
@@ -2902,14 +4106,31 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   flex-direction: column;
   border-radius: 0;
   outline: none;
-  transition: background-color 120ms ease-out;
+  /* Bug 10 (library overhaul 2026-05-16) — `ease-editorial` (not generic
+     `ease-out`) per ui-design.md:198 token. Tonal wake-up spec lives at
+     ui-design.md:1552-1562. */
+  transition: background-color var(--motion-micro) var(--ease-editorial);
 }
-.kalori-library-card:hover {
+/* Bug 10 — hover AND focus-visible both wake the card so keyboard users
+   see the same visual tier shift as mouse users (a11y parity per spec). */
+.kalori-library-card:hover,
+.kalori-library-card:focus-visible {
   background-color: var(--color-bg-1);
 }
 .kalori-library-card:focus-visible {
   outline: 2px solid var(--color-ivory);
   outline-offset: -2px;
+}
+/* Bug 2 (library overhaul 2026-05-16) — pending cue while the parent's
+   `router.push(/library/[id])` transition is in flight. Subtle dim +
+   `cursor: progress` so the originating card communicates "click
+   received, page loading" before the destination's loading.tsx mounts.
+   IMPORTANT: this rule lives AFTER the hover/focus block so the pending
+   visual wins specificity when the user happens to hover a card
+   mid-navigation. */
+.kalori-library-card[data-pending='true'] {
+  opacity: 0.7;
+  cursor: progress;
 }
 .kalori-library-card[aria-checked='true'],
 .kalori-library-card[data-selected='true'] {
@@ -2927,14 +4148,21 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   background-color: var(--color-bg-2);
   overflow: hidden;
 }
+/* Bug 10 — image idle opacity 0.85, wakes to 1.0 on hover/focus per
+   ui-design.md:1554-1559 spec. Transition uses `--ease-editorial`
+   + `--motion-micro` (120ms) tokens. Note: scale(1.02) treatment from
+   the prior implementation is dropped; spec calls for opacity, not
+   transform. */
 .kalori-library-card-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 120ms ease-out;
+  opacity: 0.85;
+  transition: opacity var(--motion-micro) var(--ease-editorial);
 }
-.kalori-library-card:hover .kalori-library-card-thumb img {
-  transform: scale(1.02);
+.kalori-library-card:hover .kalori-library-card-thumb img,
+.kalori-library-card:focus-visible .kalori-library-card-thumb img {
+  opacity: 1;
 }
 
 .kalori-library-card-lettermark {
@@ -2950,11 +4178,158 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   font-weight: 300;
   font-size: 32px;
   line-height: 1;
+  /* Bug 10 — letter-mark fallback uses the same wake-up language as the
+     thumb image: idle slightly dimmed via `brightness(0.9)`, transitions
+     to brightness(1.05) on hover/focus. */
+  filter: brightness(0.9);
+  transition: filter var(--motion-micro) var(--ease-editorial);
 }
-@media (min-width: 768px) {
+.kalori-library-card:hover .kalori-library-card-lettermark,
+.kalori-library-card:focus-visible .kalori-library-card-lettermark {
+  filter: brightness(1.05);
+}
+@media (min-width: 1280px) {
   .kalori-library-card-lettermark {
     font-size: 48px;
   }
+}
+
+/* Bug 10 — reduced-motion gate. Collapses ALL card-level transitions to
+   1ms when EITHER the OS pref (prefers-reduced-motion: reduce) OR the
+   in-app toggle (html[data-reduce-motion='1']) is engaged. The
+   in-app-toggle mirror is the project's OR-wrapper convention cited at
+   `lib/motion/defaults.ts:296` — CSS must honor both signals because
+   the in-app toggle does NOT cascade into the OS media query. */
+@media (prefers-reduced-motion: reduce) {
+  .kalori-library-card,
+  .kalori-library-card-thumb img,
+  .kalori-library-card-lettermark {
+    transition-duration: 1ms;
+  }
+}
+html[data-reduce-motion='1'] .kalori-library-card,
+html[data-reduce-motion='1'] .kalori-library-card-thumb img,
+html[data-reduce-motion='1'] .kalori-library-card-lettermark {
+  transition-duration: 1ms;
+}
+
+/* Sketch-pending placeholder — shown on a library card while the
+   sketch is being generated server-side (within ~60 s of created_at,
+   no thumbnail yet). Visually mirrors the letter-mark container so the
+   card geometry doesn't shift when the real image arrives; the inner
+   span renders a rotating ring. */
+.kalori-library-card-pending {
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-bg-2);
+  border-top: 2px solid var(--color-oxblood);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kalori-library-card-pending-spinner {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--color-sand) 25%, transparent);
+  border-top-color: var(--color-oxblood);
+  animation: kalori-library-card-spin 0.9s linear infinite;
+}
+@keyframes kalori-library-card-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (min-width: 1280px) {
+  .kalori-library-card-pending-spinner {
+    width: 36px;
+    height: 36px;
+  }
+}
+/* Reduced-motion gate — slow the spin so motion-sensitive users still
+   get a "loading" signal without the rapid rotation. */
+@media (prefers-reduced-motion: reduce) {
+  .kalori-library-card-pending-spinner {
+    animation-duration: 2.4s;
+  }
+}
+html[data-reduce-motion='1'] .kalori-library-card-pending-spinner {
+  animation-duration: 2.4s;
+}
+
+/* ---- Bug 3 (library overhaul 2026-05-16) — per-card kebab quick-action
+   menu. Trigger pinned top-right of the thumb; menu content panel uses
+   the same Ledger hairline + bg-2 token language as the FilterDropdown
+   panel above. ---- */
+.kalori-library-card-menu-trigger {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background-color: rgb(14 10 8 / 0.55);
+  border: 0;
+  color: var(--color-ivory);
+  cursor: pointer;
+  border-radius: 0;
+  transition:
+    background-color var(--motion-micro) var(--ease-editorial),
+    color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-library-card-menu-trigger:hover {
+  background-color: rgb(14 10 8 / 0.85);
+}
+.kalori-library-card-menu-trigger:focus-visible {
+  /* Canonical 2px ivory focus ring (WCAG 1.4.11; lessons-relevant.md: oxblood-soft
+     is accent-only on dark surfaces — NOT a focus-outline color on the menu
+     trigger which sits on top of the card thumb's dark scrim). Inner offset
+     keeps the ring inside the 32x32 trigger so it doesn't bleed past the
+     thumb's clipping rect. */
+  outline: 2px solid var(--color-ivory);
+  outline-offset: -2px;
+}
+.kalori-library-card-menu-trigger[data-state='open'] {
+  background-color: rgb(14 10 8 / 0.85);
+}
+
+.kalori-library-card-menu-content {
+  min-width: 140px;
+  background-color: var(--color-bg-2);
+  border: 1px solid var(--color-rule-strong);
+  padding: var(--spacing-1) 0;
+  z-index: 70;
+  animation: kalori-library-fade-in 120ms linear;
+  border-radius: 0;
+}
+.kalori-library-card-menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--spacing-4);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+.kalori-library-card-menu-item[data-highlighted] {
+  background-color: var(--color-bg-1);
+}
+.kalori-library-card-menu-item--destructive {
+  color: var(--color-oxblood-soft);
+}
+.kalori-library-card-menu-item--destructive[data-highlighted] {
+  background-color: var(--color-bg-1);
+  color: var(--color-oxblood-soft);
 }
 
 /* Task 4.1 Phase 3 fix (F1): `.kalori-library-card-meal-tag` deleted as
@@ -3012,7 +4387,7 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   overflow: hidden;
   word-break: break-word;
 }
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-library-card-name {
     font-size: 18px;
   }
@@ -3190,6 +4565,31 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   color: var(--color-sand);
   margin: 0;
 }
+.kalori-library-dialog-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--color-sand);
+  margin: 0;
+}
+.kalori-library-dialog-spinner {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 1px solid rgb(238 222 197 / 0.24);
+  border-top-color: var(--color-ember);
+  border-radius: 999px;
+  animation: kalori-library-spinner 720ms linear infinite;
+}
+@keyframes kalori-library-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .kalori-library-dialog-list {
   list-style: none;
   margin: 0;
@@ -3212,6 +4612,51 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   justify-content: flex-end;
   gap: var(--spacing-3);
   margin-top: var(--spacing-4);
+}
+
+.kalori-library-recipe-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+  margin: 0;
+}
+
+.kalori-library-recipe-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.kalori-library-recipe-heading {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+  margin: 0;
+}
+
+.kalori-library-recipe-steps {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.kalori-library-recipe-steps li {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-ivory);
+  padding-inline-start: var(--spacing-1);
 }
 
 .kalori-library-merge-field {
@@ -3283,9 +4728,14 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
    Task 4.2 — FoodDetail panel (ledger folio sheet).
    Zero radii, hairline rules, Tailwind v4 CSS keyframes only.
    No Framer Motion / AutoAnimate / sonner — briefing lock.
+
+   Library overhaul 2026-05-16 (Bug 1): chrome branches on
+   `[data-mode="route"]` vs `[data-mode="modal"]` on the wrap. Route
+   mode renders as a navigated page (no scrim, no slide-in,
+   surface-tier bg-1). Modal mode preserves the legacy overlay chrome.
    ============================================================ */
 
-/* ---- Scrim + sheet shell ---- */
+/* ---- Scrim (modal mode only) ---- */
 .kalori-fd-scrim {
   position: fixed;
   inset: 0;
@@ -3302,7 +4752,8 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   }
 }
 
-.kalori-fd-sheet-wrap {
+/* ---- Sheet wrap (mode-aware) ---- */
+.kalori-fd-sheet-wrap[data-mode='modal'] {
   position: fixed;
   inset: 0;
   z-index: 61;
@@ -3310,33 +4761,52 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   justify-content: flex-end;
   pointer-events: none;
 }
-.kalori-fd-sheet-wrap > .kalori-fd-sheet {
+.kalori-fd-sheet-wrap[data-mode='modal'] > .kalori-fd-sheet {
   pointer-events: auto;
 }
 
+/* Bug 1 — route mode: NOT fixed, NOT a flex wrap. The wrap simply hosts
+   the sheet in the normal route flow. No scrim, full-width on mobile,
+   max-width=640 centered on desktop. */
+.kalori-fd-sheet-wrap[data-mode='route'] {
+  width: 100%;
+  max-width: 640px;
+  margin-inline: auto;
+}
+
+/* ---- Sheet surface ---- */
 .kalori-fd-sheet {
   position: relative;
-  background-color: var(--color-bg-0);
+  /* Bug 1 — surface lifts to bg-1 (content tier) so the page void is
+     visually distinct from the sheet (was bg-0; read as "void
+     continuation"). */
+  background-color: var(--color-bg-1);
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 640px;
-  height: 100vh;
-  border-left: 1px solid var(--color-rule-strong);
   overflow: hidden;
+  border: 1px solid var(--color-rule-strong);
+}
+
+/* Modal mode keeps the right-anchored slide-in chrome. */
+.kalori-fd-sheet-wrap[data-mode='modal'] .kalori-fd-sheet {
+  height: 100vh;
+  border: 0;
+  border-left: 1px solid var(--color-rule-strong);
   animation: kalori-fd-sheet-in-right var(--motion-expressive) var(--ease-editorial) forwards;
 }
 @media (max-width: 1279px) {
-  .kalori-fd-sheet {
+  .kalori-fd-sheet-wrap[data-mode='modal'] .kalori-fd-sheet {
     max-width: min(100vw, 560px);
   }
 }
-@media (max-width: 767px) {
-  .kalori-fd-sheet-wrap {
+@media (max-width: 1279px) {
+  .kalori-fd-sheet-wrap[data-mode='modal'] {
     align-items: flex-end;
     justify-content: stretch;
   }
-  .kalori-fd-sheet {
+  .kalori-fd-sheet-wrap[data-mode='modal'] .kalori-fd-sheet {
     max-width: 100vw;
     width: 100%;
     height: 90vh;
@@ -3360,6 +4830,22 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   to {
     transform: translateY(0);
   }
+}
+
+/* Bug 4 — sheet-wide busy state. While ANY mutation is in flight the
+   sheet ignores clicks; the originating button still shows its
+   label/spinner cue. Buttons enforce their own `disabled` state — this
+   rule is a safety net for nested elements that bypass disabled. */
+.kalori-fd-sheet[data-busy='true'] {
+  cursor: progress;
+}
+
+/* Bug 2 — pending cue on Back/Close buttons during route transition.
+   Subtle 0.7 opacity dim while the destination's loading.tsx skeleton
+   mounts. */
+.kalori-fd-back[data-pending='true'],
+.kalori-fd-close[data-pending='true'] {
+  opacity: 0.6;
 }
 
 /* ---- Top bar ---- */
@@ -3433,7 +4919,7 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   aspect-ratio: 4 / 3;
   overflow: hidden;
 }
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-fd-thumb-slot {
     width: 320px;
     height: 240px;
@@ -3562,7 +5048,7 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   color: var(--color-ivory);
   font-variant-numeric: lining-nums tabular-nums;
 }
-@media (max-width: 767px) {
+@media (max-width: 1279px) {
   .kalori-fd-kcal-value {
     font-size: 40px;
   }
@@ -3640,6 +5126,91 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   margin: 0;
 }
 
+/* Bug 8 (library overhaul 2026-05-16) — FDA DV % suffix on each macro
+   row in <FoodDetailMacros />. JetBrains Mono, dust-token (subdued —
+   DV % is reference data, not the headline number). Renders inline next
+   to .kalori-fd-macro-value on the right; grid template auto-expands to
+   accommodate a third auto column. */
+.kalori-fd-macros .kalori-fd-macro-row {
+  grid-template-columns: 1fr auto auto;
+}
+.kalori-fd-macro-dv {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-dust);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* Bug 3 (library-micros batch 2026-05-17) — `· N% DV` mono suffix on each
+   measurable micro row in <FoodDetailMacros />. Same typography contract
+   as `.kalori-fd-macro-dv` above so the macros block (Bug 8 DV suffix) and
+   the micros block (Bug 3 DV suffix) render with identical mono treatment.
+   The row wrapper itself owns the inline 3-col grid (see MicroRowDisplay)
+   so no extra class-level grid-template is needed here. */
+.kalori-fd-micro-dv {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-dust);
+  font-variant-numeric: lining-nums tabular-nums;
+  text-align: right;
+}
+
+/* Bug 9 (library overhaul 2026-05-16) — micros expand trigger + content. */
+.kalori-fd-micros-expand-trigger {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--color-rule);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-3) 0;
+  margin-top: var(--spacing-3);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-oxblood-soft);
+  cursor: pointer;
+  min-height: 44px;
+}
+.kalori-fd-micros-expand-trigger:hover {
+  color: var(--color-ivory);
+}
+.kalori-fd-micros-expand-trigger:focus-visible {
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+/* Label flip: Radix sets `data-state="open"|"closed"` on the trigger.
+   The "show" label is visible while closed; the "hide" label is visible
+   while open. Both spans live in the DOM so SR re-reads the new name. */
+.kalori-fd-micros-expand-trigger [data-state-label='hide'] {
+  display: none;
+}
+.kalori-fd-micros-expand-trigger[data-state='open'] [data-state-label='show'] {
+  display: none;
+}
+.kalori-fd-micros-expand-trigger[data-state='open'] [data-state-label='hide'] {
+  display: inline;
+}
+.kalori-fd-micros-expand-caret {
+  transition: transform var(--motion-micro) var(--ease-editorial);
+}
+.kalori-fd-micros-expand-trigger[data-state='open'] .kalori-fd-micros-expand-caret {
+  transform: rotate(90deg);
+}
+.kalori-fd-micros-expand-content[data-state='closed'] {
+  display: none;
+}
+.kalori-fd-micros-expand-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--spacing-3) var(--spacing-4);
+  padding-top: var(--spacing-3);
+}
+
 /* ---- History ---- */
 .kalori-fd-history-stats {
   font-family: var(--font-mono);
@@ -3695,7 +5266,7 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   background-color: var(--color-bg-0);
   padding-bottom: env(safe-area-inset-bottom);
 }
-@media (max-width: 767px) {
+@media (max-width: 1279px) {
   .kalori-fd-actions {
     height: 72px;
   }
@@ -3772,6 +5343,16 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
 }
 
 /* ---- Edit mode inputs ---- */
+.kalori-fd-field-label {
+  display: block;
+  margin: 0 0 var(--spacing-1);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+}
 .kalori-fd-input {
   width: 100%;
   min-height: 44px;
@@ -3956,6 +5537,21 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   border-color: var(--color-oxblood);
 }
 
+.kalori-weight-field-pair[data-alignment='weight-date-grid'] {
+  --kalori-weight-field-pair-columns: minmax(200px, 1fr) minmax(160px, 180px) auto;
+}
+
+@media (max-width: 560px) {
+  .kalori-weight-field-pair[data-alignment='weight-date-grid'] {
+    --kalori-weight-field-pair-columns: minmax(0, 1fr);
+  }
+
+  .kalori-weight-field-pair[data-alignment='weight-date-grid'] .kalori-weight-submit {
+    width: 100%;
+    justify-self: stretch;
+  }
+}
+
 /* ---- Rollback toast CTA states (C3 + M2 pause-on-hover). ---- */
 .kalori-weight-toast-undo,
 .kalori-weight-toast-dismiss {
@@ -4031,7 +5627,7 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
 .kalori-weight-page-title {
   font-size: 32px;
 }
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-weight-page-title {
     font-size: 36px;
   }
@@ -4045,7 +5641,7 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
 .kalori-weight-page-form {
   padding: var(--spacing-4);
 }
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-weight-page-form {
     padding: var(--spacing-6);
   }
@@ -4068,7 +5664,7 @@ html[data-reduce-motion='1'] .kalori-undo-bullet {
   border-top: 1px solid var(--color-oxblood);
   padding: var(--spacing-3) var(--spacing-4);
 }
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-weight-rollback-toast {
     bottom: calc(var(--spacing-6) + env(safe-area-inset-bottom, 0px));
     left: auto;
@@ -4155,7 +5751,7 @@ html[data-offline='true'] body {
   padding: 96px 24px;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-notfound-root {
     padding: 128px 48px;
   }
@@ -4215,7 +5811,7 @@ html[data-offline='true'] body {
   margin: 0;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-notfound-glyph {
     font-size: 96px;
   }
@@ -4238,7 +5834,7 @@ html[data-offline='true'] body {
   margin: 0;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .kalori-notfound-prose {
     font-size: 22px;
   }
@@ -4268,4 +5864,434 @@ html[data-offline='true'] body {
      ivory (already AAA on bg-0) — no contrast regression. */
   border-top-color: var(--color-oxblood-soft, var(--color-oxblood));
   border-bottom-color: var(--color-oxblood-soft, var(--color-oxblood));
+}
+
+/* ============================================================
+ * Task C.2 (US-STAB-C2 AC1) — Recent Entries section.
+ *
+ * Authoritative spec: planning/ui-design-fragments/recent-entries-section.md
+ * Phase 3 Round 1 fix (CRIT-1): all classes referenced by the new
+ * RecentEntriesSection / RecentEntriesEmpty components were undefined.
+ * This block lands the canonical token-mapped utility-class set per the
+ * fragment §2-§13. Same `kalori-*` convention as `kalori-fd-*` and
+ * `kalori-library-dialog-*` — no Tailwind utility classes (project
+ * doesn't use them inline anywhere).
+ * ============================================================ */
+
+/* Section spine + header. */
+.kalori-re-section {
+  margin-top: var(--spacing-8);
+  padding: 0;
+  color: var(--color-ivory);
+}
+@media (max-width: 1279px) {
+  .kalori-re-section {
+    margin-top: var(--spacing-6);
+  }
+}
+
+.kalori-re-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  margin: 0 0 var(--spacing-4) 0;
+  padding-bottom: var(--spacing-3);
+  /* Double hairline beneath title per fragment §2 — quieter sibling of
+     the masthead's heavier rule. */
+  border-bottom: 1px solid var(--color-rule);
+  box-shadow: 0 -1px 0 var(--color-rule-strong) inset;
+}
+
+.kalori-re-kicker {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+  margin: 0;
+}
+
+.kalori-re-title {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--color-ivory);
+  margin: 0;
+}
+@media (max-width: 1279px) {
+  .kalori-re-title {
+    font-size: 24px;
+  }
+}
+
+/* Date-group container + heading. */
+.kalori-re-group {
+  margin: 0 0 var(--spacing-4) 0;
+}
+.kalori-re-group:last-of-type {
+  margin-bottom: 0;
+}
+
+.kalori-re-group-heading {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+  margin: 0;
+  padding: var(--spacing-4) 0 var(--spacing-2) 0;
+}
+@media (max-width: 1279px) {
+  .kalori-re-group-heading {
+    padding: var(--spacing-3) 0 6px 0;
+  }
+}
+
+/* Row list + row layout. */
+.kalori-re-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.kalori-re-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: var(--spacing-4);
+  align-items: baseline;
+  min-height: 44px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-rule);
+  transition: background-color var(--motion-micro) var(--ease-editorial);
+}
+.kalori-re-row:last-of-type {
+  border-bottom: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .kalori-re-row:hover {
+    background-color: var(--color-bg-1);
+  }
+}
+@media (max-width: 1279px) {
+  .kalori-re-row {
+    grid-template-columns: 1fr auto;
+    column-gap: var(--spacing-3);
+    row-gap: 2px;
+  }
+}
+
+.kalori-re-name {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--color-ivory);
+  /* Single-line ellipsis per fragment §3. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.kalori-re-meal {
+  font-family: var(--font-sans);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+}
+
+.kalori-re-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-dust);
+  font-variant-numeric: tabular-nums;
+}
+
+.kalori-re-portion {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-dust);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 1279px) {
+  /* Mobile: hide secondary numeric data per fragment §10. */
+  .kalori-re-portion {
+    display: none;
+  }
+}
+
+.kalori-re-kcal {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 18px;
+  color: var(--color-ivory);
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.kalori-re-kcal-suffix {
+  font-family: var(--font-sans);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+}
+
+/* Empty state. */
+.kalori-re-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-12) 0;
+  text-align: center;
+}
+@media (max-width: 1279px) {
+  .kalori-re-empty {
+    padding: var(--spacing-8) 0;
+  }
+}
+
+.kalori-re-empty-headline {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--color-sand);
+  margin: 0;
+  max-width: 480px;
+}
+
+.kalori-re-empty-body {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 14px;
+  color: var(--color-dust);
+  margin: 0;
+  max-width: 320px;
+}
+
+/* Error state. */
+.kalori-re-error {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 18px;
+  color: var(--color-sand);
+  margin: var(--spacing-6) 0 0 0;
+  padding: var(--spacing-3) var(--spacing-4);
+  border-left: 2px solid var(--color-oxblood);
+}
+
+/* ============================================================
+ * Task C.2 Phase 3 Round 1 (CRIT-2) — N=1 BulkDeleteConfirmDialog
+ * italic-serif food-name sub-line. Referenced by
+ * BulkDeleteConfirmDialog.tsx but previously undefined.
+ *
+ * Style mirrors `kalori-library-dialog-body` (italic serif), tightened
+ * a notch for the name (16px, ivory not sand — name is load-bearing).
+ * ============================================================ */
+.kalori-library-dialog-name {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--color-ivory);
+  text-align: center;
+  margin: 4px 0 var(--spacing-3) 0;
+}
+.kalori-library-dialog-name--italic {
+  font-style: italic;
+}
+
+/* ============================================================
+ * Task C.2 Phase 3 Round 1 (CRIT-3) — In-flight state cue for
+ * `kalori-fd-btn-primary`. The `:disabled` rule already exists
+ * (opacity 0.6 + cursor not-allowed). Augment with an `aria-busy`
+ * variant so the in-flight cue (label "Logging…") reads as a
+ * deliberate state, not a generic disable.
+ * ============================================================ */
+.kalori-fd-btn-primary[aria-busy='true'] {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+/* ============================================================
+ * Bug 6 (library overhaul 2026-05-16) — Add Item dialog form.
+ * Sheet-style drawer + form field layout. Reuses the existing
+ * .kalori-library-dialog-* tokens.
+ * ============================================================ */
+.kalori-library-add-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--spacing-2) var(--spacing-4);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.kalori-library-dialog-content[data-shape='sheet'] {
+  /* Right-side drawer override. Existing dialog content centers via
+     transform; override to slide in from the right. */
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  width: min(420px, 100vw);
+  max-width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  border-left: 1px solid var(--color-rule-strong);
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  transform: none;
+  animation: kalori-sheet-slide-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow-y: auto;
+}
+
+@keyframes kalori-sheet-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kalori-library-dialog-content[data-shape='sheet'] {
+    animation-duration: 1ms;
+  }
+}
+
+html[data-reduce-motion='1'] .kalori-library-dialog-content[data-shape='sheet'] {
+  animation-duration: 1ms;
+}
+
+.kalori-library-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-3);
+}
+
+.kalori-library-add-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-3);
+}
+
+.kalori-library-add-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.kalori-library-add-label {
+  font-family: var(--font-sans);
+  font-size: var(--type-label);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+}
+
+.kalori-library-add-input {
+  background: var(--color-bg-1);
+  color: var(--color-ivory);
+  border: 1px solid var(--color-rule-strong);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  padding: var(--spacing-2) var(--spacing-3);
+  min-height: 44px;
+  border-radius: 0;
+}
+
+.kalori-library-add-input:focus-visible {
+  /* Canonical 2px ivory focus ring (WCAG 1.4.11; matches the top-level
+     :focus-visible rule at L298–301). Add-item form inputs sit on
+     var(--color-bg-1) inside the sheet drawer — ivory clears 16.67:1
+     contrast; oxblood-soft was 2.96:1 on dark and failed AA. */
+  outline: 2px solid var(--color-ivory);
+  outline-offset: 2px;
+}
+
+.kalori-library-add-input[aria-invalid='true'] {
+  border-color: var(--color-ember);
+}
+
+.kalori-library-add-field-error {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-ember);
+}
+
+.kalori-library-add-existing-link {
+  margin-left: var(--spacing-2);
+  text-decoration: underline;
+  color: var(--color-ivory);
+}
+
+/* ============================================================
+ * Bug 5 (library overhaul 2026-05-16) — Sketch backfill widget.
+ * Compact dashboard surface; styled flat to slot above MealsBulletin.
+ * ============================================================ */
+.kalori-sketch-backfill {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--color-rule-strong);
+  margin-block: var(--spacing-3);
+}
+
+.kalori-sketch-backfill-heading {
+  font-family: var(--font-sans);
+  font-size: var(--type-label);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-dust);
+  margin: 0;
+}
+
+.kalori-sketch-backfill-status {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  color: var(--color-ivory);
+  margin: 0;
+}
+
+.kalori-sketch-backfill-report {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-dust);
+  margin: 0;
+}
+
+.kalori-sketch-backfill-error {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-ember);
+  margin: 0;
+}
+
+/* Bug 5 — optional override hook for sketch idle opacity. Wave 3
+   set `.kalori-library-card-thumb img` idle opacity to 0.85; sketches
+   may want a slightly different feel. We leave the base value intact
+   and provide a selector for future tuning without re-baselining the
+   photo branch. Currently same as photo. */
+.kalori-library-card-thumb img[data-sketch='true'] {
+  /* Same as base (.kalori-library-card-thumb img idle = 0.85). Hover
+     wake-up still raises to 1.0 via the existing rule. Keep this
+     declaration so future styling can diverge cleanly. */
+  opacity: 0.85;
 }

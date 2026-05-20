@@ -38,7 +38,7 @@ describe('<LogFAB />', () => {
       const fab = screen.getByTestId('log-fab-food');
       expect(fab.style.width).toBe('56px');
       expect(fab.style.height).toBe('56px');
-      expect(fab.style.borderRadius).toBe('var(--radius-pill)');
+      expect(fab.style.borderRadius).toBe('0px');
     });
 
     it('uses the oxblood fill on the food FAB', () => {
@@ -84,7 +84,7 @@ describe('<LogFAB />', () => {
       const fab = screen.getByTestId('log-fab-water');
       expect(fab.style.width).toBe('56px');
       expect(fab.style.height).toBe('56px');
-      expect(fab.style.borderRadius).toBe('var(--radius-pill)');
+      expect(fab.style.borderRadius).toBe('0px');
     });
 
     it('uses near-black ground (var(--color-bg-1)) instead of oxblood', () => {

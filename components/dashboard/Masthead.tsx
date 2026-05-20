@@ -20,20 +20,15 @@ export interface MastheadProps {
   firstVisit: boolean;
 }
 
-function formatEdition(edition: Edition): string {
-  return t.masthead.editionFormat
-    .replace('{n}', String(edition.n))
-    .replace('{weekday}', edition.weekday)
-    .replace('{day}', String(edition.day))
-    .replace('{month}', edition.month)
-    .replace('{year}', String(edition.year));
+function formatDashboardDate(edition: Edition): string {
+  return `${edition.weekday}, ${edition.day} ${edition.month} ${edition.year}`;
 }
 
 export function Masthead({ edition, firstVisit }: MastheadProps) {
+  void firstVisit;
   return (
     <header
       data-testid="dashboard-masthead"
-      className="kalori-dashboard-masthead"
       style={{
         borderBottom: '1px solid var(--color-rule-strong)',
         paddingBlockEnd: 'var(--spacing-6)',
@@ -42,32 +37,18 @@ export function Masthead({ edition, firstVisit }: MastheadProps) {
         boxShadow: 'inset 0 -4px 0 0 var(--color-bg-0), inset 0 -5px 0 0 var(--color-rule)',
       }}
     >
-      <p
-        style={{
-          fontFamily: 'var(--font-sans)',
-          fontSize: 'var(--type-label)',
-          fontWeight: 500,
-          letterSpacing: '0.22em',
-          textTransform: 'uppercase',
-          color: 'var(--color-dust)',
-          margin: 0,
-          marginBottom: 'var(--spacing-2)',
-        }}
-      >
-        {t.masthead.sectionKicker.dashboard}
-      </p>
       <h1
         style={{
           fontFamily: 'var(--font-serif)',
-          fontSize: 'var(--type-wordmark-lg)',
+          fontSize: 'clamp(48px, 9vw, 92px)',
           fontWeight: 300,
-          lineHeight: 1,
-          letterSpacing: '-0.02em',
+          lineHeight: 0.95,
+          letterSpacing: 0,
           color: 'var(--color-ivory)',
           margin: 0,
         }}
       >
-        {t.brand.wordmark}
+        {t.dashboard.heading}
       </h1>
       <p
         data-testid="masthead-tagline"
@@ -89,29 +70,28 @@ export function Masthead({ edition, firstVisit }: MastheadProps) {
           fontSize: 'var(--type-label)',
           fontWeight: 500,
           letterSpacing: '0.22em',
-          textTransform: 'uppercase',
           color: 'var(--color-dust)',
           margin: 0,
           marginTop: 'var(--spacing-3)',
         }}
       >
-        {formatEdition(edition)}
+        {t.masthead.todayDateLabel}
+        <br />
+        {formatDashboardDate(edition)}
       </p>
-      {firstVisit ? (
-        <p
-          data-testid="masthead-welcome"
-          style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: 14,
-            fontStyle: 'italic',
-            color: 'var(--color-sand)',
-            margin: 0,
-            marginTop: 'var(--spacing-2)',
-          }}
-        >
-          {t.masthead.welcomeFirstVisit}
-        </p>
-      ) : null}
+      <p
+        data-testid="masthead-welcome"
+        style={{
+          fontFamily: 'var(--font-serif)',
+          fontSize: 14,
+          fontStyle: 'italic',
+          color: 'var(--color-sand)',
+          margin: 0,
+          marginTop: 'var(--spacing-2)',
+        }}
+      >
+        {t.masthead.dailyInspiration}
+      </p>
     </header>
   );
 }

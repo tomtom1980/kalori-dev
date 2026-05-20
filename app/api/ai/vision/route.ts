@@ -16,18 +16,34 @@ import { z } from 'zod';
 import { computeCacheKey, lookup as cacheLookup, write as cacheWrite } from '@/lib/ai/cache';
 import { fetchCacheByHash, findPriorCall, logAICall } from '@/lib/ai/cost-log';
 import { callGeminiWithFallback, getDefaultFallbackModel } from '@/lib/ai/fallback';
+import { getImageAnalysisQuota, IMAGE_ANALYSIS_LIMIT_MESSAGE } from '@/lib/ai/image-analysis-quota';
 import { normalizeParsedPortions } from '@/lib/ai/portion-sanity';
 import { v1_visionFoodParse, v1_visionFoodParseVnFallback } from '@/lib/ai/prompts';
 import { ParseResult, type ParseResultT } from '@/lib/ai/schemas';
 import { sanitizeUserText, sanitizeStringArray } from '@/lib/ai/sanitize';
 import { requireProfileOrJson401 } from '@/lib/auth/orphan-profile-fence';
+import { normalizeProfileTimezone } from '@/lib/time/device-timezone';
 
 export const runtime = 'nodejs';
 
 const FIRST_BYTE_TIMEOUT_MS = 8_000;
 const TOTAL_TIMEOUT_MS = 30_000;
 const MAX_BASE64_BYTES = 500 * 1024; // 500kb decoded — per F7 spec.
-const PRIMARY_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-flash-latest';
+const DEFAULT_VISION_MODEL = 'gemini-2.5-flash';
+const UNSAFE_VISION_MODEL_ALIASES = new Set(['gemini-flash-latest', 'gemini-2.5-flash-lite']);
+const LOW_CONFIDENCE_FALLBACK_THRESHOLD = 0.2;
+
+function getVisionPrimaryModel(): string {
+  const visionOverride = process.env.GEMINI_VISION_MODEL?.trim();
+  if (visionOverride && !UNSAFE_VISION_MODEL_ALIASES.has(visionOverride)) return visionOverride;
+
+  return DEFAULT_VISION_MODEL;
+}
+
+const VISION_GENERATION_CONFIG = {
+  responseMimeType: 'application/json' as const,
+  maxOutputTokens: 4096,
+};
 
 // F-UI-3.6-A-2 (Codex Split A round 1) — client_id tightened to z.uuid().
 const BodySchema = z
@@ -83,7 +99,10 @@ export async function POST(request: Request): Promise<Response> {
 
   // Auth + orphan-profile fence (Phase A Codex Round 1 Improvement #5).
   // See /api/ai/text-parse for the full rationale; identical contract here.
-  const fenced = await requireProfileOrJson401({ route: '/api/ai/vision' });
+  const fenced = await requireProfileOrJson401({
+    route: '/api/ai/vision',
+    selectExtras: 'timezone',
+  });
   if (fenced instanceof Response) return fenced;
   const userId = fenced.user.id;
 
@@ -102,6 +121,9 @@ export async function POST(request: Request): Promise<Response> {
     // text-parse). See that route for the full rationale.
     const prior = await findPriorCall({ userId, clientId: parsed.data.client_id });
     if (prior) {
+      if (prior.callType !== 'vision') {
+        return NextResponse.json({ error: 'client_id_call_type_conflict' }, { status: 409 });
+      }
       const replay = await fetchCacheByHash<ParseResultT>({
         userId,
         inputHash: prior.inputHash,
@@ -128,6 +150,31 @@ export async function POST(request: Request): Promise<Response> {
         clientId: parsed.data.client_id,
       });
       return NextResponse.json({ result: normalizeParsedPortions(hit.payload) }, { status: 200 });
+    }
+
+    const timezone = normalizeProfileTimezone(fenced.profile.timezone, {
+      sentryTag: 'ai-vision',
+      userId,
+    });
+    let quota;
+    try {
+      quota = await getImageAnalysisQuota({ userId, tz: timezone });
+    } catch (quotaError) {
+      Sentry.captureException(quotaError, {
+        tags: { component: 'ai-vision', scope: 'image_analysis_quota_check' },
+        extra: { userId },
+      });
+      return NextResponse.json({ error: 'quota_lookup_failed' }, { status: 503 });
+    }
+    if (quota.exceeded) {
+      return NextResponse.json(
+        {
+          error: 'image_analysis_quota_exceeded',
+          message: IMAGE_ANALYSIS_LIMIT_MESSAGE,
+          quota,
+        },
+        { status: 429 },
+      );
     }
 
     const controller = new AbortController();
@@ -171,8 +218,9 @@ export async function POST(request: Request): Promise<Response> {
       geminiResult = await callGeminiWithFallback({
         prompt,
         fallbackPrompt,
-        primaryModel: PRIMARY_MODEL,
+        primaryModel: getVisionPrimaryModel(),
         fallbackModel: getDefaultFallbackModel(),
+        generationConfig: VISION_GENERATION_CONFIG,
         // Codex R1 C1 — see text-parse route for rationale.
         primaryAbortSignal: controller.signal,
         deadlineMs: start + TOTAL_TIMEOUT_MS,
@@ -194,7 +242,44 @@ export async function POST(request: Request): Promise<Response> {
       });
     }
 
-    const validated = normalizeParsedPortions(ParseResult.parse(geminiResult.raw));
+    const parsedResult = ParseResult.safeParse(geminiResult.raw);
+    if (!parsedResult.success) {
+      Sentry.captureException(parsedResult.error, {
+        tags: { component: 'ai-vision', stage: 'parse-result-validation' },
+      });
+      await logAICall({
+        userId,
+        callType: 'vision',
+        inputHash,
+        tokens: geminiResult.tokens,
+        costEstimate: geminiResult.costEstimate,
+        latencyMs: Date.now() - start,
+        cachedFlag: false,
+        clientId: parsed.data.client_id,
+      });
+      return NextResponse.json({ fallback: true, originalInput: '<image>' }, { status: 200 });
+    }
+
+    const validated = normalizeParsedPortions(parsedResult.data);
+    const shouldManualFallback =
+      validated.items.length === 0 ||
+      validated.items.every((item) => item.confidence < LOW_CONFIDENCE_FALLBACK_THRESHOLD);
+    if (shouldManualFallback) {
+      await logAICall({
+        userId,
+        callType: 'vision',
+        inputHash,
+        tokens: geminiResult.tokens,
+        costEstimate: geminiResult.costEstimate,
+        latencyMs: Date.now() - start,
+        cachedFlag: false,
+        clientId: parsed.data.client_id,
+      });
+      return NextResponse.json(
+        { fallback: true, reason: 'no_food', originalInput: '<image>' },
+        { status: 200 },
+      );
+    }
 
     await cacheWrite({
       callType: 'vision',

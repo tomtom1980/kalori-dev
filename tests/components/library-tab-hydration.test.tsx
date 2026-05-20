@@ -9,7 +9,19 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { LibraryTab } from '@/app/(app)/log/_components/LibraryTab';
+import {
+  LibraryList,
+  type LibraryListProps,
+} from '@/app/(app)/log/_components/AddFoodTab/LibraryList';
+
+// Task 10 — migrated import. `<LibraryTab>` is gone; tests use the same
+// component (now `<LibraryList>`) via a thin wrapper that supplies the new
+// required `onAddNew` prop with a no-op default so existing render sites
+// keep working without touching every call.
+function LibraryTab(props: Partial<LibraryListProps> = {}) {
+  const { onAddNew = () => {}, ...rest } = props;
+  return <LibraryList onAddNew={onAddNew} {...rest} />;
+}
 import { useLogFlowStore } from '@/lib/stores/useLogFlowStore';
 
 describe('<LibraryTab /> — store-driven hydration (Task 4.7.4)', () => {
@@ -37,9 +49,14 @@ describe('<LibraryTab /> — store-driven hydration (Task 4.7.4)', () => {
     expect(screen.getByTestId('library-card-pho-id')).toBeInTheDocument();
   });
 
-  it('renders empty state when store has no items', () => {
+  it('renders loading skeleton when store has no items (hydrating)', () => {
+    // Task 10 — the Add Food merge (Task 5) replaced the bare empty-state
+    // during hydration with `<LibraryLoadingSkeleton />`. The empty-state
+    // only renders after a hydration fetch completes returning no items.
+    // The post-hydration empty-state-with-CTA contract lives in
+    // `tests/unit/components/log-flow/LibraryList.test.tsx`.
     render(<LibraryTab />);
-    expect(screen.getByTestId('library-empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId('library-skeleton')).toBeInTheDocument();
   });
 
   it('store hydration takes precedence over default empty list', () => {

@@ -16,7 +16,12 @@
  * Footer: deterministic linear-regression commentary from the aggregator,
  * italic serif right-aligned. Drop cap NEVER appears here (T6 rule).
  */
+'use client';
+
+import { useMemo, useState } from 'react';
+
 import { t } from '@/lib/i18n/en';
+import { CANONICAL_CODE_TO_DISPLAY_NAME, CANONICAL_CODE_TO_UNIT } from '@/lib/nutrition/micros-rda';
 
 import { ChartCard } from './ChartCard';
 import { DataTableDrawer } from './DataTableDrawer';
@@ -24,21 +29,55 @@ import { HeatmapInteractive } from './HeatmapInteractive';
 
 import type { MicronutrientHeatmapData } from '@/lib/aggregations/progress';
 
+// Expanded mode is capped to a 10-row viewport: 10 * 28px cell rows plus
+// header breathing room, with additional nutrients available via vertical scroll.
+const EXPANDED_HEATMAP_TEN_ROW_VIEWPORT_HEIGHT = 320;
+
 export interface MicronutrientHeatmapProps {
   data: MicronutrientHeatmapData;
 }
 
 export function MicronutrientHeatmap({ data }: MicronutrientHeatmapProps) {
   const { range, cells, footerCommentary, scanMeta, sparse, srSummary, window: win } = data;
+  const [expanded, setExpanded] = useState(false);
 
   const buckets = win.buckets;
+  const chartNutrients = expanded ? data.allNutrients : data.nutrients;
+  const chartData = useMemo(
+    () => ({
+      ...data,
+      nutrients: chartNutrients,
+    }),
+    [data, chartNutrients],
+  );
+  const tableRows = useMemo(
+    () =>
+      data.allNutrients.map((nutrient) => {
+        const nutrientCells = cells.filter((cell) => cell.nutrient === nutrient);
+        const target = data.targets[nutrient] ?? 0;
+        const unit = CANONICAL_CODE_TO_UNIT[nutrient] ?? '';
+        const totalActual = nutrientCells.reduce((sum, cell) => sum + cell.actual, 0);
+        const averagePct =
+          nutrientCells.length > 0
+            ? Math.round(
+                nutrientCells.reduce((sum, cell) => sum + cell.pctDv, 0) / nutrientCells.length,
+              )
+            : 0;
+        return {
+          cells: [
+            humanize(nutrient),
+            `${round1(totalActual)} ${unit}`,
+            `${target} ${unit}`,
+            `${averagePct}%`,
+          ],
+        };
+      }),
+    [cells, data.allNutrients, data.targets],
+  );
 
-  const rangeWord =
-    range === 'D'
-      ? t.progress.heatmap.rangeWord.D
-      : range === 'W'
-        ? t.progress.heatmap.rangeWord.W
-        : t.progress.heatmap.rangeWord.M;
+  const rangeWord = heatmapRangeWord(range);
+  const rangeMode = range === 'D' ? 'D' : range === 'W' || range === 'last_7' ? 'W' : 'M';
+  const fitHeatmapToContainer = !expanded || buckets.length <= 14;
 
   // Server-rendered table head (static); body is rendered by client overlay.
   const headerDayRow = (
@@ -54,7 +93,7 @@ export function MicronutrientHeatmap({ data }: MicronutrientHeatmapProps) {
       />
       {buckets.map((b) => {
         const isToday = range === 'D' ? b.startsWith(win.userTzEndDay) : b === win.userTzEndDay;
-        const label = shortLabel(b, range, isToday);
+        const label = shortLabel(b, rangeMode, isToday);
         // axe / SR contract: every <th> needs accessible text. For the D
         // range we only render visible labels every 3 hours — fill the
         // empty ones with an sr-only bucket string so axe's
@@ -137,29 +176,58 @@ export function MicronutrientHeatmap({ data }: MicronutrientHeatmapProps) {
             role="region"
             aria-label={t.progress.heatmap.scrollAriaLabel}
             className="heatmap-scroll"
-            data-range-mode={range}
+            data-range-mode={rangeMode}
+            data-expanded={expanded ? 'true' : 'false'}
+            data-testid="heatmap-expanded-scroll"
             // Phase 7 regression fix (REG-1): explicit `maxWidth: 100%` +
             // `minWidth: 0` ensures `overflowX: auto` actually engages when
             // the heatmap table's natural width exceeds the chart-card
             // column. Without these, the wrapper would still expand to the
             // table's intrinsic width and push the page horizontally.
-            style={{ overflowX: 'auto', maxWidth: '100%', minWidth: 0 }}
+            style={{
+              overflowX: fitHeatmapToContainer ? 'hidden' : 'auto',
+              overflowY: expanded ? 'auto' : 'visible',
+              maxHeight: expanded ? EXPANDED_HEATMAP_TEN_ROW_VIEWPORT_HEIGHT : undefined,
+              maxWidth: '100%',
+              minWidth: 0,
+            }}
           >
-            <HeatmapInteractive data={data} headerMonthBand={null} headerDayRow={headerDayRow} />
+            <HeatmapInteractive
+              data={chartData}
+              headerMonthBand={null}
+              headerDayRow={headerDayRow}
+              fitToContainer={fitHeatmapToContainer}
+            />
           </div>
+          {data.allNutrients.length > data.nutrients.length ? (
+            <button
+              type="button"
+              onClick={() => setExpanded((value) => !value)}
+              style={{
+                marginTop: 12,
+                minHeight: 44,
+                cursor: 'pointer',
+                border: '1px solid var(--color-rule)',
+                background: 'transparent',
+                color: 'var(--color-dust)',
+                padding: '10px 14px',
+                fontFamily: 'var(--font-sans)',
+                fontSize: 12,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.18em',
+              }}
+            >
+              {expanded
+                ? t.progress.heatmap.hideAllMicronutrients
+                : t.progress.heatmap.showAllMicronutrients}
+            </button>
+          ) : null}
           <DataTableDrawer
             summaryLabel={t.progress.heatmap.viewAsTable}
             caption={srSummary}
-            columns={['Nutrient', 'Bucket', 'Actual', '% DV', 'Today']}
-            rows={cells.map((c) => ({
-              cells: [
-                humanize(c.nutrient),
-                c.bucket,
-                c.actual,
-                `${c.pctDv}%`,
-                c.isToday ? 'yes' : '',
-              ],
-            }))}
+            columns={['Nutrient', 'Actual', 'Target', 'Average % DV']}
+            rows={tableRows}
           />
         </>
       }
@@ -245,20 +313,14 @@ function LegendRamp() {
 }
 
 function humanize(n: string): string {
-  if (n === 'fibre') return 'Fibre';
-  if (n === 'protein') return 'Protein';
-  if (n === 'vitamin_a') return 'Vitamin A';
-  if (n === 'vitamin_c') return 'Vitamin C';
-  if (n === 'vitamin_d') return 'Vitamin D';
-  if (n === 'iron') return 'Iron';
-  return 'Calcium';
+  return CANONICAL_CODE_TO_DISPLAY_NAME[n] ?? n;
 }
 
-function shortLabel(
-  bucket: string,
-  range: MicronutrientHeatmapData['range'],
-  isToday: boolean,
-): string {
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+function shortLabel(bucket: string, range: 'D' | 'W' | 'M', isToday: boolean): string {
   if (range === 'D') {
     const hour = bucket.split('T')[1]?.slice(0, 2) ?? '';
     const n = parseInt(hour, 10);
@@ -276,4 +338,11 @@ function formatDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function heatmapRangeWord(range: MicronutrientHeatmapData['range']): string {
+  if (range === 'D') return t.progress.heatmap.rangeWord.D;
+  if (range === 'W' || range === 'last_7') return t.progress.heatmap.rangeWord.W;
+  if (typeof range === 'object') return 'in custom range';
+  return t.progress.heatmap.rangeWord.M;
 }

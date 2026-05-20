@@ -20,7 +20,8 @@ import { freezeViewportForVisualBaseline } from './_fixtures';
 test.describe('Sidebar IdentityRow visual baseline (Task A.2)', () => {
   test('renders authed identity row at desktop ≥1280px', async ({ authedPage }, testInfo) => {
     test.skip(
-      testInfo.project.name === 'visual-baseline-chromium-mobile',
+      testInfo.project.name === 'visual-baseline-chromium-mobile' ||
+        testInfo.project.name === 'visual-baseline-chromium-tablet',
       'Mobile (<768px) hides the entire sidebar per ux-style spec §6.1; identity row is not rendered.',
     );
     await freezeViewportForVisualBaseline(authedPage);

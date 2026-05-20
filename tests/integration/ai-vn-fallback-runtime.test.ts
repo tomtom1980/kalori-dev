@@ -58,6 +58,9 @@ function setupAdmin() {
   const logSelectByCid = () => {
     const builder = {
       eq: () => builder,
+      in: () => builder,
+      gte: () => builder,
+      lt: async () => ({ count: 0, error: null }),
       maybeSingle: async () => ({ data: null, error: null }),
       single: async () => ({ data: null, error: { code: 'PGRST116' } }),
     };
@@ -125,7 +128,7 @@ function validParsePayload(reasoning: string) {
         unit: 'bowl',
         kcal: 520,
         macros: { protein_g: 32, carbs_g: 65, fat_g: 14, fiber_g: 3 },
-        micros: {},
+        micros: { sodium: 900 },
         confidence: 0.85,
       },
     ],
@@ -142,12 +145,14 @@ function validParsePayload(reasoning: string) {
 function stubGeminiPerModel(opts: {
   primaryStatus: 'ok' | 500 | 'hang';
   secondaryStatus: 'ok' | 500 | 'absent';
+  primaryModel?: string;
   primaryBody?: unknown;
   secondaryBody?: unknown;
 }) {
   const counts = { primary: 0, secondary: 0 };
+  const primaryModel = opts.primaryModel ?? 'gemini-flash-latest';
   const handlers = [
-    http.post('*generativelanguage.googleapis.com/*models/gemini-flash-latest*', async () => {
+    http.post(`*generativelanguage.googleapis.com/*models/${primaryModel}:*`, async () => {
       counts.primary += 1;
       if (opts.primaryStatus === 500) {
         return HttpResponse.json({ error: 'server_error' }, { status: 500 });
@@ -177,9 +182,11 @@ function stubGeminiPerModel(opts: {
 describe('F-UI-3.6-A-4 — vn-smoke runtime fallback chain', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.stubEnv('GEMINI_API_KEY', 'test-gemini-key');
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.doUnmock('@/lib/supabase/server');
     vi.doUnmock('@/lib/supabase/admin');
     vi.doUnmock('next/cache');
@@ -322,6 +329,9 @@ describe('F-UI-3.6-A-4 — vn-smoke runtime fallback chain', () => {
     const logSelectByCid = vi.fn(() => {
       const builder = {
         eq: () => builder,
+        in: () => builder,
+        gte: () => builder,
+        lt: async () => ({ count: 0, error: null }),
         maybeSingle: async () => {
           const row = logRows[0];
           return { data: row ?? null, error: null };
@@ -419,6 +429,7 @@ describe('F-UI-3.6-A-4 — vn-smoke runtime fallback chain', () => {
     setupCacheTagMock();
     const { addBreadcrumb } = setupSentryMock();
     const counts = stubGeminiPerModel({
+      primaryModel: 'gemini-2.5-flash',
       primaryStatus: 500,
       secondaryStatus: 'ok',
       secondaryBody: validParsePayload('vision vn-fallback'),

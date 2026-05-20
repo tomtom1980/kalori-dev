@@ -7,6 +7,11 @@
  * `<FoodDetail>` island.
  *
  * Tombstoned items → `notFound()` → `not-found.tsx`.
+ *
+ * Bug 3 (library overhaul 2026-05-16) — reads `?mode=edit` searchParam.
+ * When present, passes `initialMode="edit"` to FoodDetail so it
+ * auto-enters edit mode on mount; FoodDetail then strips the query via
+ * `router.replace` so reload / back-navigation does NOT re-trigger.
  */
 import { notFound, redirect } from 'next/navigation';
 
@@ -17,8 +22,15 @@ import { FoodDetail } from '../_components/FoodDetail/FoodDetail';
 
 export const dynamic = 'force-dynamic';
 
-export default async function FoodDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function FoodDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ mode?: string }>;
+}) {
   const { id } = await params;
+  const sp = await searchParams;
   const supabase = await getServerSupabase();
   const {
     data: { user },
@@ -39,9 +51,12 @@ export default async function FoodDetailPage({ params }: { params: Promise<{ id:
 
   const history = await getLibraryItemHistory(id, user.id, { limit: 5 });
 
+  // Bug 3 — kebab Edit deep-link auto-enters edit mode on mount.
+  const initialMode = sp.mode === 'edit' ? 'edit' : 'view';
+
   return (
     <section data-testid="page-library-detail">
-      <FoodDetail item={item} history={history} />
+      <FoodDetail item={item} history={history} initialMode={initialMode} />
     </section>
   );
 }

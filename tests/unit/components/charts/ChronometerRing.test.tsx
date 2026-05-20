@@ -2,6 +2,7 @@
  * Task 3.5 Milestone 4.4 — ChronometerRing tests.
  */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { ChronometerRing } from '@/components/charts/ChronometerRing';
@@ -50,7 +51,8 @@ describe('<ChronometerRing />', () => {
     expect(screen.getByText(/— no entries yet today —/i)).toBeInTheDocument();
   });
 
-  it('renders <details> data-table fallback', () => {
+  it('opens the shared data-table modal instead of a native details fallback', async () => {
+    const user = userEvent.setup();
     const data: ChronometerData = {
       status: 'default',
       consumed: 500,
@@ -61,8 +63,17 @@ describe('<ChronometerRing />', () => {
       lastLoggedAt: null,
     };
     render(<ChronometerRing data={data} />);
-    const summary = screen.getByText(/View as data table/i);
-    expect(summary).toBeInTheDocument();
+    expect(document.querySelector('details[data-testid="chrono-data-table"]')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: /View as data table/i }));
+
+    expect(screen.getByRole('dialog', { name: /calorie/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Metric' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Value' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Calories, logged today' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '500 kcal' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Entries logged' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '1' })).toBeInTheDocument();
   });
 
   it('formats last logged time in the supplied local timezone', () => {

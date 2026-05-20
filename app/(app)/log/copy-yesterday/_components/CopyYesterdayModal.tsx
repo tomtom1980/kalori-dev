@@ -54,6 +54,7 @@ export function CopyYesterdayModal({ entries }: CopyYesterdayModalProps) {
   const [discardOpen, setDiscardOpen] = useState(false);
 
   const toggleId = (id: string): void => {
+    if (submitting) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -64,7 +65,7 @@ export function CopyYesterdayModal({ entries }: CopyYesterdayModalProps) {
 
   const handleConfirm = async (): Promise<void> => {
     const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
+    if (submitting || ids.length === 0) return;
     setSubmitting(true);
     const newClientIds = ids.map(() => generateUuid());
     try {
@@ -103,6 +104,7 @@ export function CopyYesterdayModal({ entries }: CopyYesterdayModalProps) {
   };
 
   const handleCancelClick = (): void => {
+    if (submitting) return;
     if (selectedIds.size > 0) {
       setDiscardOpen(true);
       return;
@@ -149,6 +151,7 @@ export function CopyYesterdayModal({ entries }: CopyYesterdayModalProps) {
                   <input
                     type="checkbox"
                     checked={selectedIds.has(entry.id)}
+                    disabled={submitting}
                     onChange={() => toggleId(entry.id)}
                     aria-label={entry.label}
                     className="kalori-copy-yesterday-checkbox"
@@ -164,7 +167,12 @@ export function CopyYesterdayModal({ entries }: CopyYesterdayModalProps) {
         </section>
       ))}
       <div className="kalori-copy-yesterday-actions">
-        <button type="button" onClick={handleCancelClick} className="kalori-copy-yesterday-cancel">
+        <button
+          type="button"
+          onClick={handleCancelClick}
+          disabled={submitting}
+          className="kalori-copy-yesterday-cancel"
+        >
           {t.log.copyYesterdayCancel}
         </button>
         <button
@@ -174,12 +182,19 @@ export function CopyYesterdayModal({ entries }: CopyYesterdayModalProps) {
             void handleConfirm();
           }}
           aria-disabled={submitting || selectedIds.size === 0}
+          aria-busy={submitting ? 'true' : undefined}
+          disabled={submitting || selectedIds.size === 0}
           className="kalori-log-cta"
           onMouseDown={(e) => {
             if (submitting || selectedIds.size === 0) e.preventDefault();
           }}
         >
-          {t.log.copyYesterdayConfirm.replace('{count}', String(selectedIds.size))}
+          <span className="kalori-log-cta-content">
+            {submitting ? <span aria-hidden="true" className="kalori-log-cta-spinner" /> : null}
+            {submitting
+              ? t.log.copyYesterdaySubmitting.replace('{count}', String(selectedIds.size))
+              : t.log.copyYesterdayConfirm.replace('{count}', String(selectedIds.size))}
+          </span>
         </button>
       </div>
       <DiscardDraftAlertDialog

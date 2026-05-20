@@ -56,14 +56,13 @@ export function LogFAB({ variant = 'food', disabled = false, onClick }: LogFABPr
         type="button"
         aria-label={t.fab.logWaterA11y}
         data-testid="log-fab-water"
-        className="kalori-fab kalori-fab-water"
         disabled={disabled}
         onClick={onClick}
         style={{
           width: '56px',
           height: '56px',
-          borderRadius: 'var(--radius-pill)',
-          boxShadow: 'var(--shadow-float)',
+          borderRadius: '0px',
+          boxShadow: 'none',
           backgroundColor: 'var(--color-bg-1)',
           borderWidth: '1px',
           borderStyle: 'solid',
@@ -105,14 +104,13 @@ export function LogFAB({ variant = 'food', disabled = false, onClick }: LogFABPr
       aria-label={t.fab.logFoodA11y}
       aria-haspopup="dialog"
       data-testid="log-fab-food"
-      className="kalori-fab kalori-fab-food"
       disabled={disabled}
       onClick={onClick}
       style={{
         width: '56px',
         height: '56px',
-        borderRadius: 'var(--radius-pill)',
-        boxShadow: 'var(--shadow-float)',
+        borderRadius: '0px',
+        boxShadow: 'none',
         backgroundColor: 'var(--color-oxblood)',
         borderWidth: '1px',
         borderStyle: 'solid',

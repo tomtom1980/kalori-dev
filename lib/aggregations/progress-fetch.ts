@@ -69,6 +69,7 @@ export type { ProgressRange } from './progress';
 export function rangeToTag(range: ProgressRange): '24h' | '7d' | '30d' {
   if (range === 'D') return '24h';
   if (range === 'W') return '7d';
+  if (range === 'last_7' || typeof range === 'object') return '7d';
   return '30d';
 }
 

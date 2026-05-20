@@ -14,7 +14,19 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LibraryTab } from '@/app/(app)/log/_components/LibraryTab';
+import {
+  LibraryList,
+  type LibraryListProps,
+} from '@/app/(app)/log/_components/AddFoodTab/LibraryList';
+
+// Task 10 — migrated import. `<LibraryTab>` is gone; tests use the same
+// component (now `<LibraryList>`) via a thin wrapper that supplies the new
+// required `onAddNew` prop with a no-op default so existing render sites
+// keep working without touching every call.
+function LibraryTab(props: Partial<LibraryListProps> = {}) {
+  const { onAddNew = () => {}, ...rest } = props;
+  return <LibraryList onAddNew={onAddNew} {...rest} />;
+}
 import { useLogFlowStore } from '@/lib/stores/useLogFlowStore';
 
 const { authFetchMock, SessionExpiredErrorMock } = vi.hoisted(() => {
@@ -86,14 +98,19 @@ describe('<LibraryTab /> — self-hydration via /api/library/list', () => {
     expect(authFetchMock).not.toHaveBeenCalled();
   });
 
-  it('does NOT fetch when store already has items', async () => {
+  it('refetches on mount even when store already has items (stale-while-revalidate)', async () => {
+    // Stale-while-revalidate: the modal mounts on every chrome open, so a
+    // returning user with cached items still gets a fresh fetch so
+    // additions made on `/library` show up without a full reload. The
+    // cached items render immediately (no skeleton flash); the response
+    // replaces them when it lands.
     useLogFlowStore.getState().setLibraryItems([ROW_PHO]);
-    authFetchMock.mockResolvedValue(jsonResponse({ items: [] }));
+    authFetchMock.mockResolvedValue(jsonResponse({ items: [ROW_PHO] }));
     render(<LibraryTab />);
-    await act(async () => {
-      await Promise.resolve();
+    await waitFor(() => {
+      expect(authFetchMock).toHaveBeenCalledTimes(1);
     });
-    expect(authFetchMock).not.toHaveBeenCalled();
+    expect(authFetchMock).toHaveBeenCalledWith('/api/library/list', undefined);
   });
 
   it('populates store from response and renders items', async () => {
@@ -149,38 +166,10 @@ describe('<LibraryTab /> — self-hydration via /api/library/list', () => {
     expect(useLogFlowStore.getState().libraryItems).toEqual([]);
   });
 
-  it('renders existing empty-state with aria-busy="true" while hydrating', async () => {
-    let resolveFetch: ((res: Response) => void) | null = null;
-    authFetchMock.mockImplementation(
-      () =>
-        new Promise<Response>((resolve) => {
-          resolveFetch = resolve;
-        }),
-    );
-    render(<LibraryTab />);
-    const empty = await screen.findByTestId('library-empty-state');
-    expect(empty.getAttribute('aria-busy')).toBe('true');
-    await act(async () => {
-      resolveFetch?.(jsonResponse({ items: [] }));
-      await Promise.resolve();
-    });
-    await waitFor(() => {
-      expect(screen.getByTestId('library-empty-state').getAttribute('aria-busy')).toBe('false');
-    });
-  });
-
-  it('clears aria-busy after non-empty hydration completes (regression for stranded-hydrating bug)', async () => {
-    authFetchMock.mockResolvedValue(jsonResponse({ items: [ROW_PHO] }));
-    render(<LibraryTab />);
-    // Wait for hydration to populate the store + render the item.
-    await waitFor(() => {
-      expect(screen.getByTestId('library-card-pho-id')).toBeInTheDocument();
-    });
-    // Trigger the empty-state branch via a search query that matches nothing.
-    await act(async () => {
-      useLogFlowStore.getState().setLibrarySearch('zzz-no-match');
-    });
-    const empty = await screen.findByTestId('library-empty-state');
-    expect(empty.getAttribute('aria-busy')).toBe('false');
-  });
+  // Task 10 — the prior `aria-busy="true"`-on-empty-state contract is
+  // obsolete. The Add Food merge (Task 5) replaced the bare empty-state
+  // during hydration with `<LibraryLoadingSkeleton />`; the post-hydration
+  // empty-state element no longer carries `aria-busy` at all. The hydrating-
+  // skeleton + post-hydration empty-state-with-CTA contract is now covered
+  // by `tests/unit/components/log-flow/LibraryList.test.tsx`.
 });

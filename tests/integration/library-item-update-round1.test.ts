@@ -15,6 +15,11 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Bug 3 (library overhaul 2026-05-16) — route now imports
+// `@/lib/storage/sign-thumbnail` which itself imports the `server-only`
+// guard module. Stub it for the node test environment.
+vi.mock('server-only', () => ({}));
+
 describe('POST /api/library/[id]/update — round 1 fixes', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -146,6 +151,10 @@ describe('POST /api/library/[id]/update — round 1 fixes', () => {
         fat_g: 10,
         fiber_g: 3,
         sugar_g: 5,
+        // Phase 2C — schema default(0) backfills cholesterol_mg when the
+        // request body omits it. Mirrors the parsed-payload shape that
+        // the route forwards to Supabase.
+        cholesterol_mg: 0,
       },
       micros: {
         sodium_mg: 100,
@@ -262,5 +271,213 @@ describe('POST /api/library/[id]/update — round 1 fixes', () => {
     );
     expect(res.status).toBe(400);
     expect(updateChain).not.toHaveBeenCalled();
+  });
+
+  // --------------------------------------------------------------
+  // C3 (bugfix 2026-05-17 library-micros-parse) — server-side
+  // MAX_MICRO_VALUE bound. The client clamps every micro to 1e6 in
+  // `useFoodDetailEdit.ts`. Without the same bound here, an authenticated
+  // direct fetch can persist `1.5e6`+ values and bypass the claimed
+  // data-integrity cap. The Zod schema rejects with 400 before any DB
+  // write.
+  // --------------------------------------------------------------
+
+  it('C3: 400 when a micro value exceeds MAX_MICRO_VALUE (1e6)', async () => {
+    vi.doMock('next/cache', () => ({ revalidateTag: vi.fn() }));
+    const updateChain = vi.fn();
+    vi.doMock('@/lib/supabase/server', () => ({
+      getServerSupabase: async () => ({
+        auth: { getUser: async () => ({ data: { user: { id: 'u-1' } }, error: null }) },
+        from: (table: string) =>
+          table === 'profiles'
+            ? {
+                select: () => ({
+                  eq: () => ({
+                    maybeSingle: async () => ({ data: { deleting_at: null }, error: null }),
+                  }),
+                }),
+              }
+            : { update: updateChain },
+      }),
+    }));
+    const { POST } = await import('@/app/api/library/[id]/update/route');
+    const res = await POST(
+      new Request('http://kalori.test/api/library/x/update', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          client_id: '33333333-3333-4333-8333-333333333333',
+          fields: {
+            nutrition: {
+              kcal: 300,
+              macros: {
+                protein_g: 20,
+                carbs_g: 30,
+                fat_g: 10,
+                fiber_g: 2,
+                sugar_g: 1,
+              },
+              // 1.5e6 — well over the 1e6 client clamp. Pre-fix this
+              // body was accepted (z.number().finite().nonnegative()
+              // only). Post-fix the schema's .max(1_000_000) rejects.
+              micros: { iron_mg: 1.5e6 },
+            },
+          },
+        }),
+      }),
+      { params: Promise.resolve({ id: '11111111-1111-4111-8111-111111111111' }) },
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string; issues?: unknown };
+    expect(body.error).toBe('ValidationError');
+    expect(updateChain).not.toHaveBeenCalled();
+  });
+
+  it('C3: 400 when multiple micro values exceed MAX_MICRO_VALUE', async () => {
+    vi.doMock('next/cache', () => ({ revalidateTag: vi.fn() }));
+    const updateChain = vi.fn();
+    vi.doMock('@/lib/supabase/server', () => ({
+      getServerSupabase: async () => ({
+        auth: { getUser: async () => ({ data: { user: { id: 'u-1' } }, error: null }) },
+        from: (table: string) =>
+          table === 'profiles'
+            ? {
+                select: () => ({
+                  eq: () => ({
+                    maybeSingle: async () => ({ data: { deleting_at: null }, error: null }),
+                  }),
+                }),
+              }
+            : { update: updateChain },
+      }),
+    }));
+    const { POST } = await import('@/app/api/library/[id]/update/route');
+    const res = await POST(
+      new Request('http://kalori.test/api/library/x/update', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          client_id: '33333333-3333-4333-8333-333333333333',
+          fields: {
+            nutrition: {
+              kcal: 300,
+              macros: {
+                protein_g: 20,
+                carbs_g: 30,
+                fat_g: 10,
+                fiber_g: 2,
+                sugar_g: 1,
+              },
+              micros: { iron_mg: 9_999_999_999, sodium_mg: 2e6 },
+            },
+          },
+        }),
+      }),
+      { params: Promise.resolve({ id: '11111111-1111-4111-8111-111111111111' }) },
+    );
+    expect(res.status).toBe(400);
+    expect(updateChain).not.toHaveBeenCalled();
+  });
+
+  it('C3: accepts a micro value exactly at MAX_MICRO_VALUE (1e6)', async () => {
+    // Boundary check — .max() is inclusive, so 1_000_000 must pass. This
+    // protects against a future off-by-one tightening (e.g. `.lt(1e6)`)
+    // that would unexpectedly break legitimate edits at the cap.
+    vi.doMock('next/cache', () => ({ revalidateTag: vi.fn() }));
+    const updatedRow = {
+      id: '11111111-1111-4111-8111-111111111111',
+      client_id: '22222222-2222-4222-8222-222222222222',
+      display_name: 'Pho Bo',
+      normalized_name: 'pho bo',
+      default_portion: 400,
+      default_unit: 'g',
+      nutrition: {
+        kcal: 300,
+        macros: {
+          protein_g: 20,
+          carbs_g: 30,
+          fat_g: 10,
+          fiber_g: 2,
+          sugar_g: 1,
+          cholesterol_mg: 0,
+        },
+        micros: { iron_mg: 1_000_000 },
+      },
+      thumbnail_url: null,
+      log_count: 0,
+      last_used_at: null,
+      user_edited_flag: true,
+      created_from: 'text',
+      created_at: '2026-04-14T22:03:00Z',
+    };
+    vi.doMock('@/lib/supabase/server', () => ({
+      getServerSupabase: async () => ({
+        auth: { getUser: async () => ({ data: { user: { id: 'u-1' } }, error: null }) },
+        from: (table: string) => {
+          if (table === 'profiles') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: { deleting_at: null }, error: null }),
+                }),
+              }),
+            };
+          }
+          return {
+            // E.CODEX B-H1 — pre-write read for cholesterol preserve-merge.
+            // Macros are present without cholesterol_mg, so the route does
+            // a SELECT before UPDATE; mock both chains.
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  is: () => ({
+                    maybeSingle: async () => ({
+                      data: { nutrition: { macros: {} } },
+                      error: null,
+                    }),
+                  }),
+                }),
+              }),
+            }),
+            update: () => ({
+              eq: () => ({
+                eq: () => ({
+                  is: () => ({
+                    select: () => ({
+                      maybeSingle: async () => ({ data: updatedRow, error: null }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          };
+        },
+      }),
+    }));
+    const { POST } = await import('@/app/api/library/[id]/update/route');
+    const res = await POST(
+      new Request('http://kalori.test/api/library/x/update', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          client_id: '33333333-3333-4333-8333-333333333333',
+          fields: {
+            nutrition: {
+              kcal: 300,
+              macros: {
+                protein_g: 20,
+                carbs_g: 30,
+                fat_g: 10,
+                fiber_g: 2,
+                sugar_g: 1,
+              },
+              micros: { iron_mg: 1_000_000 },
+            },
+          },
+        }),
+      }),
+      { params: Promise.resolve({ id: '11111111-1111-4111-8111-111111111111' }) },
+    );
+    expect(res.status).toBe(200);
   });
 });

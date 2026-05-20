@@ -94,19 +94,34 @@ describe('library create round-trip (integration, AC1)', () => {
           if (table === 'food_entries') {
             let lookupClientId = '';
             return {
-              select: () => ({
-                eq: () => ({
-                  eq: (k: string, v: string) => {
-                    if (k === 'client_id') lookupClientId = v;
-                    return {
-                      maybeSingle: async () => {
-                        const key = `food_entries:${uid}:${lookupClientId}`;
-                        return { data: entriesStore.get(key) ?? null, error: null };
-                      },
-                    };
-                  },
-                }),
-              }),
+              select: (_cols?: string, options?: { count?: string; head?: boolean }) => {
+                if (options?.count === 'exact' && options.head) {
+                  return {
+                    eq: () => ({
+                      eq: () =>
+                        Promise.resolve({
+                          count: Array.from(entriesStore.values()).filter(
+                            (r) => r.user_id === uid && typeof r.library_item_id === 'string',
+                          ).length,
+                          error: null,
+                        }),
+                    }),
+                  };
+                }
+                return {
+                  eq: () => ({
+                    eq: (k: string, v: string) => {
+                      if (k === 'client_id') lookupClientId = v;
+                      return {
+                        maybeSingle: async () => {
+                          const key = `food_entries:${uid}:${lookupClientId}`;
+                          return { data: entriesStore.get(key) ?? null, error: null };
+                        },
+                      };
+                    },
+                  }),
+                };
+              },
               insert: (payload: Row) => ({
                 select: () => ({
                   single: async () => {
@@ -118,6 +133,20 @@ describe('library create round-trip (integration, AC1)', () => {
                     };
                     entriesStore.set(key, row);
                     return { data: row, error: null };
+                  },
+                }),
+              }),
+              update: (payload: Row) => ({
+                eq: () => ({
+                  eq: async () => {
+                    let affected = 0;
+                    for (const [key, row] of entriesStore.entries()) {
+                      if (row.user_id === uid) {
+                        entriesStore.set(key, { ...row, ...payload });
+                        affected += 1;
+                      }
+                    }
+                    return { error: null, count: affected };
                   },
                 }),
               }),
@@ -164,14 +193,44 @@ describe('library create round-trip (integration, AC1)', () => {
                   }),
                 }),
               }),
-              select: () => ({
-                eq: () => ({
-                  is: () => ({
-                    order: async () => {
-                      const rows = Array.from(libraryStore.values()).filter(
-                        (r) => r.user_id === uid && r.deleted_at === null,
-                      );
-                      return { data: rows, error: null };
+              select: (_cols?: string, options?: { count?: string; head?: boolean }) => {
+                if (options?.count === 'exact' && options.head) {
+                  return {
+                    eq: () => ({
+                      gte: () => ({
+                        lt: async () => ({ count: 0, error: null }),
+                      }),
+                    }),
+                  };
+                }
+                return {
+                  eq: () => ({
+                    eq: () => ({
+                      is: () => ({
+                        maybeSingle: async () => ({ data: null, error: null }),
+                      }),
+                    }),
+                    is: () => ({
+                      order: async () => {
+                        const rows = Array.from(libraryStore.values()).filter(
+                          (r) => r.user_id === uid && r.deleted_at === null,
+                        );
+                        return { data: rows, error: null };
+                      },
+                    }),
+                  }),
+                };
+              },
+              update: (payload: Row) => ({
+                eq: (key: string, value: string) => ({
+                  eq: () => ({
+                    is: async () => {
+                      if (key === 'id') {
+                        const row = libraryStore.get(`food_library_items:${value}`);
+                        if (row)
+                          libraryStore.set(`food_library_items:${value}`, { ...row, ...payload });
+                      }
+                      return { error: null };
                     },
                   }),
                 }),

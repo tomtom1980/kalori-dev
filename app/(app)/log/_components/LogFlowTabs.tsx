@@ -1,15 +1,26 @@
 'use client';
 
 /**
- * <LogFlowTabs /> — Radix Tabs wrapper for TYPE / SNAP / LIBRARY, plus Task
- * 3.4's `phase === 'confirmation'` takeover that swaps the tab body for
+ * <LogFlowTabs /> — Radix Tabs wrapper for ADD FOOD / SNAP, plus Task 3.4's
+ * `phase === 'confirmation'` takeover that swaps the tab body for
  * <ConfirmationScreen />.
  *
- * Controlled via Zustand: `value={activeTab}` + `onValueChange={setActiveTab}`.
- * Radix owns all tablist ARIA + keyboard nav (ArrowLeft/Right/Home/End).
+ * Add Food tab merge: the visible tab bar now has 2 triggers (Add Food +
+ * Snap). The internal `activeTab` union remains 3-valued
+ * (`'type' | 'snap' | 'library'`) — state-keying for clientIds,
+ * commitSaveSuccess, and library-only mode depends on that continuity.
+ * The displayed tab key is computed via `activeTabToDisplay`: both
+ * `'library'` and `'type'` map onto `'add-food'`, and <AddFoodTab>
+ * internally reads `activeTab` to choose its subview (LibraryList vs
+ * AiParseForm). Clicking the Add Food trigger defaults to the library
+ * subview; the user drills into AI parse via the + icon / empty-state CTA.
  *
- * The visible text "TYPE" / "SNAP" / "LIBRARY" IS the accessible name —
- * do NOT re-label via aria-label (WCAG 2.5.3 Label-in-Name, compliance §C1).
+ * Controlled via Zustand: `value={activeTabToDisplay(activeTab)}` +
+ * a `onValueChange` that maps the displayed key back onto the internal
+ * union. Radix owns all tablist ARIA + keyboard nav.
+ *
+ * The visible text "ADD FOOD" / "SNAP" IS the accessible name — do NOT
+ * re-label via aria-label (WCAG 2.5.3 Label-in-Name, compliance §C1).
  *
  * Motion: per-panel crossfade via `.kalori-log-tab-panel[data-state=active]`
  * keyframes in globals.css. The active-tab underline + ivory serif end-caps
@@ -19,11 +30,15 @@
  * the active panel — style spec §9 + ux-specialist critical #12.
  *
  * Task 3.4 phase switchboard (synthesis §3.4):
- *   - `phase === 'entry'` → render <Tabs.Root> with 3 triggers + panels.
+ *   - `phase === 'entry'` → render <Tabs.Root> with 2 triggers + panels.
  *   - `phase === 'confirmation'` → UNMOUNT (not CSS-hide) the Tabs.Root and
  *     render <ConfirmationScreen /> with payload seeded from the active
  *     tab's parsed draft. Tab triggers are not in the DOM during
  *     confirmation so there are no ghost tabstops.
+ *
+ * Library-only mode short-circuit: when `mode === 'library-only'` the
+ * tab bar is suppressed entirely and <AiParseForm> renders directly
+ * (no onBack — the form is the entire surface).
  */
 import * as Tabs from '@radix-ui/react-tabs';
 
@@ -37,19 +52,30 @@ import {
   useLogFlowStore,
   type LogTab,
 } from '@/lib/stores/useLogFlowStore';
+const selectMode = (s: ReturnType<typeof useLogFlowStore.getState>) => s.mode;
 
+import { AddFoodTab } from './AddFoodTab';
+import { AiParseForm } from './AddFoodTab/AiParseForm';
 import { ConfirmationScreen } from './ConfirmationScreen';
-import { LibraryTab } from './LibraryTab';
 import { LogFlowErrorBanner } from './LogFlowErrorBanner';
 import type { ManualSubmitPayload } from './ManualEntryFallback';
 import { SnapTab } from './SnapTab';
-import { TypeTab } from './TypeTab';
 
-const TAB_DEFS: Array<{ value: LogTab; label: string }> = [
-  { value: 'type', label: t.log.tabTypeLabel },
+type DisplayTab = 'add-food' | 'snap';
+
+const TAB_DEFS: Array<{ value: DisplayTab; label: string }> = [
+  { value: 'add-food', label: t.log.tabAddFoodLabel },
   { value: 'snap', label: t.log.tabSnapLabel },
-  { value: 'library', label: t.log.tabLibraryLabel },
 ];
+
+/**
+ * Map the internal 3-value activeTab union onto the 2-value displayed
+ * tab key. 'type' and 'library' both display as the unified 'add-food'
+ * tab; AddFoodTab reads activeTab internally to choose its subview.
+ */
+function activeTabToDisplay(activeTab: LogTab): DisplayTab {
+  return activeTab === 'snap' ? 'snap' : 'add-food';
+}
 
 /**
  * Lift a ManualSubmitPayload into a ParsedItemT shape so the confirmation
@@ -59,12 +85,17 @@ const TAB_DEFS: Array<{ value: LogTab; label: string }> = [
 function manualPayloadToItem(payload: ManualSubmitPayload): ParsedItemT {
   return {
     name: payload.foodName,
-    portion: payload.portionGrams,
-    unit: 'g',
+    portion: payload.quantity ?? payload.portionGrams,
+    unit: payload.unit ?? 'g',
     kcal: payload.kcal,
-    macros: { protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 },
+    macros: {
+      protein_g: payload.macros?.protein_g ?? 0,
+      carbs_g: payload.macros?.carbs_g ?? 0,
+      fat_g: payload.macros?.fat_g ?? 0,
+      fiber_g: payload.macros?.fiber_g ?? 0,
+    },
     micros: {},
-    confidence: 1,
+    confidence: payload.needsReview ? 0.85 : 1,
   };
 }
 
@@ -77,6 +108,7 @@ export function LogFlowTabs() {
   const payload = useLogFlowStore(selectConfirmationPayload);
   const exitConfirmation = useLogFlowStore((s) => s.exitConfirmation);
   const closeModal = useLogFlowStore((s) => s.closeModal);
+  const mode = useLogFlowStore(selectMode);
   // F-UI-3.6-B-1 — wire tab success callbacks to enterConfirmation. Without
   // these producers, the ConfirmationScreen takeover NEVER fires in
   // production; Task 3.3 tests masked the bug by calling the store action
@@ -128,6 +160,7 @@ export function LogFlowTabs() {
         libraryItemIds={payload.libraryItemIds}
         editEntryId={payload.editEntryId}
         originalLoggedAt={payload.originalLoggedAt}
+        mode={mode}
         onClose={() => {
           exitConfirmation();
           closeModal();
@@ -136,10 +169,35 @@ export function LogFlowTabs() {
     );
   }
 
+  // library-only entry surface — no tabs nav, no Snap/Add Food tabs. The
+  // entry point only makes sense for AI-parsed text input, since the user
+  // is authoring a new library item (photo input + library-pick are not
+  // applicable here). Renders <AiParseForm> directly (no onBack — the form
+  // is the entire surface; there's nowhere to go back to) inside the same
+  // error-banner wrapper as the standard surface so parse failures still
+  // surface.
+  if (mode === 'library-only') {
+    return (
+      <div
+        data-testid="log-flow-library-only-entry"
+        style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}
+      >
+        {failureMode ? <LogFlowErrorBanner onRetry={() => setFailureMode(null, null)} /> : null}
+        <AiParseForm onParseSuccess={handleParseSuccess} onManualSubmit={handleManualSubmit} />
+      </div>
+    );
+  }
+
   return (
     <Tabs.Root
-      value={activeTab}
-      onValueChange={(v) => setActiveTab(v as LogTab)}
+      value={activeTabToDisplay(activeTab)}
+      onValueChange={(v) => {
+        const next = v as DisplayTab;
+        // Clicking the visible "Add Food" tab defaults to the library
+        // subview. The user can then drill into AI parse via the + icon
+        // or empty-state CTA. Snap maps 1:1.
+        setActiveTab(next === 'snap' ? 'snap' : 'library');
+      }}
       data-testid="log-flow-tabs"
       style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}
     >
@@ -148,7 +206,7 @@ export function LogFlowTabs() {
         data-testid="log-flow-tablist"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(2, 1fr)',
           borderTop: '1px solid var(--color-rule)',
           borderBottom: '1px solid var(--color-rule)',
         }}
@@ -168,18 +226,15 @@ export function LogFlowTabs() {
 
       {failureMode ? <LogFlowErrorBanner onRetry={() => setFailureMode(null, null)} /> : null}
 
-      <Tabs.Content value="type" data-testid="log-flow-panel-type" className="kalori-log-tab-panel">
-        <TypeTab onParseSuccess={handleParseSuccess} onManualSubmit={handleManualSubmit} />
+      <Tabs.Content
+        value="add-food"
+        data-testid="log-flow-panel-add-food"
+        className="kalori-log-tab-panel"
+      >
+        <AddFoodTab onParseSuccess={handleParseSuccess} onManualSubmit={handleManualSubmit} />
       </Tabs.Content>
       <Tabs.Content value="snap" data-testid="log-flow-panel-snap" className="kalori-log-tab-panel">
         <SnapTab onAnalyzeSuccess={handleAnalyzeSuccess} onManualSubmit={handleManualSubmit} />
-      </Tabs.Content>
-      <Tabs.Content
-        value="library"
-        data-testid="log-flow-panel-library"
-        className="kalori-log-tab-panel"
-      >
-        <LibraryTab />
       </Tabs.Content>
     </Tabs.Root>
   );

@@ -44,9 +44,31 @@ describe('toLogLibraryItem', () => {
       carbsG: 48,
       fatG: 14,
       fiberG: 3,
+      // Phase 2C — fixture lacks cholesterol_mg → mapper defaults to 0.
+      cholesterolMg: 0,
+      micros: { sodium_mg: 1200 },
+      defaultPortion: 350,
       unit: 'g',
       thumbnailUrl: 'https://cdn.example/pho.jpg',
     });
+  });
+
+  it('preserves the saved default serving portion for log-flow hydration', () => {
+    const out = toLogLibraryItem({
+      ...FULL_ITEM,
+      display_name: 'Fried egg',
+      default_portion: 50,
+      default_unit: 'g',
+    });
+    expect(out.defaultPortion).toBe(50);
+    expect(out.unit).toBe('g');
+  });
+
+  it('omits invalid defaultPortion values so legacy rows keep quantity=1 behavior', () => {
+    expect(
+      toLogLibraryItem({ ...FULL_ITEM, default_portion: null }).defaultPortion,
+    ).toBeUndefined();
+    expect(toLogLibraryItem({ ...FULL_ITEM, default_portion: 0 }).defaultPortion).toBeUndefined();
   });
 
   it('flattens nutrition.macros into top-level fields', () => {
@@ -92,5 +114,17 @@ describe('toLogLibraryItem', () => {
       },
     });
     expect(out.fiberG).toBe(0);
+  });
+  it('preserves AI-provided approximate grams metadata for log-flow hydration', () => {
+    const out = toLogLibraryItem({
+      ...FULL_ITEM,
+      default_portion: 1,
+      default_unit: 'bowl',
+      nutrition: {
+        ...FULL_ITEM.nutrition,
+        approxGrams: 420,
+      },
+    });
+    expect(out.approxGrams).toBe(420);
   });
 });

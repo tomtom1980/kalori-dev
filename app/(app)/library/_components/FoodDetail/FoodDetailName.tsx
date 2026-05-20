@@ -10,9 +10,40 @@
  */
 import { t } from '@/lib/i18n/en';
 import type { LibraryItem } from '@/lib/library/fetch';
+import { isWholeStyleUnit } from '@/lib/log/portion-unit';
 
 import type { DraftState, EditErrors, DraftKey } from './useFoodDetailEdit';
 import { formatPortion } from './foodDetail.format';
+
+const UNIT_OPTIONS = [
+  'g',
+  'ml',
+  'oz',
+  'cup',
+  'tbsp',
+  'tsp',
+  'serving',
+  'piece',
+  'slice',
+  'bowl',
+  'plate',
+  'glass',
+  'can',
+  'bottle',
+  'scoop',
+  'packet',
+  'bar',
+  'medium',
+  'large',
+] as const;
+
+const REMOVED_EGG_UNITS = new Set(['egg', 'small egg', 'medium egg', 'large egg']);
+
+function formatApproxGrams(item: LibraryItem): string | null {
+  const grams = item.nutrition.approxGrams;
+  if (typeof grams !== 'number' || !Number.isFinite(grams) || grams <= 0) return null;
+  return t.library.cardApproxGrams.replace('{grams}', String(Math.round(grams)));
+}
 
 export interface FoodDetailNameProps {
   item: LibraryItem;
@@ -30,6 +61,7 @@ export function FoodDetailName({
   onDraftChange,
 }: FoodDetailNameProps) {
   if (!editing) {
+    const approxGrams = formatApproxGrams(item);
     return (
       <div className="kalori-fd-name-block">
         <h1 id="food-detail-name" className="kalori-fd-name-h1" data-testid="food-detail-name">
@@ -41,6 +73,11 @@ export function FoodDetailName({
             .replace('{unit}', '')
             .trim()}
         </p>
+        {approxGrams ? (
+          <p className="kalori-fd-portion" data-testid="food-detail-approx-grams">
+            {approxGrams}
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -48,10 +85,17 @@ export function FoodDetailName({
   const nameErr = errors.display_name;
   const portionErr = errors.default_portion;
   const unitErr = errors.default_unit;
+  const selectedUnit = draft.default_unit.trim();
+  const selectedIsLegacyRemoved = REMOVED_EGG_UNITS.has(selectedUnit);
+  const unitOptions =
+    selectedUnit && !selectedIsLegacyRemoved
+      ? [selectedUnit, ...UNIT_OPTIONS.filter((unit) => unit !== selectedUnit)]
+      : UNIT_OPTIONS;
+  const approxGrams = formatApproxGrams(item);
 
   return (
     <div className="kalori-fd-name-block">
-      <label className="sr-only" htmlFor="fd-edit-name">
+      <label className="kalori-fd-field-label" htmlFor="fd-edit-name">
         {t.library.detail.nameLabel}
       </label>
       <input
@@ -79,13 +123,13 @@ export function FoodDetailName({
 
       <div style={{ display: 'flex', gap: 'var(--spacing-2)', marginTop: 'var(--spacing-2)' }}>
         <div style={{ flex: 1 }}>
-          <label className="sr-only" htmlFor="fd-edit-portion">
+          <label className="kalori-fd-field-label" htmlFor="fd-edit-portion">
             {t.library.detail.portionLabel}
           </label>
           <input
             id="fd-edit-portion"
             type="text"
-            inputMode="decimal"
+            inputMode={isWholeStyleUnit(draft.default_unit) ? 'numeric' : 'decimal'}
             value={draft.default_portion}
             onChange={(e) => onDraftChange('default_portion', e.target.value)}
             aria-label={t.library.detail.portionLabel}
@@ -106,12 +150,11 @@ export function FoodDetailName({
           ) : null}
         </div>
         <div style={{ flex: 1 }}>
-          <label className="sr-only" htmlFor="fd-edit-unit">
+          <label className="kalori-fd-field-label" htmlFor="fd-edit-unit">
             {t.library.detail.unitLabel}
           </label>
-          <input
+          <select
             id="fd-edit-unit"
-            type="text"
             value={draft.default_unit}
             onChange={(e) => onDraftChange('default_unit', e.target.value)}
             aria-label={t.library.detail.unitLabel}
@@ -119,7 +162,19 @@ export function FoodDetailName({
             aria-describedby={unitErr ? 'fd-edit-unit-error' : undefined}
             data-testid="food-detail-edit-unit-input"
             className="kalori-fd-input"
-          />
+          >
+            <option value="">{t.library.detail.unitSelectPlaceholder}</option>
+            {selectedIsLegacyRemoved ? (
+              <option value={selectedUnit} disabled>
+                {selectedUnit}
+              </option>
+            ) : null}
+            {unitOptions.map((unit) => (
+              <option key={unit} value={unit}>
+                {unit}
+              </option>
+            ))}
+          </select>
           {unitErr ? (
             <p
               id="fd-edit-unit-error"
@@ -132,6 +187,11 @@ export function FoodDetailName({
           ) : null}
         </div>
       </div>
+      {approxGrams ? (
+        <p className="kalori-fd-portion" data-testid="food-detail-approx-grams">
+          {approxGrams}
+        </p>
+      ) : null}
     </div>
   );
 }

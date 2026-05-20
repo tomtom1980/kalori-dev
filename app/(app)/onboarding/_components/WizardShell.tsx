@@ -21,9 +21,11 @@ import { t } from '@/lib/i18n/en';
 // CSS `kalori-wizard-step-enter` keyframe. Reduced-motion is honored via
 // `useReducedMotionVariants`.
 import { m, variants as motionVariants, useReducedMotionVariants } from '@/lib/motion/defaults';
+import { calculateAgeOnDate, isAgeInSupportedRange } from '@/lib/profile/age';
+import { userTzDayFrom } from '@/lib/time/day';
 import {
   Step1BioSexSchema,
-  Step2AgeSchema,
+  Step2BirthdaySchema,
   Step3HeightSchema,
   Step4WeightSchema,
   Step5GoalWeightSchema,
@@ -91,7 +93,9 @@ function buildStepPatch(
       return parsed.success ? { ok: true, patch: parsed.data } : { ok: false };
     }
     case 2: {
-      const parsed = Step2AgeSchema.safeParse({ age: draft.age });
+      const today = userTzDayFrom(new Date().toISOString(), timezone);
+      const age = calculateAgeOnDate(draft.birthday, today);
+      const parsed = Step2BirthdaySchema.safeParse({ birthday: draft.birthday, age });
       return parsed.success ? { ok: true, patch: parsed.data } : { ok: false };
     }
     case 3: {
@@ -121,15 +125,19 @@ function buildStepPatch(
       return parsed.success ? { ok: true, patch: parsed.data } : { ok: false };
     }
     case 8: {
+      const completedAt = new Date().toISOString();
+      const completedDay = userTzDayFrom(completedAt, timezone);
+      const age = calculateAgeOnDate(draft.birthday, completedDay);
       const finalize = Step8FinalizeSchema.safeParse({
         bio_sex: draft.bio_sex,
-        age: draft.age,
+        birthday: draft.birthday,
+        age,
         height_cm: draft.height_cm,
         current_weight_kg: draft.current_weight_kg,
         goal_weight_kg: draft.goal_weight_kg,
         goal_pace: draft.goal_pace,
         activity_level: draft.activity_level,
-        onboarding_completed_at: new Date().toISOString(),
+        onboarding_completed_at: completedAt,
       });
       if (!finalize.success) return { ok: false };
       return {
@@ -158,10 +166,10 @@ function canAdvanceAtStep(
       return draft.bio_sex !== undefined;
     case 2:
       return (
-        typeof draft.age === 'number' &&
-        Number.isInteger(draft.age) &&
-        draft.age >= 13 &&
-        draft.age <= 120
+        typeof draft.birthday === 'string' &&
+        isAgeInSupportedRange(
+          calculateAgeOnDate(draft.birthday, new Date().toISOString().slice(0, 10)),
+        )
       );
     case 3:
       return (

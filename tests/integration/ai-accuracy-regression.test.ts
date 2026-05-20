@@ -40,6 +40,7 @@ import {
 import { ADVISORY_FIXTURE_NAMES, CRITICAL_FIXTURE_NAMES } from '../fixtures/ai-accuracy/critical';
 
 const FIXTURES_ROOT = resolve(__dirname, '../fixtures/ai-accuracy');
+const TEST_MICROS = { sodium: 1 };
 
 function mockSupabaseSsr(userId: string) {
   const getUser = vi.fn(async () => ({ data: { user: { id: userId } }, error: null }));
@@ -52,6 +53,10 @@ function mockAdminCacheMiss() {
   const makeMissBuilder = () => {
     const builder = {
       eq: () => builder,
+      in: () => builder,
+      gte: () => builder,
+      lt: async () => ({ count: 0, error: null }),
+      maybeSingle: async () => ({ data: null, error: null }),
       single: async () => ({ data: null, error: { code: 'PGRST116' } }),
     };
     return builder;
@@ -115,7 +120,7 @@ function calibratedGeminiStub(fx: AccuracyFixture) {
         fat_g: it.macros.fat_g * macroScale,
         fiber_g: it.macros.fiber_g * macroScale,
       },
-      micros: {},
+      micros: TEST_MICROS,
       confidence: 0.82,
     })),
     reasoning: `Calibrated MSW stub for ${fx.name} — test-only; never shipped.`,

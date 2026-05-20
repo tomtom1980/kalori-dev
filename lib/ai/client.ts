@@ -25,6 +25,7 @@ export interface GeminiCallInput extends PromptPayload {
   readonly generationConfig?: {
     readonly responseMimeType?: 'application/json';
     readonly maxOutputTokens?: number;
+    readonly responseSchema?: Record<string, unknown>;
   };
   readonly abortSignal?: AbortSignal;
 }
@@ -69,6 +70,21 @@ interface GeminiEnvelope {
   };
 }
 
+export class GeminiHttpError extends Error {
+  readonly status: number;
+  readonly providerMessage: string;
+  readonly tokens: number;
+
+  constructor(input: { status: number; providerMessage: string; tokens?: number }) {
+    const suffix = input.providerMessage ? ` - ${input.providerMessage}` : '';
+    super(`Gemini call failed: HTTP ${input.status}${suffix}`);
+    this.name = 'GeminiHttpError';
+    this.status = input.status;
+    this.providerMessage = input.providerMessage;
+    this.tokens = input.tokens ?? 0;
+  }
+}
+
 function extractRawPayload(payload: unknown): unknown {
   // Gemini REST returns `{candidates: [{content: {parts: [{text: '<json>'}]}}]}`
   // where text is a JSON string when responseMimeType='application/json'.
@@ -87,6 +103,79 @@ function extractRawPayload(payload: unknown): unknown {
     }
   }
   return payload;
+}
+
+const MAX_PROVIDER_MESSAGE_LENGTH = 500;
+
+function compact(value: string): string {
+  return value.replace(/\s+/gu, ' ').trim();
+}
+
+function redactProviderText(text: string, apiKey: string): string {
+  let sanitized = text;
+  if (apiKey.length > 0) {
+    sanitized = sanitized.split(apiKey).join('[redacted-api-key]');
+  }
+  return sanitized
+    .replace(/AIza[0-9A-Za-z_-]{20,}/gu, '[redacted-api-key]')
+    .replace(/[A-Za-z0-9+/=]{80,}/gu, '[redacted-base64]');
+}
+
+function truncateProviderMessage(message: string): string {
+  if (message.length <= MAX_PROVIDER_MESSAGE_LENGTH) return message;
+  return `${message.slice(0, MAX_PROVIDER_MESSAGE_LENGTH - 1)}…`;
+}
+
+function extractErrorTokens(payload: unknown): number {
+  if (!payload || typeof payload !== 'object') return 0;
+  const usage = (payload as GeminiEnvelope).usageMetadata;
+  const promptTokens = usage?.promptTokenCount ?? 0;
+  const candidateTokens = usage?.candidatesTokenCount ?? 0;
+  const totalTokens = usage?.totalTokenCount ?? promptTokens + candidateTokens;
+  return Number.isFinite(totalTokens) && totalTokens > 0 ? totalTokens : 0;
+}
+
+function extractProviderMessage(payload: unknown, fallbackText: string): string {
+  if (payload && typeof payload === 'object' && 'error' in payload) {
+    const error = (payload as { error?: unknown }).error;
+    if (error && typeof error === 'object') {
+      const status =
+        'status' in error && typeof error.status === 'string' ? error.status : undefined;
+      const message =
+        'message' in error && typeof error.message === 'string' ? error.message : undefined;
+      if (status && message) return `${status}: ${message}`;
+      if (message) return message;
+      if (status) return status;
+    }
+  }
+  return fallbackText;
+}
+
+async function buildGeminiHttpError(response: Response, apiKey: string): Promise<GeminiHttpError> {
+  let responseText = '';
+  try {
+    responseText = await response.text();
+  } catch {
+    responseText = response.statusText;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = responseText ? JSON.parse(responseText) : undefined;
+  } catch {
+    parsed = undefined;
+  }
+
+  const rawProviderMessage = extractProviderMessage(parsed, responseText || response.statusText);
+  const providerMessage = truncateProviderMessage(
+    compact(redactProviderText(rawProviderMessage, apiKey)),
+  );
+
+  return new GeminiHttpError({
+    status: response.status,
+    providerMessage,
+    tokens: extractErrorTokens(parsed),
+  });
 }
 
 export async function callGemini(input: GeminiCallInput): Promise<GeminiCallResult> {
@@ -113,7 +202,7 @@ export async function callGemini(input: GeminiCallInput): Promise<GeminiCallResu
   const response = await fetch(url, fetchInit);
 
   if (!response.ok) {
-    throw new Error(`Gemini call failed: HTTP ${response.status}`);
+    throw await buildGeminiHttpError(response, apiKey);
   }
 
   const payload = (await response.json()) as unknown;

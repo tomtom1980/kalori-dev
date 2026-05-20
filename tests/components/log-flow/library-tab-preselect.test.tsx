@@ -25,7 +25,24 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LibraryTab } from '@/app/(app)/log/_components/LibraryTab';
+vi.mock('@/lib/hooks/use-is-mobile', () => ({
+  MOBILE_QUERY: '(max-width: 1279px)',
+  useIsMobile: () => false,
+}));
+
+import {
+  LibraryList,
+  type LibraryListProps,
+} from '@/app/(app)/log/_components/AddFoodTab/LibraryList';
+
+// Task 10 — migrated import. `<LibraryTab>` is gone; tests use the same
+// component (now `<LibraryList>`) via a thin wrapper that supplies the new
+// required `onAddNew` prop with a no-op default so existing render sites
+// keep working without touching every call.
+function LibraryTab(props: Partial<LibraryListProps> = {}) {
+  const { onAddNew = () => {}, ...rest } = props;
+  return <LibraryList onAddNew={onAddNew} {...rest} />;
+}
 import { LogFlowTabs } from '@/app/(app)/log/_components/LogFlowTabs';
 import { useLogFlowStore } from '@/lib/stores/useLogFlowStore';
 import { useUndoQueueStore } from '@/lib/stores/useUndoQueueStore';
@@ -79,7 +96,7 @@ describe('F-TASK-4.2-I2-UI-ROUNDTRIP — LibraryTab DOM round-trip from seeded s
     useUndoQueueStore.setState({ stack: [] });
   });
 
-  it('mounts LogFlowTabs with seeded store: library tab active, target row preselected, quantity 150 visible', () => {
+  it('mounts LogFlowTabs with seeded store: Add Food tab active (library subview), target row preselected, quantity 150 visible', () => {
     // Seed exactly what LogPageClient writes for `/log?tab=library&item=pho-id&quantity=150`.
     const store = useLogFlowStore.getState();
     store.setLibraryItems([PHO, BANH_MI]);
@@ -88,9 +105,11 @@ describe('F-TASK-4.2-I2-UI-ROUNDTRIP — LibraryTab DOM round-trip from seeded s
 
     render(<LogFlowTabs />);
 
-    // Library panel is the active panel (Radix renders `data-state="active"`).
-    const libraryPanel = screen.getByTestId('log-flow-panel-library');
-    expect(libraryPanel.getAttribute('data-state')).toBe('active');
+    // Add Food merge: the unified "Add Food" panel is the active panel
+    // when activeTab === 'library' (library is one of the two subviews
+    // hosted under it). Per-subview panel testids no longer exist.
+    const addFoodPanel = screen.getByTestId('log-flow-panel-add-food');
+    expect(addFoodPanel.getAttribute('data-state')).toBe('active');
 
     // Pho row is preselected (aria-selected via store `selection`).
     const phoCard = screen.getByTestId('library-card-pho-id');
@@ -146,6 +165,21 @@ describe('F-TASK-4.2-I2-UI-ROUNDTRIP — LibraryTab DOM round-trip from seeded s
     const qtyInput = screen.getByTestId('library-quantity-pho-id') as HTMLInputElement;
     expect(qtyInput).toBeInTheDocument();
     expect(qtyInput.value).toBe('1');
+  });
+
+  it('clicking a defaultPortion row selects the saved serving amount', async () => {
+    const user = userEvent.setup();
+    useLogFlowStore.getState().setLibraryItems([{ ...PHO, defaultPortion: 350 }]);
+
+    render(<LibraryTab />);
+
+    await user.click(screen.getByTestId('library-card-pho-id'));
+
+    const qtyInput = screen.getByTestId('library-quantity-pho-id') as HTMLInputElement;
+    expect(qtyInput.value).toBe('350');
+    expect(useLogFlowStore.getState().librarySelection).toEqual([
+      { itemId: 'pho-id', quantity: 350 },
+    ]);
   });
 
   it('clicking quantity input does not toggle selection (event stays inside input)', async () => {

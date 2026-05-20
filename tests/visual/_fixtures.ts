@@ -17,7 +17,9 @@
 import type { Page } from '@playwright/test';
 
 export async function freezeViewportForVisualBaseline(page: Page): Promise<void> {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
+  // Do not emulate prefers-reduced-motion here: the app renders motion state
+  // on the server, and changing the media query only on the client creates
+  // hydration warnings that leak into local visual snapshots.
   await page.addInitScript(() => {
     // Style block goes in BEFORE app CSS so any subsequent rule defaulting to
     // animation: <name> 320ms gets overridden by the !important below. The
@@ -43,11 +45,69 @@ export async function freezeViewportForVisualBaseline(page: Page): Promise<void>
          * output but cheap insurance against local-vs-CI drift). */
         [data-nextjs-toast],
         [data-nextjs-dev-tools-button],
-        nextjs-portal {
+        [data-nextjs-dev-tools-indicator],
+        nextjs-portal,
+        nextjs-devtools,
+        nextjs-dev-tools-button,
+        nextjs-dev-tools-indicator {
           display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
         }
       `;
       document.head.appendChild(style);
+
+      const hide = (el: Element) => {
+        if (!(el instanceof HTMLElement)) return;
+        el.style.setProperty('display', 'none', 'important');
+        el.style.setProperty('visibility', 'hidden', 'important');
+        el.style.setProperty('opacity', '0', 'important');
+        el.style.setProperty('pointer-events', 'none', 'important');
+      };
+
+      const hideDevChrome = () => {
+        document
+          .querySelectorAll(
+            [
+              '[data-nextjs-toast]',
+              '[data-nextjs-dev-tools-button]',
+              '[data-nextjs-dev-tools-indicator]',
+              'nextjs-portal',
+              'nextjs-devtools',
+              'nextjs-dev-tools-button',
+              'nextjs-dev-tools-indicator',
+            ].join(','),
+          )
+          .forEach(hide);
+
+        document.querySelectorAll('*').forEach((el) => {
+          const tagName = el.tagName.toLowerCase();
+          const shadowText = 'shadowRoot' in el ? (el.shadowRoot?.textContent ?? '') : '';
+          const text = `${el.textContent ?? ''} ${shadowText}`;
+          const style = window.getComputedStyle(el);
+          const rect = el.getBoundingClientRect();
+          const looksLikeDevBadge = /\b\d*\s*issues?\b/i.test(text) || /\bn\s+out\b/i.test(text);
+          const isSmallLeftBadge =
+            rect.width > 0 &&
+            rect.width <= 220 &&
+            rect.height > 0 &&
+            rect.height <= 120 &&
+            rect.left < 260;
+          if (
+            tagName.startsWith('nextjs') ||
+            (looksLikeDevBadge && (style.position === 'fixed' || isSmallLeftBadge))
+          ) {
+            hide(el);
+          }
+        });
+      };
+
+      hideDevChrome();
+      new MutationObserver(hideDevChrome).observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
     });
     observer.observe(document.documentElement, { childList: true, subtree: true });
   });

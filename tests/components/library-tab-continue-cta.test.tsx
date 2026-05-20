@@ -11,9 +11,26 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { LibraryTab } from '@/app/(app)/log/_components/LibraryTab';
+vi.mock('@/lib/hooks/use-is-mobile', () => ({
+  MOBILE_QUERY: '(max-width: 1279px)',
+  useIsMobile: () => false,
+}));
+
+import {
+  LibraryList,
+  type LibraryListProps,
+} from '@/app/(app)/log/_components/AddFoodTab/LibraryList';
+
+// Task 10 — migrated import. `<LibraryTab>` is gone; tests use the same
+// component (now `<LibraryList>`) via a thin wrapper that supplies the new
+// required `onAddNew` prop with a no-op default so existing render sites
+// keep working without touching every call.
+function LibraryTab(props: Partial<LibraryListProps> = {}) {
+  const { onAddNew = () => {}, ...rest } = props;
+  return <LibraryList onAddNew={onAddNew} {...rest} />;
+}
 import { useLogFlowStore } from '@/lib/stores/useLogFlowStore';
 
 const SAMPLE_ITEM = {
@@ -27,6 +44,36 @@ const SAMPLE_ITEM = {
   fatG: 14,
   fiberG: 3,
   unit: 'g',
+};
+
+const FRIED_EGG_ITEM = {
+  id: 'egg-id',
+  name: 'Fried egg',
+  kcal: 90,
+  lastUsedIso: '2026-05-17T08:00:00Z',
+  logCount: 4,
+  proteinG: 6,
+  carbsG: 1,
+  fatG: 7,
+  fiberG: 0,
+  defaultPortion: 50,
+  unit: 'g',
+};
+
+const BOWL_ITEM = {
+  id: 'bowl-id',
+  name: 'Curry bowl',
+  kcal: 600,
+  lastUsedIso: '2026-05-17T12:00:00Z',
+  logCount: 2,
+  proteinG: 24,
+  carbsG: 70,
+  fatG: 20,
+  fiberG: 8,
+  defaultPortion: 1,
+  unit: 'bowl',
+  micros: { vitamin_c: 80 },
+  approxGrams: 420,
 };
 
 describe('<LibraryTab /> — Continue / LOG SELECTED CTA (Task 4.7.4)', () => {
@@ -91,6 +138,78 @@ describe('<LibraryTab /> — Continue / LOG SELECTED CTA (Task 4.7.4)', () => {
         fiber_g: 12,
       },
     });
+  });
+
+  it('uses saved defaultPortion as the selected serving without rescaling nutrition', async () => {
+    const user = userEvent.setup();
+    useLogFlowStore.getState().setLibraryItems([FRIED_EGG_ITEM]);
+    render(<LibraryTab />);
+
+    await user.click(screen.getByTestId('library-card-egg-id'));
+    expect(screen.getByTestId('library-quantity-egg-id')).toHaveValue(50);
+
+    await user.click(screen.getByTestId('library-log-selected'));
+
+    const item = useLogFlowStore.getState().confirmationPayload!.items[0]!;
+    expect(item).toMatchObject({
+      name: 'Fried egg',
+      portion: 50,
+      unit: 'g',
+      kcal: 90,
+      macros: {
+        protein_g: 6,
+        carbs_g: 1,
+        fat_g: 7,
+        fiber_g: 0,
+      },
+    });
+  });
+
+  it('scales saved defaultPortion foods by quantity/defaultPortion', async () => {
+    const user = userEvent.setup();
+    useLogFlowStore.getState().setLibraryItems([FRIED_EGG_ITEM]);
+    render(<LibraryTab />);
+
+    await user.click(screen.getByTestId('library-card-egg-id'));
+    fireEvent.change(screen.getByTestId('library-quantity-egg-id'), { target: { value: '100' } });
+    await user.click(screen.getByTestId('library-log-selected'));
+
+    const item = useLogFlowStore.getState().confirmationPayload!.items[0]!;
+    expect(item).toMatchObject({
+      portion: 100,
+      kcal: 180,
+      macros: {
+        protein_g: 12,
+        carbs_g: 2,
+        fat_g: 14,
+        fiber_g: 0,
+      },
+    });
+  });
+
+  it('scales library micronutrients by selected quantity', async () => {
+    const user = userEvent.setup();
+    useLogFlowStore.getState().setLibraryItems([BOWL_ITEM]);
+    render(<LibraryTab />);
+
+    await user.click(screen.getByTestId('library-card-bowl-id'));
+    fireEvent.change(screen.getByTestId('library-quantity-bowl-id'), { target: { value: '2' } });
+    await user.click(screen.getByTestId('library-log-selected'));
+
+    const item = useLogFlowStore.getState().confirmationPayload!.items[0]!;
+    expect(item.micros.vitamin_c).toBe(160);
+    expect(item.approxGrams).toBe(840);
+  });
+
+  it('rejects decimal quantities for whole-style library units', async () => {
+    const user = userEvent.setup();
+    useLogFlowStore.getState().setLibraryItems([BOWL_ITEM]);
+    render(<LibraryTab />);
+
+    await user.click(screen.getByTestId('library-card-bowl-id'));
+    const quantity = screen.getByTestId('library-quantity-bowl-id');
+    fireEvent.change(quantity, { target: { value: '1.5' } });
+    expect(quantity).toHaveValue(1);
   });
 
   it('CRITICAL R1: single-item Continue CTA forwards library_item_id via libraryItemIds[0]', async () => {

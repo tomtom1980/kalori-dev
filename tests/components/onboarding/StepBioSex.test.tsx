@@ -2,7 +2,7 @@
  * Component test — <StepBioSex />.
  *
  * Covers:
- *   - 3 native radio inputs (male / female / other) labelled i18n-ly
+ *   - 2 native radio inputs (male / female) labelled i18n-ly
  *   - Selecting a radio writes `bio_sex` to the store
  *   - role="radiogroup" exposed
  */
@@ -18,12 +18,12 @@ describe('<StepBioSex />', () => {
     useOnboardingStore.getState().reset();
   });
 
-  it('renders 3 radio options', async () => {
+  it('renders 2 radio options', async () => {
     const { StepBioSex } = await import('@/app/(app)/onboarding/_components/StepBioSex');
     render(<StepBioSex />);
     expect(screen.getByRole('radio', { name: t.onboarding.bioSexMale })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: t.onboarding.bioSexFemale })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: t.onboarding.bioSexOther })).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: t.onboarding.bioSexOther })).not.toBeInTheDocument();
   });
 
   it('exposes a radiogroup landmark', async () => {

@@ -22,6 +22,22 @@ export type LogTab = 'type' | 'snap' | 'library';
 export type FailureMode = 'network' | 'timeout' | 'rate-limit' | 'zod' | null;
 
 /**
+ * Log-flow mode — gates which surface the modal renders and where saves go.
+ *
+ *   - `'standard'` (default): full 3-tab Type/Snap/Library switchboard →
+ *     ConfirmationScreen → POST /api/entries/save (with optional
+ *     save_to_library side effect). Entered from the dashboard `+ ADD`
+ *     button per meal column, or via direct nav to `/log`.
+ *   - `'library-only'`: single-input AI-parse → ConfirmationScreen with
+ *     meal-slot / time / save-to-library / dedup-banner hidden →
+ *     POST /api/library/create. Entered from the library page's "Add Item"
+ *     button. Does NOT create a `food_entries` row — pure library insert.
+ *
+ * Ephemeral (never persisted) — a reload resets the modal entirely.
+ */
+export type LogFlowMode = 'standard' | 'library-only';
+
+/**
  * Meals-bulletin category — mirrors the 5-tuple in
  * `app/api/entries/save/route.ts:54` (Task 3.4 Codex R1 I1 authoritative).
  * Used by the dashboard's `+ ADD` per-column affordance to pre-select the
@@ -85,7 +101,12 @@ export type SnapDraft =
        */
       thumbnailUploadFailed?: boolean;
     }
-  | { status: 'error'; error: string; thumbnailDataUrl: string | null };
+  | {
+      status: 'error';
+      error: string;
+      thumbnailDataUrl: string | null;
+      reason?: 'no_food';
+    };
 
 export interface LibrarySelectionItem {
   itemId: string;
@@ -112,15 +133,45 @@ export interface LogLibraryItem {
   kcal: number;
   lastUsedIso: string | null;
   logCount: number;
+  /**
+   * Saved standard serving amount for this library item. Nutrition values are
+   * stored for this baseline serving, so log-flow quantity edits scale by
+   * quantity / defaultPortion when present.
+   */
+  defaultPortion?: number;
   proteinG: number;
   carbsG: number;
   fatG: number;
   fiberG: number;
+  // Phase 2C — 5th macro (unit: mg). Optional so legacy fixtures don't
+  // need to thread a phantom 0 through every construction site.
+  cholesterolMg?: number;
+  micros?: Record<string, number>;
+  approxGrams?: number;
   unit: string;
   thumbnailUrl?: string | null;
 }
 
-export type LibrarySort = 'frequent' | 'recent' | 'highest-protein';
+export type LibrarySort = 'name-asc' | 'frequent' | 'recent' | 'highest-protein';
+
+/**
+ * Bug 7b — runtime list of valid `LibrarySort` values. Used by
+ * `isLibrarySort` to defend `onRehydrateStorage` against a stale persisted
+ * value that isn't a member of the current union (typo, removed value,
+ * rolled-back migration). Coerce-only-invalid semantics: valid values
+ * survive the rehydrate untouched; invalid ones snap to the new
+ * `'name-asc'` default.
+ */
+const LIBRARY_SORT_VALUES: readonly LibrarySort[] = [
+  'name-asc',
+  'frequent',
+  'recent',
+  'highest-protein',
+] as const;
+
+function isLibrarySort(v: unknown): v is LibrarySort {
+  return typeof v === 'string' && (LIBRARY_SORT_VALUES as readonly string[]).includes(v);
+}
 
 /**
  * PERSISTED subset — only serialisable branches. Mid-flight snap transitions
@@ -188,12 +239,24 @@ type EphemeralState = {
    * drift on merge / delete actions handled outside the log flow.
    */
   libraryItems: LogLibraryItem[];
+  /**
+   * Active modal mode — see `LogFlowMode`. Seeded by `openModal({ mode })`,
+   * defaults to `'standard'`, reset to `'standard'` on `closeModal` /
+   * `resetDraft` so a subsequent dashboard `+ ADD` doesn't inherit a
+   * stale library-only state.
+   */
+  mode: LogFlowMode;
 };
 
 type Actions = {
   openModal: (
     tab?: LogTab,
-    opts?: { mealCategory?: MealCategoryHint; logDate?: string; timezone?: string },
+    opts?: {
+      mealCategory?: MealCategoryHint;
+      logDate?: string;
+      timezone?: string;
+      mode?: LogFlowMode;
+    },
   ) => void;
   closeModal: (opts?: { discardDraft?: boolean }) => void;
   setActiveTab: (tab: LogTab) => void;
@@ -363,7 +426,9 @@ const INITIAL_PERSISTED: PersistedState = {
   typeParsed: null,
   snapDraft: { status: 'idle' },
   librarySelection: [],
-  librarySort: 'frequent',
+  // Bug 7b — default sort is alphabetical (A→Z) to mirror the `/library`
+  // page's default after the parent batch's Bug 7 fix.
+  librarySort: 'name-asc',
   librarySearch: '',
   failureMode: null,
   originalInput: null,
@@ -381,12 +446,31 @@ const INITIAL_EPHEMERAL: EphemeralState = {
   pendingLogDate: null,
   pendingLogTimezone: null,
   libraryItems: [],
+  mode: 'standard',
 };
 
-function generateClientId(): string {
+export function generateClientId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
+  // POST-MVP-BUGFIX-2026-05-17-LM-SEC-2 — Cryptographically secure v4
+  // fallback per RFC 4122 §4.4 (sibling of mintLibraryClientId in
+  // ConfirmationScreen). `crypto.getRandomValues` is universally present
+  // wherever `crypto.randomUUID` is missing (old Safari, old Node, jsdom).
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    // `bytes` is allocated with length 16, so indices 0..15 are populated.
+    // `noUncheckedIndexedAccess` cannot prove this, so `!` is required.
+    bytes[6] = (bytes[6]! & 0x0f) | 0x40; // version 4
+    bytes[8] = (bytes[8]! & 0x3f) | 0x80; // variant 10xx
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0'));
+    return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10, 16).join('')}`;
+  }
+  // Last-resort fallback. Only reachable from environments without ANY
+  // crypto API (vanishingly rare); preserved so the function never throws
+  // and the schema-validation contract (z.string().uuid()) still gets a
+  // syntactically-valid UUID string even there.
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => {
     const r = (Math.random() * 16) | 0;
     const v = ch === 'x' ? r : (r & 0x3) | 0x8;
@@ -406,17 +490,49 @@ export const useLogFlowStore = create<LogFlowState>()(
         ...INITIAL_EPHEMERAL,
 
         openModal: (tab, opts) => {
-          set((s) => ({
-            isOpen: true,
-            activeTab: tab ?? s.activeTab,
-            restoredAt: s.restoredAt || Date.now(),
-            // Task 3.5: accept a meal-category hint from the dashboard's
-            // `+ ADD` affordance. `undefined` leaves existing null intact
-            // (no-op); explicit value records it for ConfirmationScreen.
-            ...(opts?.mealCategory !== undefined ? { pendingMealCategory: opts.mealCategory } : {}),
-            ...(opts?.logDate !== undefined ? { pendingLogDate: opts.logDate } : {}),
-            ...(opts?.timezone !== undefined ? { pendingLogTimezone: opts.timezone } : {}),
-          }));
+          set((s) => {
+            const mode: LogFlowMode = opts?.mode ?? 'standard';
+            // E.CODEX Round-2 I1 — library-only mode is an isolated Add-Item
+            // flow that must not inherit the persisted dashboard Type draft.
+            // Reset the Type-tab slice (draft text, parsed result, per-type
+            // client id, failure banner) so the form opens empty. Other tabs'
+            // drafts (snap blob, library selection) survive because they're
+            // unrelated to the Type input surface the library-only view
+            // renders. Standard mode continues to preserve drafts.
+            const libraryOnlyTypeReset =
+              mode === 'library-only'
+                ? (() => {
+                    const nextClientIds = { ...s.clientIds };
+                    delete nextClientIds.type;
+                    return {
+                      typeDraft: '',
+                      typeParsed: null,
+                      failureMode: null,
+                      originalInput: null,
+                      clientIds: nextClientIds,
+                    } satisfies Partial<LogFlowState>;
+                  })()
+                : {};
+            return {
+              isOpen: true,
+              activeTab: tab ?? s.activeTab,
+              restoredAt: s.restoredAt || Date.now(),
+              // Task 3.5: accept a meal-category hint from the dashboard's
+              // `+ ADD` affordance. `undefined` leaves existing null intact
+              // (no-op); explicit value records it for ConfirmationScreen.
+              ...(opts?.mealCategory !== undefined
+                ? { pendingMealCategory: opts.mealCategory }
+                : {}),
+              ...(opts?.logDate !== undefined ? { pendingLogDate: opts.logDate } : {}),
+              ...(opts?.timezone !== undefined ? { pendingLogTimezone: opts.timezone } : {}),
+              // `mode` defaults to `'standard'` if the caller doesn't pass
+              // one; explicit `'library-only'` switches the modal into the
+              // library-create surface (single Type input, no meal slot /
+              // time / save-to-library toggle, save → /api/library/create).
+              mode,
+              ...libraryOnlyTypeReset,
+            };
+          });
         },
 
         closeModal: (opts) => {
@@ -432,6 +548,7 @@ export const useLogFlowStore = create<LogFlowState>()(
             pendingMealCategory: null,
             pendingLogDate: null,
             pendingLogTimezone: null,
+            mode: 'standard',
           });
         },
 
@@ -619,6 +736,17 @@ export const useLogFlowStore = create<LogFlowState>()(
         }),
         onRehydrateStorage: () => (state) => {
           if (!state) return;
+          // Bug 7b — defensive coercion: persisted `librarySort` from a
+          // pre-Bug-7b session might hold a value that isn't a member of
+          // the widened union (e.g., a typo, a removed value, or
+          // anything written by a future migration). The persist
+          // middleware has no `version` field, so we cannot rely on a
+          // `migrate` callback here. Snap unknown values to the new
+          // default; preserve valid values (frequent / recent /
+          // highest-protein) so users keep their explicit choice.
+          if (!isLibrarySort(state.librarySort)) {
+            state.librarySort = 'name-asc';
+          }
           const age = Date.now() - (state.restoredAt || 0);
           if (state.restoredAt === 0 || age > TTL_MS) {
             if (typeof sessionStorage !== 'undefined') {

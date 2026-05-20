@@ -113,7 +113,6 @@ export function MobileWheelSheet(props: MobileWheelSheetProps): JSX.Element {
     >
       <Dialog.Portal>
         <Dialog.Overlay
-          className="radix-overlay"
           data-testid={testId ? `${testId}-overlay` : undefined}
           style={{
             position: 'fixed',
@@ -215,7 +214,6 @@ export function MobileWheelSheet(props: MobileWheelSheetProps): JSX.Element {
                 {cancelLabel}
               </button>
               <button
-                className="btn-3d"
                 type="button"
                 onClick={onDone}
                 disabled={doneDisabled}

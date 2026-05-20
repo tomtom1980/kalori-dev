@@ -10,8 +10,8 @@ import { t } from '@/lib/i18n/en';
 export function LibraryMasthead() {
   return (
     <header className="kalori-library-masthead" data-testid="library-masthead">
-      <p className="kalori-library-masthead-kicker">{t.library.kicker}</p>
       <h1 className="kalori-library-masthead-title">{t.library.title}</h1>
+      <p className="kalori-library-masthead-summary">{t.library.summary}</p>
     </header>
   );
 }

@@ -22,11 +22,13 @@ import { describe, expect, it } from 'vitest';
 import {
   aggregateProgress,
   computeWindow,
+  parseProgressRangeParams,
   rampClassForPct,
   type AggregateProgressInput,
   type FoodEntryRow,
   type ProgressRange,
 } from '@/lib/aggregations/progress';
+import { DEFAULT_MICROS_LIST } from '@/lib/nutrition/micros-rda';
 
 // Deterministic 2026-04-24 anchor. The test fixtures and the `now` input
 // are pinned to this so the rolling windows are reproducible across runs.
@@ -117,6 +119,45 @@ describe('lib/aggregations/progress', () => {
       expect(win.bucketCount).toBe(30);
     });
 
+    it('last_7 range = seven day buckets ending today', () => {
+      const win = computeWindow('last_7', NOW_ISO, TZ);
+      expect(win.userTzStartDay).toBe('2026-04-18');
+      expect(win.userTzEndDay).toBe('2026-04-24');
+      expect(win.bucketCount).toBe(7);
+      expect(win.buckets).toHaveLength(7);
+    });
+
+    it('last_30 range = thirty day buckets ending today', () => {
+      const win = computeWindow('last_30', NOW_ISO, TZ);
+      expect(win.userTzStartDay).toBe('2026-03-26');
+      expect(win.userTzEndDay).toBe('2026-04-24');
+      expect(win.bucketCount).toBe(30);
+      expect(win.buckets).toHaveLength(30);
+    });
+
+    it('custom range emits inclusive day buckets between start and end', () => {
+      const win = computeWindow(
+        { mode: 'custom', startOn: '2026-04-01', endOn: '2026-04-10' },
+        NOW_ISO,
+        TZ,
+      );
+      expect(win.userTzStartDay).toBe('2026-04-01');
+      expect(win.userTzEndDay).toBe('2026-04-10');
+      expect(win.bucketCount).toBe(10);
+      expect(win.buckets).toEqual([
+        '2026-04-01',
+        '2026-04-02',
+        '2026-04-03',
+        '2026-04-04',
+        '2026-04-05',
+        '2026-04-06',
+        '2026-04-07',
+        '2026-04-08',
+        '2026-04-09',
+        '2026-04-10',
+      ]);
+    });
+
     it('M range rolls forward across month-end without snap-back', () => {
       // On May 1 UTC+7, the window should be Apr 2 → May 1. NOT Apr 1 → Apr
       // 30 (which a calendar-month reading would produce).
@@ -187,6 +228,43 @@ describe('lib/aggregations/progress', () => {
       const win = computeWindow('D', '2026-04-24T05:00:00.000Z', 'Pacific/Kiritimati');
       expect(win.userTzStartDay).toBe('2026-04-24');
       expect(win.startUtc).toBe('2026-04-23T10:00:00.000Z');
+    });
+  });
+
+  describe('parseProgressRangeParams', () => {
+    it('normalizes old D/W/M URL ranges to safe new ranges', () => {
+      expect(parseProgressRangeParams({ range: 'D' }, '2026-05-18')).toMatchObject({
+        range: 'last_7',
+        needsRedirect: true,
+      });
+      expect(parseProgressRangeParams({ range: 'W' }, '2026-05-18')).toMatchObject({
+        range: 'last_7',
+        needsRedirect: true,
+      });
+      expect(parseProgressRangeParams({ range: 'M' }, '2026-05-18')).toMatchObject({
+        range: 'last_30',
+        needsRedirect: true,
+      });
+    });
+
+    it('accepts valid custom params and rejects invalid/future/overlong custom ranges', () => {
+      expect(
+        parseProgressRangeParams(
+          { range: 'custom', start: '2026-04-01', end: '2026-04-10' },
+          '2026-05-18',
+        ).range,
+      ).toEqual({ mode: 'custom', startOn: '2026-04-01', endOn: '2026-04-10' });
+
+      for (const params of [
+        { range: 'custom', start: '2026-04-11', end: '2026-04-10' },
+        { range: 'custom', start: '2026-04-01', end: '2026-05-19' },
+        { range: 'custom', start: '2025-01-01', end: '2026-05-18' },
+      ]) {
+        expect(parseProgressRangeParams(params, '2026-05-18')).toMatchObject({
+          range: 'last_7',
+          needsRedirect: true,
+        });
+      }
     });
   });
 
@@ -262,6 +340,22 @@ describe('lib/aggregations/progress', () => {
       const allBuckets = result.calorie.points.map((p) => p.bucket);
       expect(allBuckets).not.toContain('2026-04-10');
     });
+
+    it('custom range excludes entries outside explicit start/end dates', () => {
+      const entries = [
+        entry('2026-03-31T05:00:00.000Z', { kcal: 9999 }),
+        entry('2026-04-03T05:00:00.000Z', { kcal: 1200 }),
+        entry('2026-04-11T05:00:00.000Z', { kcal: 9999 }),
+      ];
+      const result = aggregateProgress({
+        ...baseInput(entries, { mode: 'custom', startOn: '2026-04-01', endOn: '2026-04-10' }),
+      });
+      expect(result.calorie.points).toHaveLength(10);
+      const total = result.calorie.points.reduce((sum, point) => sum + point.kcalConsumed, 0);
+      expect(total).toBe(1200);
+      expect(result.calorie.points.map((point) => point.bucket)).not.toContain('2026-03-31');
+      expect(result.calorie.points.map((point) => point.bucket)).not.toContain('2026-04-11');
+    });
   });
 
   describe('aggregateProgress — MacroDistribution', () => {
@@ -284,7 +378,7 @@ describe('lib/aggregations/progress', () => {
   });
 
   describe('aggregateProgress — MicronutrientHeatmap', () => {
-    it('W: emits 5 minor nutrient rows x bucketCount cells (5 x 7 = 35)', () => {
+    it('W: emits eligible minor nutrient rows x bucketCount cells', () => {
       const entries = [
         entry('2026-04-24T03:00:00.000Z', {
           p: 100,
@@ -293,12 +387,12 @@ describe('lib/aggregations/progress', () => {
         }),
       ];
       const result = aggregateProgress(baseInput(entries, 'W'));
-      expect(result.heatmap.nutrients).toEqual([
+      expect(result.heatmap.allNutrients).toEqual([
+        'vitamin_d',
+        'calcium',
+        'iron',
         'vitamin_a',
         'vitamin_c',
-        'vitamin_d',
-        'iron',
-        'calcium',
       ]);
       expect(result.heatmap.cells).toHaveLength(5 * 7);
       const apr24 = result.heatmap.cells.filter((c) => c.bucket === '2026-04-24');
@@ -323,6 +417,64 @@ describe('lib/aggregations/progress', () => {
       expect(vitaminCApr24?.pctDv).toBe(50);
       // 50% is within the c3 band (40-55%); ramp bands per briefing §5.
       expect(vitaminCApr24?.rampClass).toBe('c3');
+    });
+
+    it('uses DEFAULT_MICROS_LIST, hides zero/<1% DV nutrients, and ranks default rows by under-target deficiency', () => {
+      const entries = [
+        entry('2026-04-24T03:00:00.000Z', {
+          micros: {
+            calcium: 13, // 1% DV, eligible and most under target
+            magnesium: 8.4, // 2% DV, eligible
+            sodium: 100, // >=1% DV but upper-limit style, excluded from default deficiency ranking
+            vitamin_c: 9, // 10% DV
+            vitamin_d: 4, // 20% DV
+            vitamin_e: 15, // 100% DV, proves canonical list beyond the legacy five rows
+            selenium: 0.4, // <1% DV, hidden
+            zinc: 0, // zero, hidden
+          },
+        }),
+      ];
+
+      const result = aggregateProgress(baseInput(entries, 'W'));
+
+      expect(DEFAULT_MICROS_LIST.map((micro) => micro.code)).toContain('vitamin_e');
+      expect(result.heatmap.allNutrients).toContain('vitamin_e');
+      expect(result.heatmap.allNutrients).toContain('sodium');
+      expect(result.heatmap.allNutrients).not.toContain('selenium');
+      expect(result.heatmap.allNutrients).not.toContain('zinc');
+      expect(result.heatmap.nutrients).toEqual(['calcium', 'magnesium', 'vitamin_c', 'vitamin_d']);
+      expect(result.heatmap.nutrients).not.toContain('sodium');
+      expect(
+        result.heatmap.cells.some(
+          (cell) => cell.nutrient === 'vitamin_e' && cell.bucket === '2026-04-24',
+        ),
+      ).toBe(true);
+      expect(result.heatmap.cells.some((cell) => cell.nutrient === 'selenium')).toBe(false);
+    });
+
+    it('orders expanded rows by worst daily value first, with over-limit nutrients ranked by excess', () => {
+      const entries = [
+        entry('2026-04-24T03:00:00.000Z', {
+          micros: {
+            vitamin_a: 900, // 100%, good
+            vitamin_c: 9, // 10%, failing
+            magnesium: 8.4, // 2%, worst non-upper-limit
+            sodium: 6900, // 300%, upper-limit excess
+            chloride: 4600, // 200%, upper-limit excess after sodium
+          },
+        }),
+      ];
+
+      const result = aggregateProgress(baseInput(entries, 'W'));
+
+      expect(result.heatmap.allNutrients.slice(0, 5)).toEqual([
+        'magnesium',
+        'vitamin_c',
+        'sodium',
+        'chloride',
+        'vitamin_a',
+      ]);
+      expect(result.heatmap.nutrients).toEqual(['magnesium', 'vitamin_c', 'vitamin_a']);
     });
   });
 

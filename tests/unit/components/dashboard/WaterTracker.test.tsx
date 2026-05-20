@@ -79,7 +79,7 @@ vi.mock('@/lib/time/device-timezone', () => ({
 const isMobileMock = vi.fn<() => boolean>(() => false);
 vi.mock('@/lib/hooks/use-is-mobile', () => ({
   useIsMobile: () => isMobileMock(),
-  MOBILE_QUERY: '(max-width: 767px)',
+  MOBILE_QUERY: '(max-width: 1279px)',
 }));
 
 // Bug-2 — `useReducedMotion` mock so the popover/sheet reduced-motion

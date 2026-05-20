@@ -5,23 +5,26 @@
  *
  * Contract (briefing + ui-design.md §6 + Codex Round 1 F4):
  *   - Trigger is a 32×32 oxblood square with the user's monogram (Newsreader ivory)
- *   - Clicking toggles a dropdown: Settings / Export / Sign out (stub actions)
+ *   - Clicking toggles a dropdown: Settings / Export / Sign out
  *   - Keyboard: Escape closes the menu (F4 — was advertised but unimplemented)
  *   - Pointer: clicking outside the menu closes it (standard dropdown parity)
  *   - Focus trap is optional for Task 1.2; a proper focus trap + initial-focus
  *     sequence lands with Task 2.1's auth wiring.
  *
- * Task 1.2 stubs all actions — Task 2.1 wires Sign Out / Settings / Export.
  */
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { t } from '@/lib/i18n/en';
+
+import { SignOutButton } from './sign-out-button';
 
 export interface ProfileMenuProps {
   userInitials: string;
 }
 
 export function ProfileMenu({ userInitials }: ProfileMenuProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   // Root ref scopes the outside-click heuristic: any pointerdown OUTSIDE
   // this subtree closes the menu, anything inside is a no-op.
@@ -100,21 +103,36 @@ export function ProfileMenu({ userInitials }: ProfileMenuProps) {
             zIndex: 50,
           }}
         >
-          <MenuItem label={t.user.menuSettings} />
-          <MenuItem label={t.user.menuExport} />
-          <MenuItem label={t.user.signOutLabel} />
+          <MenuItem
+            label={t.user.menuSettings}
+            onSelect={() => {
+              setOpen(false);
+              router.push('/settings');
+            }}
+          />
+          <MenuItem
+            label={t.user.menuExport}
+            onSelect={() => {
+              setOpen(false);
+              router.push('/settings#data-export');
+            }}
+          />
+          <li role="none">
+            <SignOutButton variant="menuitem" />
+          </li>
         </ul>
       ) : null}
     </div>
   );
 }
 
-function MenuItem({ label }: { label: string }) {
+function MenuItem({ label, onSelect }: { label: string; onSelect: () => void }) {
   return (
     <li role="none">
       <button
         type="button"
         role="menuitem"
+        onClick={onSelect}
         style={{
           width: '100%',
           textAlign: 'left',

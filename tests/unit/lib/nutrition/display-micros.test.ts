@@ -73,9 +73,14 @@ describe('microStatus', () => {
     expect(microStatus(80, 100, 70)).toBe('over'); // exceeds UL even though <100% RDA
   });
 
-  it('defaults to low when rda is null or zero', () => {
-    expect(microStatus(50, null)).toBe('low');
-    expect(microStatus(50, 0)).toBe('low');
+  it('returns unknown when rda is null or zero (Codex R2 I2 — was "low" before)', () => {
+    // Codex R2 I2 (bugfix-tomi 2026-05-17-micros-display-consistency) —
+    // RDA-unknown rows are now distinguished from actually-low measurable
+    // rows so the dashboard renderer can omit the "below reference" red
+    // treatment. The library surface already handled `rda === null`
+    // separately via a `dvPct === null` branch.
+    expect(microStatus(50, null)).toBe('unknown');
+    expect(microStatus(50, 0)).toBe('unknown');
   });
 });
 

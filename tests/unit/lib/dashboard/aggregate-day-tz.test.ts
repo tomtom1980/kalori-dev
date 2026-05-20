@@ -21,6 +21,8 @@ function makeProfile(overrides: Partial<Profile> = {}): Profile {
     last_dashboard_visit_at: null,
     target_mode: 'auto',
     manual_override_value: null,
+    bio_sex: 'male',
+    current_weight_kg: 70,
     ...overrides,
   };
 }
@@ -80,6 +82,7 @@ describe('aggregateDay', () => {
       expect(snap.meals[cat].totalKcal).toBe(0);
     }
     expect(snap.water.consumedMl).toBe(0);
+    expect(snap.bac).toEqual({ value: 0, calculatedAt: '2026-04-22T06:00:00.000Z' });
   });
 
   it('groups entries into 5 meal columns by meal_category', () => {
@@ -295,6 +298,33 @@ describe('aggregateDay', () => {
     });
     const totalEntries = Object.values(snap.meals).reduce((n, col) => n + col.entries.length, 0);
     expect(totalEntries).toBe(1);
+  });
+
+  it('includes cross-midnight alcohol logs in BAC independent of viewed day food entries', () => {
+    const snap = aggregateDay({
+      entries: [],
+      water: [],
+      micros7d: [],
+      alcoholLogs: [
+        {
+          id: 'alc-1',
+          user_id: 'u1',
+          entry_id: 'e-drink',
+          volume_ml: 355,
+          abv_percent: 5,
+          alcohol_grams: 14.005,
+          consumed_at: '2026-04-21T23:45:00.000Z',
+          created_at: '2026-04-21T23:45:01.000Z',
+        },
+      ],
+      profile: makeProfile({ bio_sex: 'male', current_weight_kg: 70 }),
+      day: '2026-04-22',
+      tz: 'Asia/Ho_Chi_Minh',
+      now: '2026-04-22T00:15:00.000Z',
+    });
+
+    expect(snap.bac.calculatedAt).toBe('2026-04-22T00:15:00.000Z');
+    expect(snap.bac.value).toBeGreaterThan(0);
   });
 
   it('marks the heaviest entry per meal column', () => {

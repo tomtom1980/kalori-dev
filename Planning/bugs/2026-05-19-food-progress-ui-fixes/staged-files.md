@@ -1,0 +1,252 @@
+# Staged Files: 2026-05-19 Food/Progress UI Fixes
+
+Batch: `2026-05-19-food-progress-ui-fixes`
+Branch: `main`
+Created: 2026-05-19
+
+## Staging Summary
+
+- Pre-ledger staged file count: 196.
+- Final staged file count after adding this ledger: 197.
+- Staging used explicit pathspecs for `app`, `components`, `lib`, `tests`, `playwright.config.ts`, `planning/CHANGELOG.md`, and `planning/bugs/2026-05-19-food-progress-ui-fixes/`.
+- `lib/database.types.ts` is intentionally included as tracked generated/schema type freshness.
+- No `git add .` or `git add -A` was used.
+
+## Exclusions Kept Out
+
+- `next-env.d.ts`
+- `public/sw.js`
+- `public/sw.js.map`
+- `planning/.prime/briefing.md`
+- `planning/.tmp/**`
+- `.next/**`
+- `coverage/**`
+- `test-results/**`
+- `playwright-report/**`
+- `*.tsbuildinfo`
+- `.env.local`
+- `tests/e2e/library/library-visual.spec.ts-snapshots/merge-dialog-open-*` deletions
+
+## Red Flag Audit
+
+- Cached diff contained no excluded runtime/build/local artifacts.
+- Cached diff contained no `.tmp`, `.prime`, service worker, `next-env.d.ts`, or `merge-dialog-open-*` paths.
+- `merge-dialog-open-*` snapshot deletions remained unstaged because the audit marked them suspicious and no accepted-baseline justification was present.
+- E2E infra exclusions remain documented: broad full-matrix E2E was not rerun cleanly because of Supabase auth rate limiting and missing local Firefox.
+
+## Intentionally Included Visual Baselines
+
+Accepted dashboard/progress visual baselines included from the batch:
+
+- `tests/visual/__screenshots__/visual/dashboard.spec.ts/dashboard-visual-baseline-chromium-mobile.png`
+- `tests/visual/__screenshots__/visual/dashboard.spec.ts/dashboard-visual-baseline-chromium-tablet.png`
+- `tests/visual/__screenshots__/visual/dashboard.spec.ts/dashboard-visual-baseline-chromium.png`
+- `tests/visual/__screenshots__/visual/dashboard.spec.ts/dashboard-visual-firefox.png`
+- `tests/visual/__screenshots__/visual/dashboard.spec.ts/dashboard-visual-safari.png`
+- `tests/visual/__screenshots__/visual/progress.spec.ts/progress-visual-baseline-chromium-mobile.png`
+- `tests/visual/__screenshots__/visual/progress.spec.ts/progress-visual-baseline-chromium-tablet.png`
+- `tests/visual/__screenshots__/visual/progress.spec.ts/progress-visual-baseline-chromium.png`
+- `tests/visual/__screenshots__/visual/progress.spec.ts/progress-visual-firefox.png`
+- `tests/visual/__screenshots__/visual/progress.spec.ts/progress-visual-safari.png`
+
+Additional screenshot and visual PNG changes under `tests/` are included as release evidence per `staging-audit.md` and `release-summary.md`.
+
+## Staged Files
+
+- `M	app/(app)/dashboard/page.tsx`
+- `M	app/(app)/layout.tsx`
+- `M	app/(app)/library/_components/LibraryCard.tsx`
+- `M	app/(app)/log/_components/Confirmation/TimeEditor.tsx`
+- `M	app/(app)/log/_components/ConfirmationScreen.tsx`
+- `M	app/(app)/log/_components/SnapTab.tsx`
+- `M	app/(app)/progress/_components/ProgressRangeToolbar.tsx`
+- `M	app/api/ai/nutrition-summary/route.ts`
+- `M	app/api/ai/vision/route.ts`
+- `A	app/api/dashboard/bac/route.ts`
+- `M	app/api/entries/copy-yesterday/route.ts`
+- `M	app/api/entries/save/route.ts`
+- `M	app/globals.css`
+- `M	components/charts/DataTableDrawer.tsx`
+- `M	components/charts/MicronutrientHeatmap.tsx`
+- `M	components/dashboard/BacTracker.tsx`
+- `M	components/dashboard/WeightQuickAdd.tsx`
+- `M	components/nav/nav-shell.tsx`
+- `A	components/nav/pull-to-refresh.tsx`
+- `M	lib/aggregations/progress.ts`
+- `M	lib/ai/portion-sanity.ts`
+- `M	lib/ai/prompts.ts`
+- `M	lib/ai/schemas.ts`
+- `A	lib/alcohol/aggregate-entry-logs.ts`
+- `M	lib/dashboard/aggregate.ts`
+- `M	lib/database.types.ts`
+- `M	lib/i18n/en.ts`
+- `M	lib/stores/useLogFlowStore.ts`
+- `M	planning/CHANGELOG.md`
+- `A	planning/bugs/2026-05-19-food-progress-ui-fixes/artifact-recovery-note.md`
+- `A	planning/bugs/2026-05-19-food-progress-ui-fixes/manifest.md`
+- `A	planning/bugs/2026-05-19-food-progress-ui-fixes/release-summary.md`
+- `A	planning/bugs/2026-05-19-food-progress-ui-fixes/staging-audit.md`
+- `A	planning/bugs/2026-05-19-food-progress-ui-fixes/staged-files.md`
+- `M	playwright.config.ts`
+- `A	tests/components/charts/DataTableDrawer.test.tsx`
+- `M	tests/components/library-tab-continue-cta.test.tsx`
+- `M	tests/components/log-flow/LogFlowTabs-confirmation-wiring.test.tsx`
+- `M	tests/components/log-flow/SnapTab-thumbnail-upload.test.tsx`
+- `M	tests/components/log-flow/library-tab-preselect.test.tsx`
+- `M	tests/components/nav/nav-shell.test.tsx`
+- `M	tests/components/progress/MicronutrientHeatmap.test.tsx`
+- `M	tests/components/progress/ProgressRangeToolbar.test.tsx`
+- `M	tests/e2e/ios-calendar-trigger.spec.ts`
+- `M	tests/e2e/library/library-a11y.spec.ts`
+- `M	tests/e2e/library/library-merge-duplicates.spec.ts`
+- `M	tests/e2e/library/library-visual.spec.ts`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/bulk-delete-dialog-open-lg-1280-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/bulk-delete-dialog-open-md-768-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/bulk-delete-dialog-open-sm-390-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/bulk-delete-dialog-open-xl-1600-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/empty-state-lg-1280-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/empty-state-md-768-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/empty-state-sm-390-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/empty-state-xl-1600-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/filtered-zero-lg-1280-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/filtered-zero-md-768-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/filtered-zero-sm-390-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/filtered-zero-xl-1600-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/fresh-load-lg-1280-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/fresh-load-md-768-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/fresh-load-sm-390-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/fresh-load-xl-1600-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/selection-mode-2-lg-1280-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/selection-mode-2-md-768-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/selection-mode-2-sm-390-chromium-win32.png`
+- `M	tests/e2e/library/library-visual.spec.ts-snapshots/selection-mode-2-xl-1600-chromium-win32.png`
+- `M	tests/e2e/web/user-stories/US-STAB-A-bundled.spec.ts`
+- `M	tests/e2e/web/user-stories/US-STAB-C2.spec.ts`
+- `M	tests/e2e/web/user-stories/US-STAB-D-bundled.spec.ts`
+- `M	tests/integration/ai-nutrition-summary.test.ts`
+- `A	tests/integration/ai-text-parse-alcohol.test.ts`
+- `M	tests/integration/ai-vision.test.ts`
+- `A	tests/integration/copy-yesterday-alcohol.test.ts`
+- `A	tests/integration/entries-save-ai-alcohol.test.ts`
+- `M	tests/integration/library-page.test.tsx`
+- `M	tests/screenshots/reduced-motion/ac7-01-login-initial.png`
+- `M	tests/screenshots/reduced-motion/ac7-02-login-result.png`
+- `M	tests/screenshots/reduced-motion/ac7-02-offline-result.png`
+- `M	tests/screenshots/smoke/golden-path/01-login.png`
+- `M	tests/screenshots/smoke/golden-path/02-meal-logged.png`
+- `M	tests/screenshots/smoke/golden-path/03-progress.png`
+- `M	tests/screenshots/smoke/golden-path/04-settings.png`
+- `M	tests/screenshots/smoke/golden-path/05-logout.png`
+- `M	tests/screenshots/user-stories/US-5.2/ac3-01-modal-opened.png`
+- `M	tests/screenshots/user-stories/US-5.2/ac3-02-format-chosen.png`
+- `M	tests/screenshots/user-stories/US-5.2/ac3-03-generating.png`
+- `M	tests/screenshots/user-stories/US-5.2/ac3-04-download-ready.png`
+- `M	tests/screenshots/user-stories/US-5.2/ac4-01-initial.png`
+- `M	tests/screenshots/user-stories/US-5.2/ac4-02-step1-warning.png`
+- `M	tests/screenshots/user-stories/US-5.2/ac4-03-step2-typed-confirm.png`
+- `M	tests/screenshots/user-stories/US-5.2/ac4-04-step3-countdown.png`
+- `M	tests/screenshots/user-stories/US-5.2/ac4-05-step4-in-flight.png`
+- `M	tests/screenshots/user-stories/US-STAB-A-bundled/A1-ac1-01-after-save.png`
+- `M	tests/screenshots/user-stories/US-STAB-A-bundled/A1-ac1-02-after-reload.png`
+- `M	tests/screenshots/user-stories/US-STAB-A-bundled/A1-ac2-01-confirmation.png`
+- `M	tests/screenshots/user-stories/US-STAB-A-bundled/A1-ac2-02-library-after-nav.png`
+- `M	tests/screenshots/user-stories/US-STAB-A-bundled/A2-ac1-01-initial.png`
+- `M	tests/screenshots/user-stories/US-STAB-A-bundled/A2-ac1-02-after-nav.png`
+- `M	tests/screenshots/user-stories/US-STAB-A-bundled/A3-ac6-01-after-redirect.png`
+- `M	tests/screenshots/user-stories/US-STAB-A-bundled/A3-ac6-02-profiles-still-empty-evidence.png`
+- `M	tests/screenshots/user-stories/US-STAB-A1/ac2-01-confirmation-with-toggle.png`
+- `M	tests/screenshots/user-stories/US-STAB-A1/ac2-02-library-after-nav.png`
+- `M	tests/screenshots/user-stories/US-STAB-A2/ac1-01-initial.png`
+- `M	tests/screenshots/user-stories/US-STAB-A2/ac1-02-result.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B1-ac1-02-result.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B1-ac2-02-result.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B2-ac1-01-form-filled.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B2-ac1-02-form-cleared.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B3-ac1-01-sidebar-initial.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B3-ac1-02-heading-non-interactive.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B3-ac2-01-initial.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B3-ac2-02-tab-traversal-result.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B4-ac1-01-progress-pre-submit.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B4-ac1-02-progress-router-refreshed.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B4-ac2-01-initial.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B4-ac2-02-error-rendered.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B5-ac2-01-pre-traverse.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B5-ac2-02-on-library.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B5-ac3-01-pre-404.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B5-ac3-02-canonical-404-rendered.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B6-ac1-01-settings-initial.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B6-ac1-02-no-stub-copy.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B6-ac2-01-initial.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B6-ac2-02-h1-singleton.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B6-ac3-01-three-subsections-mounted.png`
+- `M	tests/screenshots/user-stories/US-STAB-B-bundled/B6-ac3-02-three-subsections-functional.png`
+- `M	tests/screenshots/user-stories/US-STAB-B1/ac1-02-result.png`
+- `M	tests/screenshots/user-stories/US-STAB-B1/ac2-02-result.png`
+- `M	tests/screenshots/user-stories/US-STAB-B4/ac1-01-initial.png`
+- `M	tests/screenshots/user-stories/US-STAB-B4/ac1-02-result.png`
+- `M	tests/screenshots/user-stories/US-STAB-B4/ac2-01-initial.png`
+- `M	tests/screenshots/user-stories/US-STAB-B4/ac2-02-result.png`
+- `M	tests/screenshots/user-stories/US-STAB-B5/ac3-01-initial.png`
+- `M	tests/screenshots/user-stories/US-STAB-D-bundled/D1-ac1-01-initial.png`
+- `M	tests/screenshots/user-stories/US-STAB-D-bundled/D1-ac1-02-clean.png`
+- `M	tests/screenshots/user-stories/US-STAB-D-bundled/D2-ac1-01-anon-context.png`
+- `M	tests/screenshots/user-stories/US-STAB-D-bundled/D2-ac2-01-initial.png`
+- `M	tests/screenshots/user-stories/US-STAB-D-bundled/D2-ac2-02-no-location.png`
+- `M	tests/screenshots/user-stories/US-STAB-D-bundled/D6-ac2-01-first-save.png`
+- `M	tests/screenshots/user-stories/US-STAB-D-bundled/D6-ac2-02-second-save.png`
+- `M	tests/screenshots/user-stories/US-STAB-D-bundled/D6-ac2-03-library-cardinality.png`
+- `M	tests/unit/ai/portion-sanity.test.ts`
+- `A	tests/unit/api/dashboard-bac.test.ts`
+- `M	tests/unit/api/entries-save.test.ts`
+- `M	tests/unit/app/layout-timezone-derivation.test.ts`
+- `M	tests/unit/components/dashboard/BacTracker.test.tsx`
+- `A	tests/unit/components/log-flow/ConfirmationScreen.alcohol-label.test.tsx`
+- `D	tests/unit/components/log-flow/ConfirmationScreen.alcohol.test.tsx`
+- `M	tests/unit/components/log-flow/ConfirmationScreen.test.tsx`
+- `M	tests/unit/lib/aggregations/progress.test.ts`
+- `A	tests/unit/lib/ai/prompts-alcohol-detection.test.ts`
+- `M	tests/unit/lib/ai/prompts-approx-grams.test.ts`
+- `A	tests/unit/lib/ai/schemas-alcohol.test.ts`
+- `A	tests/unit/lib/alcohol/aggregate-entry-logs.test.ts`
+- `M	tests/unit/lib/dashboard/aggregate-micros-rda-unknown.test.ts`
+- `M	tests/unit/progress/weight-quick-add.test.tsx`
+- `A	tests/visual/__screenshots__/visual/dashboard-focus-ring.spec.ts/focus-tab-1-visual-firefox.png`
+- `M	tests/visual/__screenshots__/visual/dashboard-focus-ring.spec.ts/focus-tab-1-visual-safari.png`
+- `M	tests/visual/__screenshots__/visual/dashboard.spec.ts/dashboard-visual-baseline-chromium-mobile.png`
+- `M	tests/visual/__screenshots__/visual/dashboard.spec.ts/dashboard-visual-baseline-chromium-tablet.png`
+- `M	tests/visual/__screenshots__/visual/dashboard.spec.ts/dashboard-visual-baseline-chromium.png`
+- `M	tests/visual/__screenshots__/visual/dashboard.spec.ts/dashboard-visual-firefox.png`
+- `M	tests/visual/__screenshots__/visual/dashboard.spec.ts/dashboard-visual-safari.png`
+- `M	tests/visual/__screenshots__/visual/library.spec.ts/library-visual-baseline-chromium-mobile.png`
+- `M	tests/visual/__screenshots__/visual/library.spec.ts/library-visual-baseline-chromium-tablet.png`
+- `M	tests/visual/__screenshots__/visual/library.spec.ts/library-visual-baseline-chromium.png`
+- `M	tests/visual/__screenshots__/visual/library.spec.ts/library-visual-firefox.png`
+- `M	tests/visual/__screenshots__/visual/library.spec.ts/library-visual-safari.png`
+- `M	tests/visual/__screenshots__/visual/log-confirmation.spec.ts/log-confirmation-visual-baseline-chromium-mobile.png`
+- `M	tests/visual/__screenshots__/visual/log-confirmation.spec.ts/log-confirmation-visual-baseline-chromium-tablet.png`
+- `M	tests/visual/__screenshots__/visual/log-confirmation.spec.ts/log-confirmation-visual-baseline-chromium.png`
+- `M	tests/visual/__screenshots__/visual/log-confirmation.spec.ts/log-confirmation-visual-firefox.png`
+- `M	tests/visual/__screenshots__/visual/log-confirmation.spec.ts/log-confirmation-visual-safari.png`
+- `M	tests/visual/__screenshots__/visual/progress.spec.ts/progress-visual-baseline-chromium-mobile.png`
+- `M	tests/visual/__screenshots__/visual/progress.spec.ts/progress-visual-baseline-chromium-tablet.png`
+- `M	tests/visual/__screenshots__/visual/progress.spec.ts/progress-visual-baseline-chromium.png`
+- `M	tests/visual/__screenshots__/visual/progress.spec.ts/progress-visual-firefox.png`
+- `M	tests/visual/__screenshots__/visual/progress.spec.ts/progress-visual-safari.png`
+- `A	tests/visual/__screenshots__/visual/sidebar-identity.spec.ts/sidebar-identity-row-authed-visual-firefox.png`
+- `M	tests/visual/__screenshots__/visual/water-fab-toast.spec.ts/water-fab-toast-default-visual-baseline-chromium-mobile.png`
+- `M	tests/visual/__screenshots__/visual/water-fab-toast.spec.ts/water-fab-toast-default-visual-baseline-chromium-tablet.png`
+- `M	tests/visual/__screenshots__/visual/water-fab-toast.spec.ts/water-fab-toast-default-visual-baseline-chromium.png`
+- `A	tests/visual/__screenshots__/visual/water-fab-toast.spec.ts/water-fab-toast-default-visual-firefox.png`
+- `M	tests/visual/__screenshots__/visual/water-fab-toast.spec.ts/water-fab-toast-default-visual-safari.png`
+- `M	tests/visual/__screenshots__/visual/water-fab-toast.spec.ts/water-fab-toast-reduced-motion-visual-baseline-chromium-mobile.png`
+- `M	tests/visual/__screenshots__/visual/water-fab-toast.spec.ts/water-fab-toast-reduced-motion-visual-baseline-chromium-tablet.png`
+- `M	tests/visual/__screenshots__/visual/water-fab-toast.spec.ts/water-fab-toast-reduced-motion-visual-baseline-chromium.png`
+- `A	tests/visual/__screenshots__/visual/water-fab-toast.spec.ts/water-fab-toast-reduced-motion-visual-firefox.png`
+- `M	tests/visual/__screenshots__/visual/water-fab-toast.spec.ts/water-fab-toast-reduced-motion-visual-safari.png`
+- `M	tests/visual/__screenshots__/visual/weight.spec.ts/weight-visual-baseline-chromium-mobile.png`
+- `M	tests/visual/__screenshots__/visual/weight.spec.ts/weight-visual-baseline-chromium-tablet.png`
+- `M	tests/visual/__screenshots__/visual/weight.spec.ts/weight-visual-baseline-chromium.png`
+- `M	tests/visual/__screenshots__/visual/weight.spec.ts/weight-visual-firefox.png`
+- `M	tests/visual/__screenshots__/visual/weight.spec.ts/weight-visual-safari.png`
+- `M	tests/visual/_fixtures.ts`
+- `M	tests/visual/sidebar-identity.spec.ts`

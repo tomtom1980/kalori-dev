@@ -27,6 +27,8 @@
 import type { BrowserContext } from '@playwright/test';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
+import { refuseProdSupabase } from '../../_utils/refuse-prod-supabase';
+
 export interface SeedLibraryItemInput {
   display_name: string;
   normalized_name?: string;
@@ -42,6 +44,7 @@ export interface SeedLibraryItemInput {
   user_edited_flag?: boolean;
   created_from?: 'text' | 'photo';
   created_at?: string;
+  recipe_eligibility?: 'eligible' | 'ineligible' | 'unknown';
 }
 
 export interface SeededLibraryItem {
@@ -61,6 +64,11 @@ function resolveEnv(): { url: string; serviceRoleKey: string } {
       'Seed helper env missing: SUPABASE_TEST_URL + SUPABASE_TEST_SERVICE_ROLE_KEY (CI) or NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SECRET_KEY (local).',
     );
   }
+  // F-LIBOVR-E2E-INFRA-DRIFT — prod-ref guard. Ordering matches the
+  // auth-fixture: missing-env throw first (preserves CI-DEFERRED), then
+  // prod-ref refuse. Same blocklist semantics — only the kalori-prod ref
+  // raises; unknown / dev refs pass through silently.
+  refuseProdSupabase(url);
   return { url, serviceRoleKey };
 }
 
@@ -112,24 +120,30 @@ export async function seedLibraryItems(
   const { url, serviceRoleKey } = resolveEnv();
   const admin = buildAdmin(url, serviceRoleKey);
 
-  const rows = items.map((it) => ({
-    user_id: userId,
-    client_id: crypto.randomUUID(),
-    display_name: it.display_name,
-    normalized_name: it.normalized_name ?? normalize(it.display_name),
-    default_portion: it.default_portion ?? 1,
-    default_unit: it.default_unit ?? 'serving',
-    nutrition: it.nutrition ?? {
-      kcal: 200,
-      macros: { protein_g: 10, carbs_g: 20, fat_g: 8 },
-    },
-    thumbnail_url: it.thumbnail_url ?? null,
-    log_count: it.log_count ?? 1,
-    last_used_at: it.last_used_at ?? null,
-    user_edited_flag: it.user_edited_flag ?? false,
-    created_from: it.created_from ?? 'text',
-    created_at: it.created_at ?? new Date().toISOString(),
-  }));
+  const rows = items.map((it) => {
+    const row: Record<string, unknown> = {
+      user_id: userId,
+      client_id: crypto.randomUUID(),
+      display_name: it.display_name,
+      normalized_name: it.normalized_name ?? normalize(it.display_name),
+      default_portion: it.default_portion ?? 1,
+      default_unit: it.default_unit ?? 'serving',
+      nutrition: it.nutrition ?? {
+        kcal: 200,
+        macros: { protein_g: 10, carbs_g: 20, fat_g: 8 },
+      },
+      thumbnail_url: it.thumbnail_url ?? null,
+      log_count: it.log_count ?? 1,
+      last_used_at: it.last_used_at ?? null,
+      user_edited_flag: it.user_edited_flag ?? false,
+      created_from: it.created_from ?? 'text',
+      created_at: it.created_at ?? new Date().toISOString(),
+    };
+    if (it.recipe_eligibility !== undefined) {
+      row.recipe_eligibility = it.recipe_eligibility;
+    }
+    return row;
+  });
 
   const { data, error } = await admin
     .from('food_library_items')

@@ -28,6 +28,7 @@ export function MicronutrientPanel({ rows, visibleCount }: MicronutrientPanelPro
   return (
     <section
       data-testid="micronutrient-panel"
+      aria-labelledby="micros-panel-heading"
       style={{
         borderTop: '1px solid var(--color-rule)',
         paddingTop: 'var(--spacing-4)',
@@ -40,7 +41,8 @@ export function MicronutrientPanel({ rows, visibleCount }: MicronutrientPanelPro
           marginBottom: 'var(--spacing-4)',
         }}
       >
-        <span
+        <h2
+          id="micros-panel-heading"
           style={{
             fontFamily: 'var(--font-sans)',
             fontSize: 'var(--type-label)',
@@ -48,10 +50,11 @@ export function MicronutrientPanel({ rows, visibleCount }: MicronutrientPanelPro
             letterSpacing: '0.22em',
             textTransform: 'uppercase',
             color: 'var(--color-dust)',
+            margin: 0,
           }}
         >
           {t.dashboard.micro.headerLeft}
-        </span>
+        </h2>
         <span
           style={{
             fontFamily: 'var(--font-sans)',

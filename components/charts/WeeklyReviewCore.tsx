@@ -19,6 +19,7 @@ import { t } from '@/lib/i18n/en';
 
 export type WeeklyReviewStatus = 'fresh' | 'stale' | 'sparse-data' | 'generating' | 'error';
 export type WeeklyReviewVariant = 'full' | 'compact';
+export type PeriodReviewRange = 'D' | 'M' | 'custom';
 
 export interface WeeklyReviewInsights {
   body_markdown?: string | null;
@@ -35,6 +36,7 @@ export interface WeeklyReviewCoreProps {
   expiresAt?: string | null | undefined;
   weekStartOn?: string | undefined;
   weekEndsOn?: string | undefined;
+  periodRange?: PeriodReviewRange | undefined;
 }
 
 export function WeeklyReviewCore(props: WeeklyReviewCoreProps) {
@@ -45,7 +47,13 @@ export function WeeklyReviewCore(props: WeeklyReviewCoreProps) {
   }
 
   if (status === 'sparse-data' || insights.sparse_data === true) {
-    return <SparseState variant={variant} loggedDays={insights.logged_days ?? []} />;
+    return (
+      <SparseState
+        variant={variant}
+        loggedDays={insights.logged_days ?? []}
+        periodRange={props.periodRange}
+      />
+    );
   }
 
   // Fresh / stale: render body_markdown first paragraph with drop cap (full
@@ -58,6 +66,7 @@ export function WeeklyReviewCore(props: WeeklyReviewCoreProps) {
       weekEndsOn={props.weekEndsOn}
       generatedAt={props.generatedAt}
       expiresAt={props.expiresAt}
+      periodRange={props.periodRange}
     />
   );
 }
@@ -69,6 +78,7 @@ function FullReview(props: {
   weekEndsOn?: string | undefined;
   generatedAt?: string | null | undefined;
   expiresAt?: string | null | undefined;
+  periodRange?: PeriodReviewRange | undefined;
 }) {
   const body = (props.insights.body_markdown ?? '').trim();
   const firstChar = body.length > 0 ? body[0] : '';
@@ -78,6 +88,11 @@ function FullReview(props: {
   // float:left; screen readers receive the complete paragraph through
   // the article's aria-labelledby.
   const isFull = props.variant === 'full';
+  const periodRange = props.periodRange;
+  const isPeriodNote = periodRange === 'D' || periodRange === 'M' || periodRange === 'custom';
+  const masthead = isPeriodNote
+    ? t.progress.weeklyReview.period.masthead[periodRange]
+    : `${t.progress.weeklyReview.masthead} ${props.weekStartOn ?? ''}`;
 
   return (
     <article
@@ -111,7 +126,7 @@ function FullReview(props: {
           marginBottom: 12,
         }}
       >
-        {t.progress.weeklyReview.kicker}
+        {isPeriodNote ? t.progress.weeklyReview.period.kicker : t.progress.weeklyReview.kicker}
       </p>
       <h2
         id="weekly-review-masthead"
@@ -125,7 +140,7 @@ function FullReview(props: {
           marginBottom: 16,
         }}
       >
-        {t.progress.weeklyReview.masthead} {props.weekStartOn ?? ''}
+        {masthead}
       </h2>
       <p
         style={{
@@ -139,7 +154,7 @@ function FullReview(props: {
           margin: 0,
         }}
       >
-        {isFull && firstChar ? (
+        {isFull && !isPeriodNote && firstChar ? (
           <>
             {/*
              * Decorative 82px ember drop cap. `aria-hidden="true"` keeps
@@ -241,8 +256,13 @@ function FullReview(props: {
 function SparseState(props: {
   variant: WeeklyReviewVariant;
   loggedDays: ReadonlyArray<{ date: string; summary: string }>;
+  periodRange?: PeriodReviewRange | undefined;
 }) {
   const isFull = props.variant === 'full';
+  const periodSparse =
+    props.periodRange === 'D' || props.periodRange === 'M' || props.periodRange === 'custom'
+      ? t.progress.weeklyReview.period.sparse[props.periodRange]
+      : null;
   return (
     <article
       role="article"
@@ -266,12 +286,14 @@ function SparseState(props: {
           fontSize: 12,
           letterSpacing: '0.22em',
           textTransform: 'uppercase',
-          color: 'var(--color-oxblood-soft)',
+          color: 'var(--color-ivory)',
           margin: 0,
           marginBottom: 12,
         }}
       >
-        <span id="weekly-review-sparse-kicker">{t.progress.weeklyReview.sparse.kickerLabel}</span>
+        <span id="weekly-review-sparse-kicker">
+          {periodSparse?.kickerLabel ?? t.progress.weeklyReview.sparse.kickerLabel}
+        </span>
         {' · '}
         <span
           style={{
@@ -283,7 +305,7 @@ function SparseState(props: {
             color: 'var(--color-sand)',
           }}
         >
-          {t.progress.weeklyReview.sparse.body}
+          {periodSparse?.body ?? t.progress.weeklyReview.sparse.body}
         </span>
       </p>
       {props.loggedDays.length > 0 ? (
@@ -328,7 +350,7 @@ function SparseState(props: {
             marginTop: 16,
           }}
         >
-          {t.progress.weeklyReview.sparse.emptyDaysBody}
+          {periodSparse?.emptyDaysBody ?? t.progress.weeklyReview.sparse.emptyDaysBody}
         </p>
       )}
     </article>

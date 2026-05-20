@@ -51,9 +51,11 @@ import { NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 
+import { apiUnauthenticated401 } from '@/lib/auth/api-401-response';
 import { getServerSupabase } from '@/lib/supabase/server';
 
 const BREADCRUMB_CATEGORY = 'dashboard.orphan-profile-fenced';
+const OPTIONAL_AI_SUMMARY_OPT_IN_COLUMN = 'ai_summary_opt_in';
 
 /**
  * SHA-256 hash of the supplied id, hex-encoded. Internal — Sentry
@@ -118,6 +120,36 @@ export class ProfileLookupError extends Error {
 
 type FenceResult = FenceOk | FenceOrphan | FenceUnauthenticated | FenceLookupError;
 
+function profileSelectColumns(opts: {
+  selectExtras?: string | undefined;
+  omitAiSummaryOptIn?: boolean | undefined;
+}): string {
+  const extras = (opts.selectExtras ?? '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => !opts.omitAiSummaryOptIn || part !== OPTIONAL_AI_SUMMARY_OPT_IN_COLUMN);
+  return ['id', 'onboarding_completed_at', ...extras].join(', ');
+}
+
+function requestsAiSummaryOptIn(selectExtras: string | undefined): boolean {
+  return (selectExtras ?? '')
+    .split(',')
+    .map((part) => part.trim())
+    .includes(OPTIONAL_AI_SUMMARY_OPT_IN_COLUMN);
+}
+
+function isMissingAiSummaryOptInColumn(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const code = 'code' in error ? String(error.code) : '';
+  const message = 'message' in error ? String(error.message) : '';
+  return (
+    code === '42703' &&
+    message.includes('ai_summary_opt_in') &&
+    message.toLowerCase().includes('does not exist')
+  );
+}
+
 /**
  * Internal — runs the auth + profile lookup. Caller decides what to do
  * with the discriminated result. Issues exactly ONE profiles SELECT per
@@ -144,17 +176,28 @@ async function runFence(opts: {
     return { kind: 'unauthenticated' };
   }
 
-  const colsList: string[] = ['id', 'onboarding_completed_at'];
-  if (selectExtras && selectExtras.length > 0) {
-    colsList.push(selectExtras);
-  }
-  const cols = colsList.join(', ');
+  const cols = profileSelectColumns({ selectExtras });
 
-  const { data, error } = await supabase
+  const initialResult = await supabase
     .from('profiles')
     .select(cols)
     .eq('id', user.id)
     .maybeSingle();
+  let data = initialResult.data as unknown;
+  let error = initialResult.error as unknown;
+
+  if (error && requestsAiSummaryOptIn(selectExtras) && isMissingAiSummaryOptInColumn(error)) {
+    const fallbackResult = await supabase
+      .from('profiles')
+      .select(profileSelectColumns({ selectExtras, omitAiSummaryOptIn: true }))
+      .eq('id', user.id)
+      .maybeSingle();
+    const fallbackData = fallbackResult.data as unknown;
+    data = fallbackData
+      ? { ...(fallbackData as Record<string, unknown>), ai_summary_opt_in: false }
+      : fallbackData;
+    error = fallbackResult.error as unknown;
+  }
 
   if (error) {
     // Transient Supabase error — NOT an orphan. Capture the real error
@@ -285,8 +328,14 @@ export async function requireProfileOrRedirect(opts: {
  * contract; on the happy path returns `{ user, profile }` so the caller can
  * keep its existing `userData.user.id` shape.
  *
- * Status-code map (Phase A Codex Round 1 Critical #1 finalized):
- *   - unauthenticated         → 401 `{ error: 'unauthorized' }` (only 401)
+ * Status-code map (Phase A Codex Round 1 Critical #1 + Task D.2 US-STAB-D2):
+ *   - unauthenticated         → 401 canonical JSON envelope via
+ *                               `apiUnauthenticated401()` —
+ *                               `{ error: 'unauthenticated' }` +
+ *                               `WWW-Authenticate: Bearer realm="kalori"`
+ *                               (only 401 surface in this module). Body
+ *                               string flipped from `'unauthorized'` to
+ *                               `'unauthenticated'` for US-STAB-D2 AC1.
  *   - orphan profile           → 422 `{ error: 'profile_lookup_failed' }`
  *   - transient lookup error   → 503 `{ error: 'profile_lookup_unavailable' }`
  *
@@ -317,7 +366,12 @@ export async function requireProfileOrJson401(opts: {
   const result = await runFence({ supabase, selectExtras: opts.selectExtras });
 
   if (result.kind === 'unauthenticated') {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    // Task D.2 US-STAB-D2: canonical JSON 401 envelope. Body shape flipped
+    // from `{error:'unauthorized'}` to `{error:'unauthenticated'}` AND
+    // `WWW-Authenticate: Bearer realm="kalori"` added (RFC 6750). NO
+    // Location header. R1 refresh-interceptor detection is status-code-only,
+    // so this body-string flip preserves AC3.
+    return apiUnauthenticated401();
   }
 
   if (result.kind === 'lookup_error') {

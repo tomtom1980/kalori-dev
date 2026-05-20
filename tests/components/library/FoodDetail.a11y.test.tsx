@@ -103,6 +103,18 @@ function renderFoodDetail(overrides: Partial<LibraryItem> = {}) {
   return render(<FoodDetail item={item} history={baseHistory} />);
 }
 
+/**
+ * Bug 1 (library overhaul 2026-05-16) — focus-trap is modal-only.
+ * Route mode (the default in production) renders a navigated page, not a
+ * dialog, so Tab semantics fall through to the browser's normal flow.
+ * The pre-existing V1 tests were written before Bug 1; they keep their
+ * coverage by opting into `mode="modal"` explicitly.
+ */
+function renderFoodDetailModal(overrides: Partial<LibraryItem> = {}) {
+  const item = { ...baseItem, ...overrides };
+  return render(<FoodDetail item={item} history={baseHistory} mode="modal" />);
+}
+
 describe('<FoodDetail /> — V2 ESC handler', () => {
   beforeEach(() => {
     pushMock.mockClear();
@@ -172,7 +184,8 @@ describe('<FoodDetail /> — V1 focus trap', () => {
 
   it('Tab from the last focusable element wraps to the first focusable element', async () => {
     const user = userEvent.setup();
-    renderFoodDetail();
+    // Bug 1 (2026-05-16): focus-trap is modal-only behaviour.
+    renderFoodDetailModal();
     const sheet = screen.getByTestId('food-detail-sheet');
 
     // Collect focusable elements in DOM order.
@@ -195,7 +208,8 @@ describe('<FoodDetail /> — V1 focus trap', () => {
 
   it('Shift+Tab from the first focusable element wraps to the last focusable element', async () => {
     const user = userEvent.setup();
-    renderFoodDetail();
+    // Bug 1 (2026-05-16): focus-trap is modal-only behaviour.
+    renderFoodDetailModal();
     const sheet = screen.getByTestId('food-detail-sheet');
 
     const focusables = Array.from(

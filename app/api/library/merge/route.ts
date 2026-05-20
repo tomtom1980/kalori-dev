@@ -50,6 +50,8 @@ import { rejectIfDeletingOrUnavailable } from '@/lib/account/deleting-fence';
 import { revalidateAllProgressRanges } from '@/lib/cache/revalidate-progress';
 import { TAGS } from '@/lib/cache/tags';
 import { requireProfileOrJson401 } from '@/lib/auth/orphan-profile-fence';
+import { MAX_MICRO_VALUE } from '@/lib/library/micros-bounds';
+import { isWholeStyleQuantity } from '@/lib/log/portion-unit';
 import { getServerSupabase } from '@/lib/supabase/server';
 import { userTzDayFrom } from '@/lib/time/day';
 
@@ -62,8 +64,19 @@ const NutritionSchema = z.object({
     carbs_g: z.number().nonnegative(),
     fat_g: z.number().nonnegative(),
     fiber_g: z.number().nonnegative().optional(),
+    // Phase 2C — cholesterol_mg, optional so pre-cholesterol payloads
+    // still pass.
+    cholesterol_mg: z.number().nonnegative().optional(),
   }),
-  micros: z.record(z.string(), z.number()).optional(),
+  // Bugfix 2026-05-17 R3 C2-R2-2 — merge route's RPC `library_merge_atomic`
+  // updates the winner library item's `nutrition` JSONB. Without
+  // `.finite()` / `.nonnegative()` / `.max(MAX_MICRO_VALUE)`, a crafted
+  // merge payload could persist oversized or negative micros despite the
+  // C3 R1 fix on update/create. Bound mirrors the client clamp in
+  // `useFoodDetailEdit.ts` + sibling server schemas. Shared constant
+  // lives at `lib/library/micros-bounds.ts`.
+  micros: z.record(z.string(), z.number().finite().nonnegative().max(MAX_MICRO_VALUE)).optional(),
+  approxGrams: z.number().positive().finite().optional(),
 });
 
 const FieldsSchema = z
@@ -74,7 +87,20 @@ const FieldsSchema = z
     default_unit: z.string().max(32).optional(),
     nutrition: NutritionSchema,
   })
-  .strict();
+  .strict()
+  .superRefine((fields, ctx) => {
+    if (
+      typeof fields.default_portion === 'number' &&
+      fields.default_unit &&
+      !isWholeStyleQuantity(fields.default_unit, fields.default_portion)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['default_portion'],
+        message: 'default_portion must be a whole number for this unit',
+      });
+    }
+  });
 
 const BodySchema = z
   .object({
@@ -82,6 +108,18 @@ const BodySchema = z
     winnerId: z.string().uuid(),
     loserId: z.string().uuid(),
     fields: FieldsSchema,
+    // Bugfix R1 C1 — signed URL persistence guard. The merge dialog
+    // copies `a.thumbnail_url` / `b.thumbnail_url` into the merge
+    // payload, but those values are sign-on-read 1-hour signed URLs
+    // (post-Bug-3 SIGN_LIMIT raise). Persisting a signed URL into the
+    // canonical column corrupts the row permanently. The client now
+    // also sends `thumbnail_source_id` (the id of the row whose
+    // thumbnail was chosen) so the server can re-resolve the raw
+    // storage path from the database — never the URL coming over the
+    // wire. Optional for back-compat; when absent and `fields.thumbnail_url`
+    // is a signed URL, the server force-nulls the value rather than
+    // persisting it.
+    thumbnail_source_id: z.string().uuid().nullable().optional(),
   })
   .strict()
   // CF-1 (Codex adversarial round 1): self-merge guard. Without this the
@@ -143,6 +181,44 @@ export async function POST(request: Request): Promise<Response> {
 
   const body = parsed.data;
 
+  if (typeof body.fields.default_portion === 'number' && body.fields.default_unit === undefined) {
+    const { data: currentWinner, error: currentWinnerError } = (await supabase
+      .from('food_library_items')
+      .select('default_unit')
+      .eq('id', body.winnerId)
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .maybeSingle()) as {
+      data: { default_unit: string | null } | null;
+      error: { code?: string; message?: string } | null;
+    };
+
+    if (currentWinnerError) {
+      return NextResponse.json({ error: 'db_error' }, { status: 500 });
+    }
+    if (!currentWinner) {
+      return NextResponse.json({ error: 'winner_not_found' }, { status: 409 });
+    }
+    if (
+      currentWinner.default_unit &&
+      !isWholeStyleQuantity(currentWinner.default_unit, body.fields.default_portion)
+    ) {
+      return NextResponse.json(
+        {
+          error: 'ValidationError',
+          issues: [
+            {
+              code: 'custom',
+              path: ['fields', 'default_portion'],
+              message: 'default_portion must be a whole number for this unit',
+            },
+          ],
+        },
+        { status: 400 },
+      );
+    }
+  }
+
   // Pre-fetch affected days for cache invalidation. We need the user's
   // timezone + the `logged_at` of each entry that currently points to the
   // loser, BEFORE the RPC repoints them. `distinct-day` resolution happens
@@ -188,12 +264,73 @@ export async function POST(request: Request): Promise<Response> {
     cacheInvalidationWarnings.push('affected-days-prefetch-failed');
   }
 
+  // Bugfix R1 C1 — re-resolve `fields.thumbnail_url` server-side so we
+  // NEVER persist a sign-on-read signed URL into the canonical column.
+  // The merge dialog (post-Bug-3) hands us a signed URL because
+  // `fetchLibraryPage` signs every visible row. If we let that URL
+  // through, it expires in an hour and silently breaks the row.
+  //
+  // Strategy:
+  //   - If `body.fields.thumbnail_url` is `null` or a raw storage path
+  //     (no `http(s)://` prefix), leave it alone.
+  //   - If it's a signed URL AND `thumbnail_source_id` was supplied:
+  //     read that row's raw `thumbnail_url` from the database and
+  //     substitute it.
+  //   - If it's a signed URL with no source id (legacy client):
+  //     force the value to `null` and log a Sentry warning. Better
+  //     to lose the thumbnail choice than to corrupt the row.
+  const resolvedFields = { ...body.fields };
+  const incomingThumbnail = body.fields.thumbnail_url;
+  const isSignedUrl =
+    typeof incomingThumbnail === 'string' && /^https?:\/\//i.test(incomingThumbnail);
+  if (isSignedUrl) {
+    if (body.thumbnail_source_id) {
+      // Re-resolve from the source row's raw thumbnail_url.
+      const { data: sourceRows, error: sourceErr } = (await supabase
+        .from('food_library_items')
+        .select('id, thumbnail_url')
+        .eq('user_id', userId)
+        .in('id', [body.winnerId, body.loserId])) as {
+        data: Array<{ id: string; thumbnail_url: string | null }> | null;
+        error: { message?: string } | null;
+      };
+      if (sourceErr || !sourceRows) {
+        Sentry.captureException(sourceErr ?? new Error('thumbnail_source_lookup_failed'), {
+          tags: { component: 'library-merge', scope: 'thumbnail-source-resolve' },
+          extra: { userId, winnerId: body.winnerId, loserId: body.loserId },
+        });
+        resolvedFields.thumbnail_url = null;
+      } else {
+        const sourceRow = sourceRows.find((r) => r.id === body.thumbnail_source_id);
+        const rawPath = sourceRow?.thumbnail_url ?? null;
+        // Only accept a raw storage path. If the source row itself
+        // somehow has a `http(s)://` value (shouldn't happen post-fix
+        // but legacy rows could), fall back to null rather than
+        // re-persisting a URL.
+        if (rawPath && /^https?:\/\//i.test(rawPath)) {
+          resolvedFields.thumbnail_url = null;
+        } else {
+          resolvedFields.thumbnail_url = rawPath;
+        }
+      }
+    } else {
+      // Legacy client without the source-id discriminator — defense in
+      // depth: force null so the RPC cannot persist the signed URL.
+      Sentry.captureMessage('merge_signed_url_without_source_id', {
+        level: 'warning',
+        tags: { component: 'library-merge', scope: 'thumbnail-signed-url-guard' },
+        extra: { userId, winnerId: body.winnerId, loserId: body.loserId },
+      });
+      resolvedFields.thumbnail_url = null;
+    }
+  }
+
   // Invoke the atomic merge RPC (migration 0008).
   const { data: rpcData, error: rpcError } = (await supabase.rpc('library_merge_atomic', {
     p_winner_id: body.winnerId,
     p_loser_id: body.loserId,
     p_client_id: body.client_id,
-    p_fields: body.fields,
+    p_fields: resolvedFields,
   })) as {
     data: { winner: unknown; replayed: boolean } | null;
     error: { code?: string; message?: string } | null;

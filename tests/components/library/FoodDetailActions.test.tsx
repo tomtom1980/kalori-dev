@@ -22,6 +22,7 @@ function setup(overrides: Partial<Parameters<typeof FoodDetailActions>[0]> = {})
     editing: false,
     saving: false,
     dirty: false,
+    logNowPending: false,
     ...handlers,
     ...overrides,
   };

@@ -1,5 +1,15 @@
 # Kalori — Followups Log
 
+<!-- Updated 2026-05-17 by closure sub-agent Bucket 3 (commits `ff938f0` RED tests + `e7400e9` fix): the 2 R3 entries filed earlier tonight (POST-MVP-CODEX-R3-{C1, C2}) are now BOTH RESOLVED. Per-row `clientId` minted at reducer-init time (R3-C1) and per-row `dedupMatch` slot with `SET_ROW_DEDUP_MATCH` action + inline `ConfirmationItemDedupBanner` (R3-C2). 5 new TDD-driven regression tests; 43/43 ConfirmationScreen tests GREEN; 71 log-flow + 190 library + 21 store tests GREEN. End-of-sprint state: all E.CODEX residuals (R1/R2/R3) closed. Sprint mvp-stabilization closure status PRESERVED (Phase E ✅ at `2747b4a`). -->
+
+<!-- Updated 2026-05-17 by E.CODEX Round-3 closure (commits `bc3a57e`, `d1118c9`, `783fcc1`, `a0879b1` + tracking commit): 3 R2 entries marked RESOLVED with closure notes (POST-MVP-CODEX-R2-{C1, C2, IDRIFT}); 2 new R3 entries added at top of new "POST-MVP — E.CODEX Round-3 post-closure refresh pass (2026-05-17)" section (POST-MVP-CODEX-R3-C1 per-row UUID idempotency at save-time, POST-MVP-CODEX-R3-C2 per-row dedup state). Round-3 verification user-authorized beyond 2-round cap; R3 findings deferred to next `bugfix-tomi` pass per diminishing-returns guidance. Sprint mvp-stabilization closure status PRESERVED (Phase E ✅ at `2747b4a`). -->
+
+<!-- Updated 2026-05-16 by post-E.1 session sweep (commits `c4d7f6d`, `31c74d9`, `0d43f74`, `5b3a70a`, `a8a2d23`, `fa3473d`, `87ea136`, plus FU-E13/FU-DEV-DB/FU-CI-GITHUB-BILLING annotations): 11 new entries added at top of "Post-E.1 session followups (2026-05-16) — E2E regression cleanup + infra" section (FU-E2E-F1 through F8 daughters of the FU-E1-E2E-PREEXISTING-16 rollup; FU-CI-GITHUB-BILLING-BLOCKED; FU-DEV-DB-AI_CALL_LOG-FOOD_IMAGE-GHOST; FU-CI-PRETTIER-FORMAT-DRIFT). 3 existing E.1 entries annotated (FU-E1-E2E-PREEXISTING-16 → PARTIALLY RESOLVED; FU-E1-UI-FAB-MOBILE-ONLY → RESOLVED AS INTENTIONAL; FU-E1-SIDEBAR-SIGNOUT-UNWIRED → WONTFIX user-signaled). Net resolutions in this session: 7 E2E specs fixed (F2, F4, F5, F6, F7, F8), 1 dev-DB cleanup, 1 prettier drift, 1 PNG idempotency (FU-E13 already closed earlier at FIX-6/9cf0f68). Net deferrals: F1 (security-adjacent — bugfix-tomi recommended) + F3 (design decision) + CI billing (user action). -->
+
+<!-- Updated 2026-05-15 by Task D.6 Step 2b Codex Round 1 quota-cap deferral: 1 NEW entry added (F-D6-CODEX-ROUND1-DEFERRED — MEDIUM gate-deferral, not a finding; Codex Round 1 attempt 22:20 SEAST blocked by account quota; reset 23:16 SEAST; contract lock = 12 GREEN D.6 tests + migration 0020 applied + 79+66 characterization tests GREEN + two PL/pgSQL ASSERT DO-blocks self-verify; precedent: D.4 Round 2 waived under same quota condition). -->
+
+<!-- Updated 2026-05-15 by Task D.4 Codex Round 1 auto-fix: 2 NEW entries added (F-D4-IDENTIFIER-PAYLOAD-DRIFT — HIGH; opaque `.insert(payload)` / `.update(patch)` references surface with empty column-list, drift detection silently passes them. F-D4-RPC-SCHEMA-DRIFT — MEDIUM; `.rpc(...)` builder verb intentionally outside scanner verb set, real RPC sites (water logging, library merge) wholly outside enforced surface). Both deferred per Codex Round 1 categorization — resolve BEFORE Stage-2 flip OR scope Stage 2 narrower than its current `--mode block` target. -->
+
 <!-- Updated 2026-05-09 by bugfix-tomi batch 2026-05-09-water-fab-ux Phase 8: 6 NEW entries added (F-AUTHPOST-ABORTSIGNAL-2026-05-09 — security M1 Medium; F-WATER-LOG-RATE-LIMIT-2026-05-09 — security M2 Medium RAISED PRIORITY; F-COMPUTE-DAY-TOTAL-SENTRY-2026-05-09 — security M3 Medium NEW; F-CHIP-E2E-COVERAGE-2026-05-09 — Phase 7 coverage gap; F-OPTIMISTIC-TOAST-E2E-TIMING-2026-05-09 — Phase 7 coverage gap; F-NAV-RESPONSIVE-COLDSTART-FLAKE-2026-05-09 — Phase 7 cold-start observation). 1 entry CLOSED (F-WATER-CHIP-STALE-LOGGEDON-2026-05-09 — closed by Bug 2 Fix B applying the C2 timezone-prop-drill pattern to the chip; entry deleted). -->
 
 <!-- Updated 2026-05-09 by Task B.CODEX (Phase B Codex Adversarial Review): 1 NEW deferred Architectural finding (F-PB-R2-3 — server-side (user_id, date) uniqueness/upsert for weight_logs; CLAUDE.md R1 schema migration discipline) plus 2 minor B.CODEX residuals (releaseInFlight key + staleness telemetry); F-B2-AC1-LISTENER-MOUNT-LIFECYCLE auto-fix RESOLVED by Round 1 fix A (commitSaveSuccess store action). -->
@@ -8,6 +18,649 @@
 
 > Deferred items surfaced during execution that are NOT in the scope of the task that found them. Each item has an owner (task or phase) plus a rationale for deferral. Revisit during the noted phase.
 > Format: `F-<CATEGORY>-<N>` — title — rationale — defer-to.
+
+## POST-MVP — bugfix-tomi batch 2026-05-17-followups (2026-05-17)
+
+<!-- Filed at the close of the 2026-05-17 bugfix-tomi batch `2026-05-17-followups` (Bugs 1-4 = LM-I1, LM-I2, LM-SEC-1, LM-SEC-2 — deferred follow-ups from the earlier library-micros batch). Batch starting SHA `07273a3`. All 4 original LM-* entries RESOLVED (see status updates on the entries themselves in the prior section). Codex Round 1 found 1 Critical (C1 universal legacy-shape preservation gap — Bug 2's R1-C1 claim only covered sodium; auto-fixed in `fd1e3fc`) + 1 Improvement (I1 validation banner not mirrored to parent — auto-fixed inline in `fd1e3fc`). Codex Round 2 found 0 Critical + 3 Improvement: I-R2-1 stale-banner-on-no-op-save (R1-I1 partial regression), I-R2-2 same-value micro edits not registered as touched (R1-C1 partial gap), I-R2-3 AddFoodTab dead code from sibling concurrent-session commits (OUT-OF-SCOPE). 2-round cap reached; 3 R2 residuals tracked below as FU-I1/FU-I2/FU-I3. Security review CLEAN (0 Critical/High/Medium, 2 Informational documented). E2E PASS (18 chromium passed + 2 pre-existing failures + 16 skipped; 6/6 blocking visual baselines green; 4 advisory cross-browser failures are pre-existing drift). NEW sibling defect surfaced by Bug 4 sub-agent at `lib/stores/useOnboardingStore.ts:210` (third Math.random UUID fallback site) — held back from in-batch fix per user-approved 2-site scope; tracked below as LM-SEC-3. -->
+
+### POST-MVP-BUGFIX-2026-05-17-FU-I1 — Stale validation banner survives no-op save
+
+**Source:** bugfix-tomi 2026-05-17-followups Codex Round 2
+**Severity:** Improvement (medium per Codex)
+**Surface:** `app/(app)/library/_components/FoodDetail/useFoodDetailEdit.ts:878-881`
+**Description:** R1's I1 fix set parent `errorBanner` via `onFailed(saveFailedBanner)`, but the no-fields success branch only calls `setEditing(false)` without clearing `errors._form` or calling `onCommitted`. User sees stale "save failed" alert after a successful recovery save (validation fails → user edits back to original value → buildFieldsPatch returns null → no-fields success branch fires without clearing banner state).
+**Why deferred:** Round-2 cap reached.
+**Fix sketch:** In no-op success branch, clear `errors._form` and emit `onCommitted(prevState)` so the banner clears. Add regression test: fail validation → restore original value → save → assert alert is gone.
+
+### POST-MVP-BUGFIX-2026-05-17-FU-I2 — Same-value micro edits not registered as "touched"
+
+**Source:** bugfix-tomi 2026-05-17-followups Codex Round 2
+**Severity:** Improvement (medium per Codex)
+**Surface:** `app/(app)/library/_components/FoodDetail/useFoodDetailEdit.ts:393-530`
+**Description:** R1's C1 universal-preservation pass uses `microEdits` + `microClears` for touch detection, but `microEdits` is only populated when the parsed/clamped value differs from the canonicalized initial value. A user editing `iron_mg: 3` through the generic `iron` input to `3` (or `3.0`) is indistinguishable from not editing it. With another nutrition change in the same save, the preservation pass keeps the legacy `iron_mg` shape even though the generic micro surface was touched. Real-world impact narrow: no data loss (legacy stays as-was, which matches user's effective state after the no-op edit), but violates the stated R1 rule that preservation applies only when the micro was not edited.
+**Why deferred:** Round-2 cap reached. Real-world impact narrow.
+**Fix sketch:** Track touched generic micro keys in a separate `microTouchedKeys: Set<string>` populated on every onChange to the generic micro inputs (regardless of value parity). Use that set in the preservation guard instead of `microEdits`/`microClears` membership.
+
+### POST-MVP-BUGFIX-2026-05-17-FU-I3 — AddFoodTab CTA/icon/skeleton dead code (OUT-OF-SCOPE)
+
+**Source:** bugfix-tomi 2026-05-17-followups Codex Round 2 (net-new finding, NOT in R1)
+**Severity:** Improvement (medium per Codex)
+**Surface:** `app/(app)/log/_components/LibraryTab.tsx:406-419`
+**OUT-OF-SCOPE / SIBLING-SESSION ORIGIN:** This finding is NOT part of the 2026-05-17-followups Bug 1-4 batch. Commits `734ce8c`, `38ecf64`, `debf99b` landed on `origin/main` between R1 and R2 from a separate "Add Food tab merge" feature session and added `AddNewItemCTA`, `AddNewItemIconButton`, `LibraryLoadingSkeleton` with isolated component tests but NOT imported in production `LibraryTab` empty state. Codex caught the dead code during R2 scope.
+**Description:** Components added with isolated tests but never wired into the user-visible Add Food tab merge / empty-state path. Repo-wide search outside tests shows no production render sites.
+**Why deferred:** Out of bugfix-tomi 2026-05-17-followups batch scope (sibling-feature concern).
+**Fix sketch:** Either (a) wire the new components into the production `LibraryTab` empty state + add an integration test for search→empty→CTA→add-new flow, or (b) revert/quarantine the dead-code commits until the Add Food merge feature is fully implemented. Owner: whoever drives the Add Food tab merge feature next.
+
+### POST-MVP-BUGFIX-2026-05-17-LM-SEC-3 — Third sibling Math.random() UUID fallback in useOnboardingStore
+
+**Source:** bugfix-tomi 2026-05-17-followups Bug 4 analysis (surfaced mid-batch)
+**Severity:** Informational (matches LM-SEC-2 severity rationale)
+**Surface:** `lib/stores/useOnboardingStore.ts:210`
+**Description:** Identical defect to Bug 4 (`mintLibraryClientId` + `generateClientId`). The v4 UUID fallback uses `Math.random()` when `crypto.getRandomValues` is unavailable. Called from line 262 (`const id = generateClientId();`). Same defect class, same reachability profile.
+**Why deferred:** Out of Bug 4's user-approved two-site scope (LM-SEC-2 + `useLogFlowStore` sibling). Sub-agent surfaced and held back rather than silently growing scope.
+**Fix sketch:** Apply the same fix pattern as commit `8d4a07f` — replace `Math.random` fallback with `crypto.getRandomValues` byte-twiddling per RFC 4122 §4.4. Mirror unit test pattern from `tests/unit/components/log-flow/mint-library-client-id.test.ts`.
+
+## POST-MVP — bugfix-tomi batch 2026-05-17-library-micros (2026-05-17)
+
+<!-- Filed at the close of the 2026-05-17 bugfix-tomi batch `2026-05-17-library-micros` (Bugs 1+2+3 = library micros expander + units + DV comparison). Batch starting SHA `60e85c5`. Codex Round 1 found 2 Critical (C1 sodium canonical/legacy cross-bug regression — auto-fixed `8dc799f`; C2 batch-save retry safety — determined PRE-EXISTING, introduced commit `783fcc1` before batch SHA, evidence strengthens POST-MVP-CODEX-R3-C1 below). Codex Round 2 found 2 Improvement (I1 + I2 sodium normalization gaps) — both deferred to followups per round-2 cap. Security review CLEAN (0 Critical/High/Medium, 2 Informational deferred). E2E pass at unit/component layer (461/461 GREEN); Playwright hampered by concurrent-session uncommitted LibraryCard.tsx edits unrelated to this batch. Concurrent-session collision note: a sibling Claude Code session ran git stash + git reset --hard twice mid-batch, wiping Bug 1's first implementation; recovered Bug 2/3 from stash@{0}, re-implemented Bug 1 from TDD anchor. ALL 4 LM-* deferred entries in this section RESOLVED 2026-05-17 by the followups batch — see status updates on each entry. -->
+
+### POST-MVP-BUGFIX-2026-05-17-LM-I1 — FoodDetailMacros display-name "Sodium" key drop — **RESOLVED 2026-05-17 — commit `e496627`**
+
+**STATUS UPDATE 2026-05-17 (bugfix-tomi 2026-05-17-followups):** RESOLVED. `resolveSodiumMg` now iterates `Object.entries(micros)` and canonicalizes each key via `canonicalizeMicroKey`, applying canonical-wins precedence (`sodium` > `sodium_mg` > display-name aliases). 5 new component tests in `tests/components/library/FoodDetailMacros.test.tsx` (including failing-first RED-then-GREEN driver for `{ "Sodium": 500 }` display-name read). Read/exclude symmetry restored.
+
+**Source:** bugfix-tomi 2026-05-17-library-micros Codex Round 2
+**Severity:** Improvement (medium per Codex)
+**Surface:** `app/(app)/library/_components/FoodDetail/FoodDetailMacros.tsx:101-116, 629`
+**Description:** `resolveSodiumMg` only reads `micros.sodium` and `micros.sodium_mg`, but the extras loop drops every key canonicalizing to `sodium` — including display-name `"Sodium"` (which `canonicalizeMicroKey` accepts per line 130 of `lib/dashboard/micros-rda-resolver.ts`). A row with `micros: { "Sodium": 500 }` is hidden from both the always-visible meter AND the collapsible extras. Asymmetry between the read path (canonical + legacy keys only) and the exclusion filter (full canonicalization).
+**Why deferred:** Theoretical — no write path in the repo persists display-name `"Sodium"` as a JSON key today. The shape is supported defensively by the dashboard resolver for hypothetical legacy AI-cache rows. So this is read/exclude asymmetry, not active data-loss. Round-2 cap reached.
+**Fix sketch:** Route `resolveSodiumMg` through `canonicalizeMicroKey` to mirror the exclusion filter — return value for any raw key canonicalizing to `sodium`. Add unit test for `{ "Sodium": 500 }` row → always-visible meter renders.
+
+### POST-MVP-BUGFIX-2026-05-17-LM-I2 — useFoodDetailEdit canonical/legacy dedup only on sodiumChanged=true — **RESOLVED 2026-05-17 — commit `42126c0` (extended in `fd1e3fc`)**
+
+**STATUS UPDATE 2026-05-17 (bugfix-tomi 2026-05-17-followups):** RESOLVED. Dedup now runs unconditionally on every save in `buildFieldsPatch`. Initial commit `42126c0` fixed sodium-only; Codex R1 Critical C1 surfaced that the R1-C1 "shape policy preserved" claim only covered sodium while `canonicalizeMicrosBag` still migrated `iron_mg` / `vitamin_c_mg` / etc. on unrelated saves. Universal preservation pass landed in `fd1e3fc` covering all 30 canonical/legacy pairs. TDD-driven: 4 dedicated tests for drift + sodium-edit + clean-canonical + legacy-only paths, plus 6 new R1 tests for non-sodium aliases. 2 Codex R2 residuals deferred (see FU-I1/FU-I2 below).
+
+**Source:** bugfix-tomi 2026-05-17-library-micros Codex Round 2
+**Severity:** Improvement (medium per Codex)
+**Surface:** `app/(app)/library/_components/FoodDetail/useFoodDetailEdit.ts:222-250`
+**Description:** The merge spreads ALL of `initMicros` into `mergedMicros` (line 232). The canonical-wins/legacy-delete dedup at lines 234-249 only runs inside `if (sodiumChanged && ...)`. For a drifted row containing BOTH `sodium: 500` AND `sodium_mg: 999`, an unrelated edit (e.g., protein) leaves both keys in the emitted patch. Downstream `aggregateMicros` (line 441 of `lib/dashboard/aggregate.ts`) sums both into the same "Sodium" displayKey bucket, double-counting that row's sodium contribution in dashboard totals.
+**Why deferred:** Requires drift to already exist on the row before this bugfix landed (both keys present simultaneously). No code path in this batch CREATES such drift — the R1 fix (8dc799f) specifically writes one key only. Back-compat scenario for pre-existing data, not a new regression. Round-2 cap reached.
+**Fix sketch:** Pull the canonical/legacy dedup outside the `sodiumChanged` branch — always converge on save, even when sodium is unchanged. Add regression test for `{sodium: 500, sodium_mg: 999}` + protein edit emitting only canonical sodium.
+
+### POST-MVP-BUGFIX-2026-05-17-LM-SEC-1 — EDIT_ITEM_MICRO has no upper bound on input — **RESOLVED 2026-05-17 — commit `d579fbe`**
+
+**STATUS UPDATE 2026-05-17 (bugfix-tomi 2026-05-17-followups):** RESOLVED. 3-layer defense in place: Layer 1 HTML `max="999999"` on `<input type="number">` inside `ConfirmationItemMicros`; Layer 2 `Math.min(parsed, 999999)` clamp in the inline `onChange` handler before `actions.editMicro` dispatches; Layer 3 Zod `.max(MAX_MICRO_VALUE = 1_000_000)` was already deployed via `lib/library/micros-bounds.ts` (applied 2026-05-17 by the library-micros-parse batch's R1-C3 fix at `lib/library/create-schema.ts:65`). 1-unit headroom (999_999 input cap vs 1_000_000 Zod cap) absorbs `roundNutrition`'s 1-decimal rounding. 3 new tests in `tests/unit/components/log-flow/ConfirmationItemMicros.test.tsx` cover `max` attribute presence + typed-value clamp + scientific-notation paste clamp.
+
+**Source:** bugfix-tomi 2026-05-17-library-micros Security Review (I-1, Informational)
+**Severity:** Informational (defense-in-depth, non-blocking)
+**Surface:** `app/(app)/log/_components/ConfirmationScreen.tsx` — `ConfirmationItemMicros` onChange handler around L1493 → `roundNutrition` L355 → reducer `EDIT_ITEM_MICRO` case L430
+**Description:** The `<input type="number" min="0" step="any" inputMode="decimal">` accepts arbitrary positive finite numbers. `Number(next)` parses scientific notation (e.g. `1e308`). `roundNutrition` rejects NaN / `<= 0` (coerces to 0) but does not cap the upper bound. The persisted body funnels into `CreateLibraryBodySchema.nutrition.micros` (Zod `z.record(z.string(), z.number().nonnegative().finite())`), which itself has no upper bound either. A user can persist `1e300 mg sodium`, which would render as `1e+300 mg` in the library detail meter.
+**Why deferred:** User-supplied value into their own library row, gated by RLS to their own `user_id`. No privilege boundary crossed, no DoS surface (numeric storage in JSONB is constant cost), no UI float-underflow under realistic values. Pathological values render verbatim but degrade gracefully. The user can only sabotage their own UX, and the existing `aria-valuenow` clamp at `Math.max(0, Math.min(100, dvPct))` in `MicroRowDisplay` already prevents AT meter announcements from exposing the absurd number.
+**Fix sketch:** Add a soft cap at `999999` per-input in `ConfirmationItemMicros` onChange + a `max="999999"` HTML attribute. Mirror at the Zod schema level (`.max(1_000_000)` on the micros record values).
+
+### POST-MVP-BUGFIX-2026-05-17-LM-SEC-2 — mintLibraryClientId v4 fallback uses non-cryptographic Math.random() — **RESOLVED 2026-05-17 — commits `8d4a07f` + `0e4d39d`**
+
+**STATUS UPDATE 2026-05-17 (bugfix-tomi 2026-05-17-followups):** RESOLVED. Reachability re-verified BRANCH B (function is live at the reducer lazy-init at `ConfirmationScreen.tsx:645`, not dead as the original deferral note assumed). Fix swapped the `Math.random()` fallback for `crypto.getRandomValues(new Uint8Array(16))` with RFC 4122 §4.4 byte-twiddling: `bytes[6] = (bytes[6] & 0x0f) | 0x40` (version 4), `bytes[8] = (bytes[8] & 0x3f) | 0x80` (variant 10xx). Fast path (`crypto.randomUUID`) unchanged. Last-resort `Math.random()` branch retained behind the new getRandomValues path for environments lacking ALL crypto APIs (vanishingly rare). Sibling defect at `lib/stores/useLogFlowStore.ts:439` (`generateClientId`) fixed in the same batch per user-approved scope expansion. Both functions newly `export`ed for test access. 8 new unit tests across `tests/unit/components/log-flow/mint-library-client-id.test.ts` (new) + `tests/unit/stores/useLogFlowStore.test.ts` (extended). `0e4d39d` is a typecheck fixup (non-null `!` assertions on `bytes[6]`/`bytes[8]` for `noUncheckedIndexedAccess`). A THIRD sibling site at `useOnboardingStore.ts:210` surfaced mid-batch — see LM-SEC-3 below.
+
+**Source:** bugfix-tomi 2026-05-17-library-micros Security Review (I-2, Informational)
+**Severity:** Informational (non-blocking, function appears dead in post-e7400e9 working tree)
+**Surface:** `app/(app)/log/_components/ConfirmationScreen.tsx:260-269`
+**Description:** The fallback path when `crypto.randomUUID` is unavailable uses `Math.random()`, which is not cryptographically strong. The function mints per-row idempotency tokens for `/api/library/create`.
+**Why deferred:** `client_id` is NOT a secret — it is an idempotency token scoped to a single authenticated user's `food_library_items` table, validated server-side as `z.string().uuid()` and used only for I11 dedup-by-`client_id` replay. Collision risk is the only relevant security property, and `Math.random()`-derived v4 is acceptable for that. No JWT, no session token, no CSRF token is derived from this RNG. Additionally, the actual ConfirmationScreen path in the current HEAD (`e7400e9`) uses `row.clientId` minted at row-creation time via `useLogFlowStore`'s `generateClientId` (which has its own primary `crypto.randomUUID()` path), so `mintLibraryClientId` is effectively dead in the post-`e7400e9` working tree.
+**Fix sketch:** Verify in Phase 7 follow-up whether `mintLibraryClientId` is reachable from any code path. If not, consider removing in a future cleanup commit.
+
+## POST-MVP — E.CODEX Round-3 post-closure refresh pass (2026-05-17)
+
+<!-- Filed at the close of the 2026-05-17 ~03:00 GMT+7 E.CODEX Round-3 verification pass (user-authorized beyond 2-round cap under directive "fix everything which is remaining. Let's fix everything and let it be clean."). 3 Round-2 residuals (POST-MVP-CODEX-R2-{C1, C2, IDRIFT}) RESOLVED tonight via commits `bc3a57e` (PNGs) + `d1118c9` (IDRIFT characterization tests) + `783fcc1` (C1+C2 schema-valid UUIDs + server-409 banner) + `a0879b1` (TS type-cast fix). Round-3 verification surfaced 2 NEW HIGH architectural findings tracked below as POST-MVP-CODEX-R3-{C1, C2}; per diminishing-returns guidance ("past Round 2 + cycles of partial fixes") these are DEFERRED to a focused bugfix-tomi pass rather than entering Round-4. Sprint mvp-stabilization closure status PRESERVED (Phase E closed at `2747b4a`); these entries cover deeper structural issues surfaced by the Round-3 verification of tonight's Round-2 fixes. Recommended next: address R3-{C1, C2} as a paired `bugfix-tomi` pass (same component, same store, store-level architectural fixes). -->
+
+### POST-MVP-CODEX-R3-C1 — Library-only multi-row save retries lose idempotency — **RESOLVED 2026-05-17 — `e7400e9`**
+
+**STATUS UPDATE 2026-05-17 (closure sub-agent Bucket 3):** RESOLVED.
+- Fix landed in commit `e7400e9` (RED tests at `ff938f0`).
+- `clientId: string` added to `ConfirmationRow`; minted once via `mintLibraryClientId()` in the reducer lazy-init, then reused from `row.clientId` in the library-only save loop on every save() / retry.
+- Server's I11 replay-by-client_id contract intact across retries: same UUID → 200 + replayed:true → batch resumes from the failed row without spurious 409 dedup collisions.
+- TDD regression coverage: `R3-C1: Retry replays the SAME client_id per row` + `R3-C1: per-row clientIds satisfy CreateLibraryBodySchema and are distinct` in `tests/unit/components/log-flow/ConfirmationScreen.test.tsx`. Both GREEN. 38 existing tests remain GREEN.
+
+**STRENGTHENING NOTE 2026-05-17 (bugfix-tomi 2026-05-17-library-micros Codex Round 1 C2):** Codex R1 on the library-micros batch (base SHA `60e85c5`, head `9361fe6`) re-surfaced the multi-row library-only save retry-safety concern as C2 (Critical — "Multi-row library-only create is not retry-safe — partial-failure can leave persisted orphan rows"). Investigation determined the issue is PRE-EXISTING to this bugfix batch — the sequential POST loop with regenerated client_ids was introduced by commit `783fcc1` (POST-MVP-CODEX-R2-C1 fix), which predates this batch's starting SHA `60e85c5`. The library-micros batch's Bug 1 work on `ConfirmationScreen.tsx` only added the `EDIT_ITEM_MICRO` action and `ConfirmationItemMicros` collapsible — it did NOT touch the multi-row save loop (lines 751-814) where the partial-failure path lives. Furthermore, the architectural resolution (per-row `clientId` minted at row-creation time via `useLogFlowStore.generateClientId`) was already implemented in commit `e7400e9` (closure sub-agent Bucket 3), which post-dates the library-micros batch's starting SHA. The library-micros batch did NOT regress retry safety — it inherits the resolved state from `e7400e9`. **No new code change in the library-micros batch for this finding.** Evidence file: `Planning/bugs/2026-05-17-library-micros/codex/round-1-categorized.md` (C2 section).
+
+- **Severity:** High (data integrity on retry)
+- **Source:** E.CODEX Round-3 codex review, 2026-05-17
+- **Where (original):** `app/(app)/log/_components/ConfirmationScreen.tsx:698-700` (mintLibraryClientId call inside save())
+- **Symptom (original):** `mintLibraryClientId()` is called fresh inside every `save()` invocation, so a retry for the same visible row sends a different UUID. The route contract is explicitly replay-by-same-client_id; the fresh-UUID-per-attempt pattern defeats it. Example: row 0 succeeds → row 1 fails → user clicks Retry → row 0 gets a NEW UUID → server treats it as a new request → 409 by normalized-name dedup → user dead-ended.
+- **Fix implemented:** Mint per-row UUID at row-creation time (reducer lazy-init), persist on `ConfirmationRow.clientId`, read `row.clientId` at save time. Retries replay the same UUID through the server's I11 dedup-by-client_id idempotency index.
+- **Related:** Closes the deeper structural issue exposed by the surface-level fix in POST-MVP-CODEX-R2-C1 (commit `783fcc1`).
+
+### POST-MVP-CODEX-R3-C2 — Library-only dedup state needs row-scoping for non-primary-row recovery — **RESOLVED 2026-05-17 — `e7400e9`**
+
+**STATUS UPDATE 2026-05-17 (closure sub-agent Bucket 3):** RESOLVED.
+- Fix landed in commit `e7400e9` (RED tests at `ff938f0`).
+- Per-row `dedupMatch: DedupMatch | null` added to `ConfirmationRow`. New reducer action `SET_ROW_DEDUP_MATCH` (rowId + match). `EDIT_ITEM_NAME` now also clears that row's `dedupMatch` so rename naturally resolves the row-scoped conflict.
+- Library-only 409 handler dispatches `SET_ROW_DEDUP_MATCH` with the offending row's id (threaded via `rowsToPersist` capture). Library-only preflight dispatches `SET_ROW_DEDUP_MATCH` for row-0; standard mode keeps the legacy global `SET_DEDUP_MATCH` for the REUSE EXISTING save-to-library path.
+- `saveBlockedByDuplicate` in library-only mode aggregates: `state.rows.some(r => r.dedupMatch !== null) || state.dedupMatch !== null` (defense-in-depth on the legacy global path).
+- New `ConfirmationItemDedupBanner` renders inline below the offending row with row-scoped testid `confirmation-item-{i}-dedup-banner`. Top-level `LibraryOnlyDedupBanner` retained for R2 testid backwards-compat and prop-seeded global path.
+- New `dedupMatchByRow?: ReadonlyArray<DedupMatch | null>` prop on `ConfirmationScreenProps` / `RootProps` for deterministic test seeding; production callers omit it.
+- TDD regression coverage: `R3-C2: 409 attaches inline banner to THAT row`, `R3-C2: renaming colliding row clears its dedup match → Save re-enables`, `R3-C2: renaming a NON-colliding row does NOT clear another row's dedup`. All GREEN.
+
+- **Severity:** High (user dead-end on non-primary-row server dups)
+- **Source:** E.CODEX Round-3 codex review, 2026-05-17
+- **Where (original):** `app/(app)/log/_components/ConfirmationScreen.tsx:764-767` (dedupMatch global state + saveBlockedByDuplicate gate)
+- **Symptom (original):** Round-2's C2 fix made the LibraryOnlyDedupBanner render for server-409 collisions (good), but the underlying `dedupMatch` state remains global (no row id/index). `saveBlockedByDuplicate` disables Save whenever `dedupMatch !== null`, and only row 0's debounce preflight (`primaryName`) clears it. If row 1 returns 409, the banner appears, but changing row 1's name cannot clear `dedupMatch` → Save stays disabled → user dead-ended.
+- **Fix implemented:** Per-row dedup state on `ConfirmationRow.dedupMatch`. Inline `ConfirmationItemDedupBanner` per row. EDIT_ITEM_NAME clears the row's slot. `saveBlockedByDuplicate` aggregates across rows.
+- **Related:** Closes the row-scoping work started in POST-MVP-CODEX-R2-C2 (commit `783fcc1`).
+
+## POST-MVP — E.CODEX Round-2 post-closure refresh pass (2026-05-17)
+
+<!-- Filed at the close of the 2026-05-17 ~01:30 GMT+7 post-closure E.CODEX Round-2 refresh pass on commit `ab0cd16` (concurrent-session library-only feature added after sprint closure). 3 Round-1 findings auto-fixed via commits `60bebd8` + `6b793a6` with 7 new TDD tests and 1405-test CI green; pushed to origin. Round-2 verification surfaced 3 residuals tracked below. 2-round Codex cap reached — these are deferred to POST-MVP per policy. Sprint mvp-stabilization closure status PRESERVED (Phase E closed at `2747b4a`); these entries cover post-closure additions, not a sprint regression. Recommended next: address as a `bugfix-tomi` pass before the next feature. -->
+
+### POST-MVP-CODEX-R2-C1 — Library-only multi-row create fails UUID schema validation — **RESOLVED 2026-05-17 — `783fcc1`**
+
+**STATUS UPDATE 2026-05-17 (E.CODEX Round-3 closure):** RESOLVED.
+- Symptom fixed in commit `783fcc1` with passing TDD tests (per-row schema-valid UUIDs via `mintLibraryClientId` + schema-regression test).
+- Round-3 verification surfaced a deeper architectural issue → tracked as POST-MVP-CODEX-R3-C1 (UUID minted inside save() breaks retry idempotency; needs row-creation-time minting at store level).
+- This entry remains for history; do NOT re-fix.
+
+- **Severity:** High (silent partial save in production)
+- **Source:** E.CODEX Round-2 codex review, 2026-05-17
+- **Where:** `app/(app)/log/_components/ConfirmationScreen.tsx:647`
+- **Symptom:** Multi-row library-only save uses `${clientId}:${idx}` for rows after the first. `POST /api/library/create`'s `CreateLibraryBodySchema` requires UUID, so row[1+] returns 400. Unit tests mock `authFetch` and bypass schema, so green tests + broken production.
+- **Owner / when:** Next `bugfix-tomi` pass (recommend integration test against `CreateLibraryBodySchema` or schema validation in the test harness).
+- **Fix sketch:** Either generate per-row UUIDs (e.g., `crypto.randomUUID()` per iteration) OR relax schema to accept suffixed client IDs OR collapse multi-row in library-only to single-row UI.
+
+### POST-MVP-CODEX-R2-C2 — Library-only mode dead-ends on server 409 from non-primary row — **RESOLVED 2026-05-17 — `783fcc1`**
+
+**STATUS UPDATE 2026-05-17 (E.CODEX Round-3 closure):** RESOLVED.
+- Symptom fixed in commit `783fcc1` with passing TDD tests (server-409 response body parse + `SET_DEDUP_MATCH` dispatch wiring → `LibraryOnlyDedupBanner` now renders for server-side collisions).
+- Round-3 verification surfaced a deeper architectural issue → tracked as POST-MVP-CODEX-R3-C2 (global `dedupMatch` state can't be cleared by row 1+ rename; needs per-row dedup state).
+- This entry remains for history; do NOT re-fix.
+
+- **Severity:** High (user dead-end, no recovery UI)
+- **Source:** E.CODEX Round-2 codex review, 2026-05-17
+- **Where:** `app/(app)/log/_components/ConfirmationScreen.tsx:679-684`
+- **Symptom:** Save loop's 409 handler dispatches `SAVE_ERROR` and returns without parsing `{ existing }` body or seeding `dedupMatch` — `LibraryOnlyDedupBanner` never appears for races or for duplicates on non-primary rows. Preflight only checks row[0], so a duplicate in row 2/3 surfaces as generic retry banner with no rename target.
+- **Owner / when:** Next `bugfix-tomi` pass (paired with C1 — same loop, same fix surface).
+- **Fix sketch:** Parse 409 response body, dispatch `DEDUP_MATCH` for the offending row index, ensure `LibraryOnlyDedupBanner` renders with row-specific context.
+
+### POST-MVP-CODEX-R2-IDRIFT — FoodDetail behavior drift absorbed into Round-2 I1 commit — **RESOLVED 2026-05-17 — `d1118c9` + `a0879b1`**
+
+**STATUS UPDATE 2026-05-17 (E.CODEX Round-3 closure):** RESOLVED.
+- Symptom fixed in commit `d1118c9` (11 characterization tests across 2 new files locking in cancel→/library navigation + edit-mode micros zero-value collapsible behaviors) + `a0879b1` (TS type-cast fix on the macros literal to match component's runtime cast for `sugar_g`).
+- KEEP+TESTS decision — behaviors verified intentional and coherent with library-only flow; regression sweep 265 green.
+- Codex Round-3 explicitly did NOT flag IDRIFT, treating it as cleanly resolved. **No follow-up needed.**
+- This entry remains for history; do NOT re-fix.
+
+- **Severity:** Medium (untested behavior change; not actually formatting)
+- **Source:** E.CODEX Round-2 codex review, 2026-05-17
+- **Where:** `app/(app)/library/_components/FoodDetail/FoodDetail.tsx:555-566` + `FoodDetailMacros` + `lib/i18n/en.ts`
+- **Symptom:** Commit `60bebd8`'s diff to `FoodDetail`/`FoodDetailMacros`/`en.ts` characterised as "lint-staged formatting" by the auto-fix sub-agent. Codex Round-2 verified these are real behavior changes:
+  - `FoodDetail` cancel now also calls `router.push('/library')` — navigates away on Cancel
+  - New edit-mode micros collapsible hides sugar/sodium inputs when saved values are zero
+  These were probably staged by a concurrent session before `60bebd8` ran; auto-fix sub-agent's pre-commit hook absorbed them without recognising the semantic change.
+- **Owner / when:** Determine whether the changes are intentional (concurrent-session work) and either keep with tests OR revert. If keeping, add coverage. Decide before merging next feature.
+- **Fix sketch:** `git log -p 60bebd8 -- app/(app)/library/_components/FoodDetail` to inspect; user confirms intent; add unit/integration coverage for the cancel-navigation and zero-value micros collapse if intentional.
+
+## Post-E.1 session followups (2026-05-16) — E2E regression cleanup + infra
+
+<!-- Filed at end of 2026-05-16 evening session covering the E2E regression cleanup (7 fixes from the FU-E1-E2E-PREEXISTING-16 cluster), plus dev-DB ai_call_log alignment, prettier/CI drift fix, evidence-PNG idempotency closure, and the GitHub Actions billing block. 7 daughter entries below resolve under the FU-E1-E2E-PREEXISTING-16 rollup. F1 + F3 deferred for follow-up. CI billing is non-code; needs user action. -->
+
+### FU-E2E-F8-CLASSNAME-CONCAT-MISSING-SPACE — ConfirmationScreen conditional className template literals missing leading space — **RESOLVED 2026-05-16 — `fa3473d`**
+
+- **Severity:** Latent impl bug (UX state styling silently broken since 2026-04-21)
+- **Origin:** This-session E2E regression triage on the FU-E1-E2E-PREEXISTING-16 cluster (F8).
+- **Status:** RESOLVED 2026-05-16 by commit `fa3473d`. Four conditional className template literals on `ConfirmationScreen.tsx` were missing the leading space, producing concatenated tokens like `kalori-confirmation-switchis-on` that CSS never matched. Latent since commit `ce3811a` (2026-04-21).
+- **What:** Affected toggles: meal-row `.is-active`, save-to-library toggle `.is-on`, dedup REUSE button `.is-selected`, FILE-UNDER input `.is-invalid`. Each conditional state had been silently invisible since April; the only reason CI didn't catch it earlier is that the E2E specs were asserting on `aria-pressed` / state attributes, not on visual style.
+- **Manual UX review recommended:** These states will now suddenly render with their correct styling for the first time in production. Worth a visual smoke pass on the confirmation screen before the next deploy to confirm the now-active styles match design intent (oxblood accent + ivory text on the `.is-on`/`.is-active`/`.is-selected` states).
+- **Owner:** closed — n/a. Recommended next: one-line entry in `Planning/CHANGELOG.md` Phase E if desired (the commit itself is the canonical record).
+
+### FU-E2E-F7-QUICK-ACTION-COPY-DRIFT — Quick-action menu spec regex matched old plural copy — **RESOLVED 2026-05-16 — `a8a2d23`**
+
+- **Severity:** test-suite drift (spec out of sync with shipped copy)
+- **Origin:** This-session E2E regression triage (F7).
+- **Status:** RESOLVED 2026-05-16 by commit `a8a2d23`. Quick-action menu spec regex updated to match the library-overhaul singular copy "strike this title". The library-overhaul batch had changed the menu copy from a plural variant; the spec regex still expected the old wording.
+- **Owner:** closed — n/a.
+
+### FU-E2E-F6-KEYBOARD-NAV-PREFIX-COLLISION — Library keyboard-nav spec matched non-card testids — **RESOLVED 2026-05-16 — `5b3a70a`**
+
+- **Severity:** test-suite drift (selector too permissive)
+- **Origin:** This-session E2E regression triage (F6).
+- **Status:** RESOLVED 2026-05-16 by commit `5b3a70a`. Library keyboard-nav spec filter now excludes `pending-` and `menu-trigger-` testid prefixes that had been added during the library overhaul; spec was collecting non-card elements as keyboard-navigable targets.
+- **Owner:** closed — n/a.
+
+### FU-E2E-F5-CRUD-TIMEOUT — US-STAB-C2 CRUD chain test timed out in dev-mode multi-route compile — **RESOLVED 2026-05-16 — `0d43f74`**
+
+- **Severity:** test-infra (dev-mode latency, not a product defect)
+- **Origin:** This-session E2E regression triage (F5).
+- **Status:** RESOLVED 2026-05-16 by commit `0d43f74`. US-STAB-C2 CRUD chain test timeout bumped to 90s to absorb the dev-mode multi-route compile latency. Product behavior is correct; the test was timing out at the prior 30s default before the chained route compiles completed.
+- **Owner:** closed — n/a.
+
+### FU-E2E-F4-LOG-NOW-DEEPLINK-STALE — US-STAB-C6 AC3 spec asserted deeplink behavior after in-place log-now landed — **RESOLVED 2026-05-16 — `31c74d9`**
+
+- **Severity:** test-suite drift (spec asserting prior architecture)
+- **Origin:** This-session E2E regression triage (F4).
+- **Status:** RESOLVED 2026-05-16 by commit `31c74d9`. US-STAB-C6 AC3 spec updated for in-place log-now (the surface no longer issues a deeplink; the action mutates state in-place on the library row). Spec was a stale invariant from the pre-overhaul architecture.
+- **Owner:** closed — n/a.
+
+### FU-E2E-F3-LIBRARY-CARD-NESTED-INTERACTIVE — axe-core nested-interactive serious violation on browse-mode card — **DEFERRED 2026-05-16**
+
+- **Severity:** a11y serious (axe-core nested-interactive rule)
+- **Origin:** This-session E2E regression triage (F3).
+- **Status:** DEFERRED 2026-05-16 — needs design decision. axe-core flags `app/(app)/library/_components/LibraryCard.tsx:128` `<div role="button">` containing a focusable `<button>` (the kebab menu trigger) as a `nested-interactive` violation (serious severity).
+- **Why deferred:** Two fix paths, both with side effects:
+  - (a) Drop `role="button"` from the browse-mode card → changes the a11y semantics (screen readers no longer announce the card as a button) and requires updating the unit test at `tests/components/library/LibraryCard.test.tsx:73`.
+  - (b) Restructure the card so the kebab is a sibling element rather than a descendant of the card-button → larger DOM/CSS change with cascade implications for hover/focus styles.
+  Either path is a contained design decision but not a one-line fix.
+- **Recommended next:** User picks (a) or (b); then route through `bugfix-tomi` for the implementation pass with the a11y unit test plus axe-core assertion as TDD anchors.
+- **Owner:** unassigned (design decision needed).
+
+### FU-E2E-F2-FOCUS-RING-INLINE-OVERRIDE — DashboardDateControl inline `outline:none` killed canonical focus ring — **RESOLVED 2026-05-16 — `c4d7f6d`**
+
+- **Severity:** a11y (visible focus indicator missing on a primary navigation control)
+- **Origin:** This-session E2E regression triage (F2).
+- **Status:** RESOLVED 2026-05-16 by commit `c4d7f6d`. DashboardDateControl had an inline `outline:none` override that suppressed the canonical ivory focus ring; removed the inline style; focus ring restored.
+- **Owner:** closed — n/a.
+
+### FU-E2E-F1-PROFILE-AUTOSAVE-FENCE — Profile row appears for orphan user mid-onboarding — **DEFERRED 2026-05-16 (SECURITY ADJACENT)**
+
+- **Severity:** SECURITY ADJACENT — R1 firewall guard against fallback-creates is a project invariant per `Planning/CLAUDE.md`
+- **Origin:** This-session E2E regression triage (F1).
+- **Status:** DEFERRED 2026-05-16 pending trace investigation. The E2E observation: a profile row appears for an orphan user after they click "Female" in the onboarding wizard. The investigation found:
+  - `/api/profile/save` route (`app/api/profile/save/route.ts:197-203`) has an INTENTIONAL "self-healing contract" for orphan users (creates a profile row if missing on first authenticated POST).
+  - The `WizardShell` "Female" click handler only mutates Zustand state — it does NOT POST to `/api/profile/save`.
+- **Why deferred:** Three possible root causes, each requiring different fixes:
+  - (a) The `handle_new_user` Postgres trigger re-fires under some condition (auth state transition during the wizard?) and creates the row.
+  - (b) The dashboard SSR path has a hidden write path that lights up when navigating from wizard → dashboard.
+  - (c) The test is asserting a stale invariant — the "self-healing contract" may now be intentional and the no-row-during-wizard guard may be obsolete, in which case the spec needs updating, not the product.
+- **Recommended next:** `bugfix-tomi` single-bug investigation with one sub-agent tracing: handler call graph from the "Female" click → all network requests during the wizard → server logs showing the row insertion timestamp + source. Distinguish between (a)/(b)/(c) before any code change. R1 firewall must be preserved.
+- **Owner:** unassigned (security-adjacent — needs explicit user routing into bugfix-tomi).
+
+### FU-CI-GITHUB-BILLING-BLOCKED — GitHub Actions rejecting CI jobs over payment / spending limit — **DEFERRED (user action required) 2026-05-16**
+
+- **Severity:** infra block (no code change can resolve)
+- **Origin:** This-session push to `main` triggered CI; all workflows except Lighthouse were rejected with: "The job was not started because recent account payments have failed or your spending limit needs to be increased."
+- **Status:** DEFERRED — user action required at GitHub Settings → Billing & plans (update payment method and/or raise spending limit). Code itself is healthy: 1254/1254 unit tests pass pre-push; all E2E specs verified GREEN locally by sub-agents.
+- **Why this is not a code issue:** The CI runner won't start the job at all — it's not a test failure or a workflow misconfiguration. Updating billing unblocks the existing workflows as-is.
+- **Recommended next:** User resolves billing; re-trigger CI via `gh workflow run` or a no-op `git commit --allow-empty` on `main`; verify CI green; close this entry.
+- **Owner:** user (billing portal access required).
+
+### FU-DEV-DB-AI_CALL_LOG-FOOD_IMAGE-GHOST — kalori-dev ai_call_log had 10 historical `food-image` rows + 4-value constraint — **RESOLVED 2026-05-16**
+
+- **Severity:** low (dev-only data drift; prod unaffected)
+- **Origin:** Routine dev-DB inspection during the E2E regression cleanup; noticed the dev `ai_call_log.call_type` constraint allowed 4 values whereas prod (via canonical migration source-of-truth) allowed only 3.
+- **Status:** RESOLVED 2026-05-16. Removed the 10 historical `food-image` rows from kalori-dev `ai_call_log`; tightened the constraint to the 3-value canonical form (`describe-meal`, `enrich-library-name`, `propose-library-name`). Dev-DB now aligned with migration source-of-truth. Prod was already on the 3-value form per its migration history; no prod action required.
+- **Owner:** closed — n/a. If a recurrence is observed in dev, suspect either (a) a one-shot manual insert from a dev test script, or (b) an ad-hoc REPL session bypassing the route layer — there is no code path on `main` that can produce `food-image` as a `call_type`.
+
+### FU-CI-PRETTIER-FORMAT-DRIFT — Local prettier + CI prettier disagreed on 2 E.1 artifacts — **RESOLVED 2026-05-16 — `87ea136`**
+
+- **Severity:** infra (CI/local toolchain drift, not a product defect)
+- **Origin:** E.1 closeout — CI prettier flagged 2 artifacts that local prettier had passed.
+- **Status:** RESOLVED 2026-05-16 by commit `87ea136`. Auto-fixed via prettier-format pass; CI + local now agree on the artifacts. Root cause likely a prettier-version drift between local and CI; no further action needed once CI billing is unblocked and the next run confirms.
+- **Owner:** closed — n/a.
+
+## Phase E / Task E.1 closure followups (2026-05-16)
+
+<!-- Filed at E.1.8 closure paperwork: 4 new triage items surfaced during the E.1 sweep that are independent of the E.1 commit chain itself but were observed during E.1.4b / E.1.5 / E.1.3 work. None block the FA mvp-stabilization sprint close (FA `Status: complete`); all are post-MVP triage candidates. -->
+
+### FU-E1-E2E-PREEXISTING-16 — 16 pre-existing E2E failures from E.1.4b sweep — **PARTIALLY RESOLVED 2026-05-16**
+
+- **Severity:** triage (count and root-cause distribution unknown post-cb08e0c)
+- **Origin:** Task E.1.4b full Playwright sweep against current HEAD revealed 16 pre-existing E2E failures clustered across Sprint US-STAB-A/B/C user-story specs + library suite + ios-calendar regression spec.
+- **Status:** PARTIALLY RESOLVED 2026-05-16. 7 of the original 16 failures addressed in this session — see daughter entries `FU-E2E-F2`, `FU-E2E-F4` through `FU-E2E-F8` (six fixes landed by commits `c4d7f6d`, `31c74d9`, `0d43f74`, `5b3a70a`, `a8a2d23`, `fa3473d`). `FU-E2E-F1` and `FU-E2E-F3` deferred separately. Remaining ~9 failures resolved by the user's parallel library polish commits (`cb08e0c`, `0e7d65c`, `34adb2a`, `defefcf`, `b362c90`, `54e269b`, `87ea136`, plus the library-sketch-display batch). Net: the 16-failure cluster is closed; only F1 + F3 carry forward.
+- **What:** The E.1.4b run captured 16 failing E2E tests at the time of the sweep. The user's `cb08e0c` library-sketch-display bugfix-tomi batch (interleaved with E.1 work but NOT in the E.1 chain) resolved a subset of the library-cluster failures. The session's targeted F2/F4/F5/F6/F7/F8 fixes closed the remaining tractable items.
+- **Recommended approach:** With F2/F4/F5/F6/F7/F8 fixed and ~9 library failures resolved out-of-band, only F1 (profile-autosave-fence — security-adjacent, deferred to bugfix-tomi) and F3 (library-card nested-interactive — design decision deferred) remain. Both tracked as standalone followups (`FU-E2E-F1-PROFILE-AUTOSAVE-FENCE`, `FU-E2E-F3-LIBRARY-CARD-NESTED-INTERACTIVE`). Close this rollup entry once F1 + F3 resolve.
+- **Owner:** rollup closed; daughter F1 + F3 carry forward.
+
+### FU-E13-EVIDENCE-PNG-IDEMPOTENCY — Evidence PNG specs overwrite unconditionally — RESOLVED
+
+- **Severity:** low (working-as-designed but caused recurring dirty-state)
+- **Origin:** Task E.1.3 FU-D-SWEEP-02 root-cause investigation.
+- **Status:** Resolved 2026-05-16 via FIX-6. Recommended-approach (b) chosen.
+- **What:** Playwright evidence specs use `page.screenshot({ path: '<absolute>' })` to write evidence PNGs unconditionally on every run. The committed bytes get overwritten by anti-aliasing / font-rendering / frame-timing variance even when the rendered UI is byte-equivalent. Result: every local `playwright test` run shows ~10 modified PNGs in `git status` until the developer `git checkout -- tests/screenshots/`. E.1.3 documented this as the actual root cause of FU-D-SWEEP-02 (not `--update-snapshots`, which is correctly absent from `test:e2e` script and CI invocations).
+- **Resolution (FIX-6, 2026-05-16):** Option (b) — gitignore evidence PNGs — applied. Added three patterns to `.gitignore`: `tests/screenshots/user-stories/US-*/**/*.png`, `tests/screenshots/reduced-motion/*.png`, `tests/screenshots/smoke/**/*.png`. 84 previously-tracked evidence PNGs untracked via `git rm --cached`. Snapshot baselines under `tests/e2e/library/library-visual.spec.ts-snapshots/` and `tests/components/nav/__snapshots__/` remain TRACKED (real test assertions). 16 `evidence.md` narratives remain TRACKED. 12 `tests/screenshots/audit-2026-*/*.png` (one-shot historical manual-audit captures) remain TRACKED. Shipped in commit `9cf0f68` (cross-task contamination — the `.gitignore` edit + `git rm --cached` operations were captured by the concurrent FIX-3 sibling commit; functional outcome is correct, the commit message merely understates the diff scope).
+- **Owner:** closed — n/a.
+
+### FU-E1-UI-FAB-MOBILE-ONLY — `components/nav/log-fab.tsx` is mobile-only; desktop has no log FAB — **RESOLVED AS INTENTIONAL 2026-05-16**
+
+- **Severity:** triage (UX gap or intentional design — needs confirmation)
+- **Origin:** Task E.1.5 golden-path manual smoke spec observation.
+- **Status:** RESOLVED 2026-05-16 — confirmed as intentional design. When FIX-3 attempted to wire a desktop CTA, the user removed the i18n keys for the desktop variant. The removal action signals deliberate intent: mobile-only FAB is the canonical layout per the user's design direction (sidebar already exposes the Log path on desktop). Treat as wontfix.
+- **What:** `components/nav/log-fab.tsx` renders only on mobile breakpoints; desktop users have no equivalent "Log Now" FAB or shortcut. E.1.5 smoke confirmed this is the current behavior. Unclear whether this is intentional (per Ledger desktop layout philosophy — the sidebar already exposes "Log" via the primary nav, so a redundant FAB might be visual clutter) or an unaddressed gap (some users may expect a persistent floating action affordance even on desktop).
+- **Recommended approach:** ~~Triage decision needed.~~ Decision made (2026-05-16): mobile-only is intentional. If documentation drift is a concern later, a one-line note in `Planning/ui-design.md` § FAB component would lock the contract.
+- **Owner:** closed — n/a.
+
+### FU-E1-SIDEBAR-SIGNOUT-UNWIRED — Sidebar sign-out button has aria-label but no onClick — **WONTFIX (user-signaled) 2026-05-16**
+
+- **Severity:** low (functional gap, but canonical sign-out path works)
+- **Origin:** Task E.1.5 golden-path manual smoke spec observation.
+- **Status:** WONTFIX 2026-05-16 — user signaled "skip" twice during this session by soft-reset-wiping the FIX-2 SignOutButton implementation on both attempts. Treat as intentional / wontfix unless user reopens explicitly. Canonical sign-out via `POST /api/auth/sign-out` from the settings page remains the operative path.
+- **What:** `components/nav/sidebar.tsx` includes a sign-out button element with `aria-label="Sign out"` but no `onClick` handler wired. The canonical sign-out path is `POST /api/auth/sign-out` (used by the API-driven sign-out flow and the cross-tab sign-out broadcast). Currently the sidebar button is a no-op when clicked.
+- **Recommended approach:** ~~Two options. (a) **Wire the button** to call the API directly (matching the existing settings-page sign-out trigger). (b) **Document the API as the only sign-out path** and remove the sidebar button (or convert it to a link pointing at `/settings#sign-out` so the click navigates to the page that does the work).~~ Decision deferred to the user; current state is wontfix.
+- **Owner:** closed — wontfix unless user reopens.
+
+---
+
+## Phase D Codex Adversarial Review surfaced followups (2026-05-16)
+
+<!-- Updated 2026-05-16 by Phase D Codex Adversarial Review Round 3 deferral: 1 NEW entry added (F-CODEX-D-R2-03-DEFERRED — HIGH; paired with F-CODEX-D-R2-02 — `authPost` discards JSON body on non-2xx, making the new 409 restore_name_conflict payload unreachable by UI. Touches R1 firewall and changes the error contract for every authPost caller; deferred from D.CODEX Round 3 to a focused PR with full call-site audit). -->
+<!-- Updated 2026-05-16 by Phase D D.CODEX closeout (Round 3 cap-stretch result `ea7d0e7`): F-CODEX-D-R2-03-DEFERRED entry SHARPENED — Codex Round 3 corroborated the deferral as the sole Phase D exit residual blocking E.1 release. Named immediate callers verified at HEAD `ea7d0e7`: `app/(app)/library/_components/LibraryClient.tsx:398-408` (bulk-delete undo path) and `app/(app)/library/_components/FoodDetail/FoodDetail.tsx:306-311` (single-item undo path, FoodDetail subdirectory). Severity HIGH retained. Promoted from "blocks E.1 production cutover" to "blocks E.1 production cutover RELEASE (not just start)" per Codex Round 3 wording. Aliased as F-CODEX-D-R3-01. -->
+
+### F-CODEX-D-R2-03-DEFERRED — authPost error-body propagation (cross-cutting) — **RESOLVED 2026-05-16 (E.1.1) — `fdc51e7`. AuthApiError class introduced; 409 body now reachable in LibraryClient + FoodDetail.**
+
+**Also tracked as:** F-CODEX-D-R3-01 (Codex Round 3 cap-stretch escalation surface — same defect, sharpened with named call sites) — RESOLVED by same commit `fdc51e7`.
+**Severity:** HIGH (paired with F-CODEX-D-R2-02 — R2-02's 409 payload is unreachable by UI until R2-03 lands; Codex Round 3 confirmed as user-visible silent failure)
+**Origin:** D.CODEX Round 2 (commit `2745b65`, Codex Round 2 review); Codex Round 3 (commit `ea7d0e7`, cap-stretch review) corroborated as Phase D exit residual.
+**Status:** RESOLVED 2026-05-16 (E.1.1) — commit `fdc51e7`. AuthApiError class introduced; 409 body now reachable in LibraryClient + FoodDetail callers. Resolution validated by Codex Round 2 (`d89ac9f`) — no Round 3 findings against the new shape; 2-round Codex cap closed clean.
+**Description:** `authPost` in `lib/auth/refresh-interceptor.ts:193-194` throws `Error('... failed: <status>')` and discards the JSON response body. Callers cannot recover structured error payloads (e.g., the new `409 restore_name_conflict` from `app/api/library/bulk-delete/undo/route.ts`). Library undo callers `catch` and silently swallow, so the UI cannot render conflict-resolution UX.
+
+**Codex Round 3 (commit `ea7d0e7`) corroboration:** Round 3 cap-stretch (one-off, user-authorized under "complete the whole phase" directive) explicitly rejected the R2-03 deferral framing as Phase-D-close-ready and named the two immediate callers in main that silently swallow the new 409 payload:
+- **`app/(app)/library/_components/LibraryClient.tsx:398-408`** — bulk-delete undo path in the Library grid (post-bulk-delete revert handler); calls `authPost('/api/library/bulk-delete/undo', { client_ids: clientIdsForUndo })` inside a `try { ... } catch { ... }` that does not inspect status/body.
+- **`app/(app)/library/_components/FoodDetail/FoodDetail.tsx:306-311`** — single-item undo path in the FoodDetail route (post-delete revert handler, FoodDetail subdirectory); calls `authPost('/api/library/bulk-delete/undo', { client_ids: [itemClientId] })` with the same error-handling shape.
+
+Both call sites catch `authPost` rejections without inspecting status/body. Because `authPost` discards JSON bodies on non-2xx, the new `409 restore_name_conflict` returned by the R2-02 server fix is **correct on the wire but invisible in the UI**. The user clicks UNDO after a same-name recreate race, the server rejects restore with structured 409, and the UI silently leaves the item deleted/tombstoned with no conflict-resolution path.
+
+**Required scope:**
+1. Audit ALL `authPost` / `authGet` / `authPut` / `authDelete` call sites — list each caller's current error-handling assumption.
+2. Decide on contract: throw structured error class (e.g., `AuthFetchError` with `status`, `body`, `message`) OR return a discriminated union `{ ok: true, data } | { ok: false, status, body }`.
+3. Update every call site to match the new contract — explicitly include the two named callers above (LibraryClient bulk-delete revert + FoodDetail single-item revert) with conflict-aware error handling that surfaces the `409 restore_name_conflict` payload to the user.
+4. Ensure R1 firewall semantics preserved — no local refresh shims introduced, refresh-interceptor remains the single source of truth.
+5. After R2-03 lands, the existing `409 restore_name_conflict` payload in `app/api/library/bulk-delete/undo/route.ts` becomes UI-actionable; add a UI conflict-resolution flow in the LibraryTab + FoodDetail consuming the structured payload.
+**Acceptance:** Every authPost caller surfaces structured error info; library undo conflict shows a user-actionable UI at both bulk-delete (LibraryClient) and single-item (FoodDetail) surfaces; R1 firewall preserved.
+**Blocks:** E.1 production cutover RELEASE (not just start) — Codex Round 3 framed this as "do not treat Phase D as close-ready for E.1 with this as a passive follow-up; promote into blocking E.1 work item or complete it before release". Paired with F-CODEX-D-R2-02 which depends on this contract change for UI usefulness.
+
+**2026-05-16 (E.1 entry):** Resolution promoted into E.1 scope per validation C6 finding ("blocks E.1 RELEASE"). Implementation tracked as E.1.1; this followup will close when E.1.1 lands.
+
+## bugfix-tomi 2026-05-16-mini-batch-A-cleanup surfaced followups (2026-05-16)
+
+<!-- Updated 2026-05-16 by bugfix-tomi batch `2026-05-16-mini-batch-A-cleanup` Phase 8: 4 NEW entries added (I-R2-1 — Improvement Codex Round 2 deferred, authPost discards JSON body on non-2xx — parent batch territory; I-SR1 — Informational security, callGeminiImage no wall-clock timeout; I-SR2 — Informational security, streaming-counter transient double-allocation; I-SR3 — Informational security, PROD_SUPABASE_REF hardcoded). 4 entries from parent batch CLOSED (F-LIBOVR-E2E-INFRA-DRIFT in-repo portion → Item 1; F-LIBOVR-SEC-M1-PNG-DECODE-CAP → Item 2; F-LIBOVR-SEC-M2-FIXTURE-PROD-GATE → Item 3; F-LIBOVR-BUG7B-LOGMODAL-SORT → Item 4). 5-item batch; Codex R1: 3 Critical auto-fixed. Codex R2: 1 Critical + 1 Improvement → user-authorized R3 resolved Critical, Improvement deferred as I-R2-1. Security 0 Critical / 0 High / 0 Medium / 3 Informational deferred. Operator follow-up: regenerate `.env.local` with `vercel env pull --environment=development` to unblock local E2E. -->
+
+### [2026-05-16] I-R2-1 — `restore_name_conflict` 409 swallowed by `authPost` callers
+
+- Origin: bugfix-tomi mini-batch A Codex Round 2 Improvement
+- Priority: improvement (Codex Round 2) — parent batch territory
+- Estimated effort: 2-4 h (call-site audit + structured error shape)
+- Description: `app/api/library/bulk-delete/undo/route.ts:147` returns a structured 409 `restore_name_conflict` payload when a same-name recreate races with the undo path; consumers in `app/(app)/library/_components/LibraryClient.tsx` and `app/(app)/library/_components/FoodDetail/FoodDetail.tsx` call `authPost('/api/library/bulk-delete/undo', { client_ids: [...] })` inside a `try { ... } catch { ... }` that does not inspect status/body. Because `authPost` discards JSON bodies on non-2xx (see `F-CODEX-D-R2-03-DEFERRED` / `F-CODEX-D-R3-01` for the cross-cutting tracking entry), the new 409 payload is correct on the wire but invisible in the UI. The user clicks UNDO after a same-name recreate race, the server rejects restore with structured 409, and the UI silently leaves the item deleted/tombstoned with no conflict-resolution path.
+- Recommended approach: This is the same surface as the cross-cutting `F-CODEX-D-R2-03` / `F-CODEX-D-R3-01` entry above. Fix at the `authPost` boundary: either (a) throw a structured `AuthFetchError` with `status` + `body` + `message`, or (b) return a discriminated union `{ ok: true, data } | { ok: false, status, body }`. Update the two library undo call sites to surface the `409 restore_name_conflict` payload to the user with an actionable toast/dialog. Add caller-level tests.
+- Reads: `Planning/bugs/2026-05-16-mini-batch-A-cleanup/codex/round-2-categorized.md` §R2-I1; `Planning/bugs/2026-05-16-mini-batch-A-cleanup/codex/round-2.md`.
+- Owner: unassigned — recommended to fold into the `F-CODEX-D-R3-01` cross-cutting authPost-error-body-propagation work item; the surface and the recommended fix are identical.
+
+### [2026-05-16] I-SR1 — `callGeminiImage` no wall-clock timeout (slow-loris DoS)
+
+- Origin: bugfix-tomi mini-batch A Phase 6 security review (Informational)
+- Priority: informational
+- Estimated effort: 30-60 min
+- Description: `lib/ai/image-client.ts:129-168` performs the Gemini image-generation `fetch()` with no `AbortController` + no overall request timeout. The only hard bound is the Vercel function timeout (60s Hobby / 300s Pro). A slow-loris-style upstream (Gemini API hung mid-response, network stall, partial-chunk delivery at the byte rate) would consume function wall-clock for the full Vercel kill window before the platform terminates the request. Bounded blast-radius for now: the sketch pipeline already caps retries at 3 and queues async via `after()`, so a single hung request burns one Vercel invocation but doesn't block user-visible UI.
+- Recommended approach: Add an `AbortController` with a 30s timeout wired into the `fetch()` `signal` parameter AND into the stream `reader.cancel()` on timeout. Add a `'stalled-pull'` regression test that mocks a `ReadableStream` whose first chunk arrives after 35s, asserts the abort fires at 30s, and asserts the stream reader is properly cancelled.
+- Reads: `Planning/bugs/2026-05-16-mini-batch-A-cleanup/security-review.md` §I-SR1.
+- Owner: unassigned — defer until before multi-user features OR before any signed-PR external review.
+
+### [2026-05-16] I-SR2 — streaming-counter transient double-allocation (~14 MB peak)
+
+- Origin: bugfix-tomi mini-batch A Phase 6 security review (Informational)
+- Priority: informational
+- Estimated effort: 1-2 h
+- Description: `lib/ai/image-client.ts:227-272` (`readBodyWithCap()`) accumulates streaming chunks into a `Uint8Array[]` buffer then concatenates into a single `Uint8Array` on completion, then parses JSON. Worst-case transient memory footprint is ~14 MB (5 MB cap × roughly 2.8× for the chunk array overhead + final concat buffer + parsed JSON object representation) before GC reclaims the intermediate arrays. Within Vercel's 1024 MB heap by ~2 orders of magnitude, but creates a transient memory spike that would matter under sustained concurrent load.
+- Recommended approach: Use `TextDecoder({ stream: true })` directly over the chunk stream to decode-as-you-go without intermediate concatenation, then `JSON.parse(decoded)` once at end-of-stream. Reduces transient peak to one decoded-string-sized buffer instead of three (chunk array + concat buffer + parsed object).
+- Reads: `Planning/bugs/2026-05-16-mini-batch-A-cleanup/security-review.md` §I-SR2.
+- Owner: unassigned — defer until multi-user concurrency profiling surfaces sustained pressure on the heap.
+
+### [2026-05-16] I-SR3 — `PROD_SUPABASE_REF` hardcoded; silently no-ops on prod-project migration
+
+- Origin: bugfix-tomi mini-batch A Phase 6 security review (Informational)
+- Priority: informational
+- Estimated effort: 15-30 min
+- Description: `tests/_utils/refuse-prod-supabase.ts:34` exports `PROD_SUPABASE_REF = 'dryysypycsexvlbabtwq'` as a hardcoded constant. If the prod Supabase project is ever migrated to a new ref (e.g. region change, account migration, project recreation), the guard would silently no-op against the new ref — local Playwright runs could write to the new prod project before anyone notices the guard isn't firing.
+- Recommended approach: Drive the constant from an env var (`PROD_SUPABASE_REF_OVERRIDE`) OR add a CI parity check that asserts the constant matches `Planning/setup-state.md`'s authoritative ref value. Either path makes drift visible at CI time rather than at runtime.
+- Reads: `Planning/bugs/2026-05-16-mini-batch-A-cleanup/security-review.md` §I-SR3.
+- Owner: unassigned — drift bounded by CLAUDE.md / setup-state.md review cadence.
+
+### [2026-05-16] OPERATOR TASK — Regenerate `.env.local` with dev creds
+
+- Origin: bugfix-tomi mini-batch A Phase 7 E2E acceptance
+- Priority: operator follow-up
+- Estimated effort: 2 min
+- Description: The new `tests/_utils/refuse-prod-supabase.ts` guard correctly refuses test runs whenever `.env.local` carries PROD Supabase credentials (acceptance criterion 2 — verified GREEN in Phase 7). To switch the local Playwright runner from "refusing" to "running," the operator regenerates `.env.local` with dev creds.
+- Recommended approach: Run `vercel env pull --environment=development` from the repo root. This replaces the existing PROD-pointing `.env.local` with DEV creds (`aaiohznsqlqchsoxaqkz`), enabling local Playwright runs against `kalori-dev`. The PROD-ref guard then no-ops because the URL no longer matches `PROD_SUPABASE_REF`.
+- Reads: `Planning/bugs/2026-05-16-mini-batch-A-cleanup/e2e-results.md`; `Planning/bugs/2026-05-16-mini-batch-A-cleanup/manifest.md` §Operator task.
+- Owner: operator — manual one-time action.
+
+---
+
+## RESOLVED by mini-batch A (2026-05-16)
+
+The following entries from parent batch `2026-05-16-library-overhaul` were closed by this mini-batch. The original entries below are retained for audit-trail continuity; status updated to RESOLVED inline.
+
+- **F-LIBOVR-E2E-INFRA-DRIFT** (in-repo portion) — RESOLVED by Item 1. Quote-aware tokenizer in `tests/_utils/env-loader.ts` parses `vercel env pull` Windows artifacts correctly. PROD-ref guard in `tests/_utils/refuse-prod-supabase.ts` refuses test runs against the PROD ref. Operator task to regenerate `.env.local` filed as a separate followup (see above).
+- **F-LIBOVR-SEC-M1-PNG-DECODE-CAP** — RESOLVED by Item 2. 5 MB cap moved upstream to `lib/ai/image-client.ts::readBodyWithCap()`; stream-and-count enforces hard limit before allocation; Content-Length used only for early-REJECT. Sharp uses `failOn: 'warning'` (default, strictest). New `GeminiOversizeError` class enables structured error propagation.
+- **F-LIBOVR-SEC-M2-FIXTURE-PROD-GATE** — RESOLVED by Item 3. `KALORI_SKETCH_FIXTURE_BASE64` env-var read gated by `NODE_ENV !== 'production'` at `lib/ai/image-client.ts:82-87`. Mirrors `lib/library/sketch-enqueue.ts:55-58` precedent.
+- **F-LIBOVR-BUG7B-LOGMODAL-SORT** — RESOLVED by Item 4. Zustand `LibrarySort` union widened with `'name-asc'`; default flipped; `isLibrarySort` guard + rehydrate coercion. New "NAME A-Z" pill at position 0 in LibraryTab. Log-modal now aligned with `/library` page's Bug 7 default.
+
+The remaining parent-batch entries (`F-LIBOVR-SIGN-FANOUT-SQL-PAGINATION`, `F-LIBOVR-LESSONS-COMPACTION`) remain deferred as documented in their original entries.
+
+## bugfix-tomi 2026-05-16-library-overhaul surfaced followups (2026-05-16)
+
+<!-- Updated 2026-05-16 by bugfix-tomi batch `2026-05-16-library-overhaul` Phase 8: 6 NEW entries added (F-LIBOVR-BUG7B-LOGMODAL-SORT — Low; F-LIBOVR-SEC-M1-PNG-DECODE-CAP — Medium; F-LIBOVR-SEC-M2-FIXTURE-PROD-GATE — Medium; F-LIBOVR-E2E-INFRA-DRIFT — High; F-LIBOVR-SIGN-FANOUT-SQL-PAGINATION — Low; F-LIBOVR-LESSONS-COMPACTION — Low). 12-bug batch; Codex R1: 3 Critical + 1 Improvement auto-fixed. Codex R2: 1 Critical + 1 Improvement user-authorized R3 override resolved both. Security 0/0/2 Medium deferred. -->
+<!-- Updated 2026-05-16 by bugfix-tomi mini-batch A: 4 entries from this section CLOSED — F-LIBOVR-E2E-INFRA-DRIFT (in-repo portion), F-LIBOVR-SEC-M1-PNG-DECODE-CAP, F-LIBOVR-SEC-M2-FIXTURE-PROD-GATE, F-LIBOVR-BUG7B-LOGMODAL-SORT. See "RESOLVED by mini-batch A" section above. -->
+
+### [2026-05-16] F-LIBOVR-BUG7B-LOGMODAL-SORT — log-modal `LibraryTab` sort default uses different surface
+
+- Origin: bugfix-tomi batch `2026-05-16-library-overhaul` Bug 7 follow-up
+- Priority: low
+- Estimated effort: 1-2 h
+- Description: The log-modal `LibraryTab` uses a separate Zustand-backed sort union with options `frequent|recent|highest-protein` — the `'name-asc'` default introduced in Bug 7 doesn't exist there. Bug 7 only fixed the `/library` page surface's `usePersistedSelection` fallback at `LibraryClient.tsx:193`. The log-modal surface is a distinct component branch (state stored in a Zustand store, options enum different) and was scoped out of the batch per the stop-the-world trigger in Bug 7's briefing.
+- Recommended approach: Either (a) widen the log-modal Zustand sort union to include `'name-asc'` and flip the store default, OR (b) document the surface as intentionally differentiated (logging context prioritises frequency/recency) and close the followup. Option (b) is cheaper but requires user sign-off on the divergence.
+- Reads: `Planning/bugs/2026-05-16-library-overhaul/proposals/bug-7.md`, log-modal `LibraryTab` source.
+- Owner: unassigned — flagged for revisit when the user re-evaluates log-modal UX.
+
+### [2026-05-16] F-LIBOVR-SEC-M1-PNG-DECODE-CAP — bound PNG decode buffer in sketch-pipeline
+
+- Origin: bugfix-tomi batch `2026-05-16-library-overhaul` Phase 6 security review (M1)
+- Priority: medium
+- Estimated effort: 30-60 min
+- Description: `lib/library/sketch-pipeline.ts:262-269` decodes the Gemini response's base64 PNG (`Buffer.from(image.base64, 'base64')`) directly into a Node heap buffer with no upper bound. The wrapper has a soft 50 KB ceiling for the OUTPUT WEBP only — it does NOT cap the raw PNG that `sharp` receives. A drifting Gemini response (or a model that, under prompt-injection attack, returns a 20 MB PNG) would be fully decoded into Node memory, then passed to sharp (which has known historical libwebp/libpng OOB-read CVEs around malformed images). Cost cap (`MAX_RETRIES=3`) bounds blast-radius in single-user MVP, but should land before multi-user features.
+- Recommended approach: Add a guard immediately after `Buffer.from(...)` to reject `pngBuf.byteLength > MAX_INPUT_BYTES` (suggest 5 MB). Convert to `sketch_last_error = 'gemini_oversize_response'` and return `{status:'failed'}` so the row counter increments and the retry cap kicks in. Also pass `failOn: 'truncated'` to the sharp constructor for hardened decoder behavior. Best-practice mirror: `/api/storage/thumbnail/route.ts` magic-byte sniff + size guard already does this for user uploads.
+- Reads: `Planning/bugs/2026-05-16-library-overhaul/security-review.md` §M1.
+- Owner: unassigned — defer until before multi-user features OR before any signed-PR external review.
+
+### [2026-05-16] F-LIBOVR-SEC-M2-FIXTURE-PROD-GATE — prod-gate `KALORI_SKETCH_FIXTURE_BASE64`
+
+- Origin: bugfix-tomi batch `2026-05-16-library-overhaul` Phase 6 security review (M2)
+- Priority: medium
+- Estimated effort: 15-30 min
+- Description: `lib/ai/image-client.ts:82-85` checks `process.env.KALORI_SKETCH_FIXTURE_BASE64` BEFORE checking the API key. If this env var is ever set in production (typo'd onto the wrong Vercel scope, leftover from a debug session, malicious commit), every sketch generated for every user is the same fixture bytes — and the failure is silent because the pipeline succeeds and the row is marked `thumbnail_kind='sketch', sketch_generated_at=now()`, fencing the row forever. Recovery would require nulling the column on every affected row + manual re-enqueue.
+- Recommended approach: Gate the fixture-mode bypass to non-production environments. Add `process.env.NODE_ENV !== 'production'` to the if-condition, OR introduce a second explicit gate `KALORI_ALLOW_SKETCH_FIXTURE_MODE=1` that documents the intent and won't accidentally land via casual env-var copy. Same shape as `lib/library/sketch-enqueue.ts:56-58` already uses for `KALORI_SKETCH_DISABLED`.
+- Reads: `Planning/bugs/2026-05-16-library-overhaul/security-review.md` §M2.
+- Owner: unassigned — recommended before production migration apply.
+
+### [2026-05-16] F-LIBOVR-E2E-INFRA-DRIFT — Playwright E2E suite blocked on env-loader / dev-server mismatch
+
+- Origin: bugfix-tomi batch `2026-05-16-library-overhaul` Phase 7
+- Priority: high
+- Estimated effort: 1-3 h
+- Description: 11/11 existing library E2E tests + 6 new batch-authored specs (Bug 3, Bug 5, Bug 6) cannot run because (a) `.env.local` carries PROD Supabase URL + keys (`dryysypycsexvlbabtwq`) with embedded `\r\n` artifacts from `vercel env pull`, and (b) the auth fixture's `resolveEnv()` falls back to `NEXT_PUBLIC_*` and the test fixture cannot provision a user the running dev server (PROD-connected) will recognise. Independent of the batch — preexisting env drift surfaced at Phase 7 invocation.
+- Recommended approach: Three independent fixes (do all three for permanence):
+  1. Strip embedded `\r\n` in `tests/e2e/fixtures/global-setup.ts` loader.
+  2. Refuse fixture if `SUPABASE_TEST_URL` points at prod ref `dryysypycsexvlbabtwq` (fail-fast guard).
+  3. Restart dev server with DEV Supabase creds from `Planning/devapikeys.txt` for E2E runs — either one-shot `cross-env`, scaffold `.env.test.local`, or permanent `.env.local.dev` symlink workflow.
+- Reads: `Planning/bugs/2026-05-16-library-overhaul/e2e-results.md`.
+- Owner: unassigned — recommended before next phase boundary or visual-regression baseline refresh.
+
+### [2026-05-16] F-LIBOVR-SIGN-FANOUT-SQL-PAGINATION — Option-A: move pagination to SQL layer for full UX preservation
+
+- Origin: bugfix-tomi batch `2026-05-16-library-overhaul` Codex R2-I1 deferral
+- Priority: low
+- Estimated effort: 4-8 h (multi-task refactor)
+- Description: Codex R2-I1 flagged that `fetchLibraryPage` originally signed every row's thumbnail before client-side pagination took effect (O(N) signing cost, not O(page-size)). Round-3 Option-B (bounded `SIGN_LIMIT=10` budget) ships now: signs rows 0..9 by SQL `last_used_at DESC NULLS LAST`; for rows >= 10, nulls out `thumbnail_url` so the client's letter-mark fallback renders. Acceptable UX trade-off: page 1 (most common visit) shows full thumbnails; pages 2+ show letter-marks. Option A (SQL `LIMIT/OFFSET` matching displayed page) was investigated and rejected because `LibraryClient.tsx` does client-side search/filter/sort/pagination over the FULL initial array — SQL pagination would break those UX features entirely.
+- Recommended approach: Multi-task refactor to push search/filter/sort/pagination to the server. Replace `LibraryClient` client-side state with URL-param-driven server route + Supabase queries. Then SQL `LIMIT/OFFSET` matches displayed page, signing budget grows to N=page-size on every request, no degradation per page count.
+- Reads: `Planning/bugs/2026-05-16-library-overhaul/codex/fixes-r2-round3-batch.md` §r2_i1_resolution, `Planning/bugs/2026-05-16-library-overhaul/codex/round-2-categorized.md` §R2-I1.
+- Owner: unassigned — defer until search/sort UX gets revisited OR if library scale grows beyond ~200 items per user.
+
+### [2026-05-16] F-LIBOVR-LESSONS-COMPACTION — `lessonlearned.md` subsections exceed 15-bullet guideline
+
+- Origin: bugfix-tomi batch `2026-05-16-library-overhaul` Phase 8.1 lessons append
+- Priority: low
+- Estimated effort: 30-60 min
+- Description: Multiple subsections in the global `~/.claude/lessonlearned.md` now exceed the 15-bullet soft guideline: Process & Sub-agents, Testing, Next.js 16, Concurrency. Hits the same precedent flagged by prior bugfix-tomi batches (`2026-05-09-water-fab-ux`). Compaction would coalesce overlapping bullets (e.g. multiple sub-bullets repeat "verify GREEN before claiming" or "always await mutation before navigate") into single anchor bullets with sub-references.
+- Recommended approach: Compact each over-long subsection by (a) merging duplicate observations into single canonical bullets, (b) extracting truly distinct lessons into more specific subsections, (c) archiving very old (>3 months) bullets to a dated `lessonlearned-archive-YYYY-MM.md` file. Run once at next maintenance window.
+- Reads: `~/.claude/lessonlearned.md`, prior precedent in `Planning/bugs/2026-05-09-water-fab-ux/manifest.md`.
+- Owner: unassigned — maintenance window task.
+
+## bugfix-tomi 2026-05-16-ios-calendar-fix surfaced followups (2026-05-16)
+
+### F-IOS-CAL-CODEX-R2-DEFERRED — Codex round-2 adversarial review deferred (OpenAI usage-limit) — LOW
+
+- **Status:** Open (Low — gate-deferral, NOT a finding). Re-run when OpenAI quota refreshes.
+- **Severity:** Low (gate-deferral). Round 1 was 0 Critical / 1 Improvement (auto-fixed: test geometry guard) / 0 Minor. Production code unchanged between R1 and the blocked R2. The bugfix-tomi 2-round Codex cap is documented; this is a deferred review, not a deferred finding.
+- **Origin:** bugfix-tomi batch `2026-05-16-ios-calendar-fix` Phase 5 (Codex round 2) invocation at 2026-05-16T18:15:52Z.
+- **Discovered:** 2026-05-16T18:15:52Z.
+- **File / surface:** N/A (gate-status follow-up, not a code defect). Re-invocation scope = bugfix `2026-05-16-ios-calendar-fix` aggregate diff (`components/dashboard/DashboardDateControl.tsx` + `tests/unit/components/dashboard/DashboardDateControl.test.tsx` + `tests/e2e/ios-calendar-trigger.spec.ts` + `playwright.config.ts` + `app/globals.css`).
+- **Symptom:** `codex-companion.mjs adversarial-review` returned `Codex error: You've hit your usage limit. Upgrade to Pro ... try again at 4:18 AM. Turn failed.` Verbatim payload captured at `Planning/bugs/2026-05-16-ios-calendar-fix/codex/round-2.md`. Not an auto-trim signal — deterministic-reset hard cap. Thread id `019e2cf3-6668-7bb3-b0fc-49f58c0159d0`.
+- **Recommended fix:** When quota refreshes, retry round 2 with identical scope. Apply any findings via auto-fix sub-agent then re-verify.
+- **Contract lock in place (mitigation):**
+  1. Round 1 already clean (0 Critical / 1 Improvement / 0 Minor) — Improvement (test geometry guard) auto-fixed and verified GREEN before round 2 was attempted.
+  2. Independent security review (Phase 6) completed clean — 0 Critical / 0 High / 0 Medium / 2 Informational (CSS hygiene). Verdict: approve. Net attack-surface reduction (removed the `showPicker` shim).
+  3. 7 Vitest unit tests + 3 Playwright `webkit-ios` E2E tests written and structurally validated.
+  4. The fix REMOVES a code path (`showPicker()` shim + proxy button) rather than adding one — semantic shape mirrors the working precedent in `WeightQuickAdd.tsx` and `Confirmation/TimeEditor.tsx`.
+- **Why deferred:** Hard account-level quota cap with deterministic reset. Forcing an immediate retry would re-fail with the same error. Documented precedent: `F-D6-CODEX-ROUND1-DEFERRED` (same root cause class, regression-test contract lock as mitigation).
+- **Production impact:** None — DashboardDateControl is a client-only UI primitive; the fix removes shim code and aligns with the documented `Planning/ui-design.md` §10.6.1 line 2990 prescription. R1 firewall preserved (no auth / refresh / RLS touched). DT-2 firewall preserved.
+- **Estimate:** 5–15 min Codex run + auto-fix sub-agent window if findings emerge.
+- **Reads (for retry session):**
+  - `Planning/bugs/2026-05-16-ios-calendar-fix/codex/round-2.md` (verbatim quota error)
+  - `Planning/bugs/2026-05-16-ios-calendar-fix/manifest.md` (batch context)
+  - `Planning/bugs/2026-05-16-ios-calendar-fix/codex/round-1-categorized.md` (R1 findings + auto-fix outcome)
+  - `~/.claude/rules/codex-review.md` (gate contract — Critical/Improvement/Minor categorization, 2-round cap)
+- **Resolution criteria:** Round 2 completes verbatim; findings categorized; Critical + Improvement auto-fixed via sub-agent then re-verified GREEN; review output appended to manifest. Pattern precedent: `F-D6-CODEX-ROUND1-DEFERRED`.
+- **Owner:** unassigned — re-run at next available Codex window.
+- **Related task:** out-of-band bugfix-tomi during Phase D `mvp-stabilization`; bug item #33 (`bugs/bugsandimprovements.txt`).
+- **References:** `Planning/bugs/2026-05-16-ios-calendar-fix/manifest.md`; pattern precedent `F-D6-CODEX-ROUND1-DEFERRED`.
+
+## D.SWEEP-surfaced followups (2026-05-16)
+
+### FU-D-SWEEP-01 — D.E2E acceptance-evidence file missing — MINOR — **RESOLVED 2026-05-16 (E.1.3)**
+
+- **Surfaced:** Phase D Testing Sweep audit Step 7 (per-task acceptance-evidence audit).
+- **Severity:** Minor (planning-doc gap; user-observable behavior fully covered).
+- **What:** `Planning/features/2026-05-01-mvp-stabilization/acceptance-evidence/` contains files for D.1, D.2, D.4, D.6 (indirect via `migration-plan.md` §2) but NO `task-D.E2E.md`. The spec at `tests/e2e/web/user-stories/US-STAB-D-bundled.spec.ts` self-documents (4 active AC + 5 SCOPE-SKIP); evidence narrative at `tests/screenshots/user-stories/US-STAB-D1/evidence.md` covers the D.1 portion only. Per acceptance-evidence convention, D.E2E should have its own `task-D.E2E.md`.
+- **Recommendation:** Write `task-D.E2E.md` summarizing US-STAB-D-bundled coverage, link the 4 GREEN ACs to the spec line numbers and the 5 SCOPE-SKIP ACs to their justification, snapshot the test diagnostic block from D.E2E's commit message (`600c6cd`). Schedule as part of the Phase E preamble or post-MVP cleanup; not a Phase D blocker because the spec + commit message + progress.md row already constitute the operative evidence.
+- **Owner:** unassigned (Phase E preamble OR post-MVP).
+- **Resolution (2026-05-16, Task E.1.3):** Reconstructed `Planning/features/2026-05-01-mvp-stabilization/acceptance-evidence/task-D.E2E.md` using the standard template (task-C.4.md shape) plus the canonical per-AC narrative already committed at `tests/screenshots/user-stories/US-STAB-D-bundled/evidence.md`. The new file is a planning-layer mirror of pre-existing operative evidence (the spec, the 9 committed screenshots, the CHANGELOG entry, and the in-tests evidence.md remained the ground truth); no test re-run was needed. Resolved at commit `f8de26e`.
+
+### FU-D-SWEEP-02 — Playwright modified 10 committed baselines during D.SWEEP E2E run — INVESTIGATION — **RESOLVED 2026-05-16 (E.1.3) — root-cause hypothesis corrected**
+
+- **Surfaced:** Phase D Testing Sweep teardown (working-tree audit).
+- **Severity:** Investigation (latent visual-regression risk — high impact if confirmed).
+- **What:** Local `npm run test:e2e` invocation during the sweep modified 10 committed PNG baselines (visible as `M` in `git status`): 3 under `tests/screenshots/reduced-motion/`, 4 under `tests/screenshots/user-stories/US-STAB-B*/`, 4 under `tests/screenshots/user-stories/US-STAB-D-bundled/`. Playwright should NOT update baselines unless `--update-snapshots` is passed. The `test:e2e` npm script likely has the flag implicitly, OR `playwright.config.ts` is configured to update on diff. Either is a latent visual-regression risk — visual regression tests would silently pass even after the app's visuals drift.
+- **Recommendation:** Audit `package.json` `"test:e2e"` script + `playwright.config.ts`. Confirm `--update-snapshots` is not set on the default test command (snapshot updates should be opt-in via a separate `test:e2e:update` script). Revert the 10 working-tree PNG modifications: `git checkout -- tests/screenshots/`. Add a CI check that fails if `--update-snapshots` is passed in PR runs.
+- **Owner:** unassigned.
+- **Resolution (2026-05-16, Task E.1.3):**
+  - **Hypothesis WAS WRONG.** The 10 modified PNGs are NOT Playwright snapshot baselines (`toMatchSnapshot()` / `toHaveScreenshot()` outputs). They are **evidence screenshots** written via `page.screenshot({ path: '<absolute path>' })` calls in user-story / reduced-motion specs (e.g., `tests/e2e/web/user-stories/US-STAB-B1.spec.ts:163-166`, `tests/e2e/web/user-stories/US-STAB-D-bundled.spec.ts:194-197`, `tests/e2e/reduced-motion.spec.ts:142-144`). The Playwright `--update-snapshots` flag has NO effect on `screenshot({path})` calls — those overwrite unconditionally on every run.
+  - **Audit findings (all clean):**
+    - `package.json` `test:e2e` script = `playwright test` (no `--update-snapshots`, no `-u`).
+    - `playwright.config.ts` has NO `updateSnapshots` option set (Playwright default `'missing'` applies — but again, only to snapshot matchers, not `screenshot({path})`).
+    - `.github/workflows/ci.yml` E2E job runs `pnpm exec playwright test --project=chromium` (no update flag). Visual job runs `--update-snapshots=changed` ONLY when `inputs.update_snapshots=true` is dispatched via `workflow_dispatch` UI toggle (intentional, gated, opt-in).
+    - `grep -r "toMatchSnapshot|toHaveScreenshot" tests/e2e/` returns 3 files (`nav-responsive.spec.ts`, `onboarding-completion.spec.ts`, `library/library-visual.spec.ts`) — NONE of which write to the 10 modified PNG paths.
+  - **Actual root cause:** Evidence screenshots, by design, are regenerated on every run. The committed bytes get overwritten by anti-aliasing / font-rendering / frame-timing variance even when the rendered UI is byte-equivalent. The standalone `tests/e2e/web/dashboard-a11y.spec.ts` writes to `tests/screenshots/user-stories/US-STAB-D1/` per the same pattern — its evidence.md (lines 187-192) explicitly documents these PNGs as "captured at E2E + visual run-time, NOT committed at this implementation step."
+  - **Fix applied:**
+    - Reverted the 10 modified PNGs via `git checkout --` (committed bytes from `600c6cd` are canonical).
+    - Deleted the 4 untracked `tests/screenshots/user-stories/US-STAB-D1/*.png` from the working tree (they regenerate on the next `playwright test` run; only `evidence.md` is tracked in that directory).
+    - Added `tests/screenshots/user-stories/US-STAB-D1/*.png` and `/prod-*-state.png` and `supabase/.temp/linked-project.json` to `.gitignore` so the ephemeral artefacts don't show up as untracked after future local runs.
+  - **NOT applied (deferred):** A workflow change to make the user-story `screenshot({path})` calls idempotent (e.g., only-on-first-run, or `if (!fs.existsSync(...))` gate) would prevent the working-tree dirty-state from re-appearing on every future local run, but that's a cross-cutting refactor of 9+ specs and outside this followup's scope. Filed as `FU-E13-EVIDENCE-PNG-IDEMPOTENCY` IF the dirty-state recurrence causes friction in Phase E — for now the established pattern is "developers run `git checkout -- tests/screenshots/` after local E2E runs, mirroring the existing CI contract."
+  - **CI guardrail recommendation REJECTED:** The `--update-snapshots` CI check would never fire under the current workflow (the flag is correctly absent from `test:e2e` and from CI's chromium project run; it's only enabled inside the visual job via the `workflow_dispatch` toggle, which is the intended maintainer escape hatch). Adding a CI grep would be ceremony with no risk surface.
+  - Resolved at commit `f8de26e`.
+
+## Medium Priority — Task D.6 Codex Round 1 quota deferral (2026-05-15)
+
+### F-D6-CODEX-ROUND1-DEFERRED — Codex Round 1 adversarial review deferred (account quota cap)
+
+- **Status:** Open (Medium — gate-deferred, NOT a finding). Quota reset 2026-05-15 23:16 SEAST.
+- **Severity:** Medium (gate-deferral). This is a deferred review, not a deferred finding — the review itself could not be run because Codex returned a hard account-level quota cap at the moment of invocation. Risk class is the same as D.4 Round 2 deferral: per-task Codex gate is technically unmet but a strong test-based contract lock is in place.
+- **Origin:** Task D.6 (US-STAB-D6) Step 2b Codex Round 1 invocation attempt at 2026-05-15 22:20 SEAST.
+- **Discovered:** 2026-05-15 22:20 SEAST.
+- **File / surface:** N/A (gate-status follow-up, not a code defect). Re-invocation scope = D.6 commit `19c5e3ba743cf2da1b266a86d27febc6a84b8a2d` against base `55543b38038a5b0b531b28c242a41adcb29ac87f` (9 files / 881 ins / ~110 KB — well under the 500 KB safe budget; no split required).
+- **Symptom:** `codex-companion.mjs adversarial-review` returned `Codex error: You've hit your usage limit. Upgrade to Pro ... try again at 11:16 PM. Turn failed.` followed by `Codex did not return valid structured JSON`. Verbatim payload captured at `Planning/.tmp/task-D.6-codex-round1.md`. **Not an auto-trim signal** per `~/.claude/rules/codex-review.md` (no `Input exceeded 1MB`, no `Retrying with tighter scope`, no `production files only`, no `spec context trimmed`) — this is a deterministic-reset hard cap, the same shape as the D.4 Round 2 deferral hit at the same hour the same day.
+- **Recommended fix:** Wait until reset (23:16 SEAST). At ~23:20 SEAST, retry Codex Round 1 with identical scope + focus prompt + FA-mode addendum:
+  - `--base 55543b38038a5b0b531b28c242a41adcb29ac87f`
+  - Focus areas per `Planning/.tmp/task-D.6-codex-round1.md` (focus prompt preserved by Step 2b sub-agent)
+  - FA-mode addendum with full-file context for `supabase/migrations/0020_food_library_dedup_index.sql`, `scripts/dedup-pre-flight.mjs`, the 3 test files, and downstream `app/api/entries/save/route.ts` byte-identical (call-site context for the new 23505 surface)
+  - Apply Round 1 findings: auto-fix Critical/Improvement via sub-agent then re-verify; surface Minor to user for decision; 2-round cap respected.
+- **Contract lock in place (mitigation):**
+  1. 12/12 D.6 tests GREEN across 3 new files (`tests/integration/db/0018-migration.test.ts`, `tests/integration/db/0018-pre-cleanup.test.ts`, `tests/integration/library-create-real-db-dedup.test.ts`) — both static-shape and dynamic real-DB layers.
+  2. 79 characterization tests GREEN across 26 library-* files + library-isolation RLS test.
+  3. 66 RLS tests GREEN in `tests/rls/` (AC5 — 32-assertion harness unchanged).
+  4. Migration 0020 applied to kalori-dev via Supabase Management API (`HTTP 201`); post-apply `pg_indexes` confirms `food_library_items_user_normalized_name_unique` with documented partial predicate.
+  5. Two PL/pgSQL ASSERT DO-blocks inside the migration self-verify: (a) pre-cleanup ASSERT zero remaining active duplicates after cleanup CTE runs, (b) post-create ASSERT the partial unique index exists with expected predicate.
+- **Why deferred:** Hard account-level quota cap with deterministic reset (56 min wait at the moment of failure). No path to retry inside the gate window. Forcing an immediate retry now would simply re-fail with the same error. Documented precedent: D.4 Round 2 was waived under identical quota conditions on the same day with the same mitigation pattern (regression tests + migration apply + characterization tests serving as contract lock).
+- **Production impact:** None at present — D.6 migration is applied to kalori-dev only (per Q7 sprint policy). Prod cutover is deferred to Phase E.1 (US-STAB-E1) which batches all sprint migrations via `scripts/apply-prod-migrations.mjs`. Codex Round 1 must complete before E.1 if any blocking findings emerge; otherwise the test-based contract lock is the operative gate.
+- **Estimate:** 10–30 min Codex run + auto-fix sub-agent window if findings emerge + re-verify. Worst-case 1–2 h if Round 1 surfaces Critical findings that auto-fix can't fully close inside Round 2.
+- **Reads (for retry session):**
+  - `Planning/.tmp/task-D.6-codex-round1.md` (verbatim error + focus prompt preserved for re-use)
+  - `Planning/.tmp/task-D.6-briefing.md` (full task spec — authoritative)
+  - `Planning/.tmp/task-D.6-output.md` (impl evidence + C9 §14 — populated 2026-05-15)
+  - `~/.claude/rules/codex-review.md` (gate contract — Critical/Improvement/Minor categorization, 2-round cap)
+- **Resolution criteria:** Round 1 completes verbatim; findings categorized into Critical / Improvement / Minor per gate contract; Critical + Improvement auto-fixed via sub-agent then re-verified GREEN; Round 2 run if needed within 2-round cap; review output appended to `Planning/.tmp/task-D.6-output.md` §15+ with verdict + evidence.
+- **Owner:** D.6 close-out follow-up — re-run at 23:20 SEAST today OR roll into D.CODEX phase boundary (Phase D Codex Adversarial Review aggregates D.1..D.6 + D.E2E + D.SWEEP diffs together) if quota window slips.
+- **Related task:** Task D.6 (US-STAB-D6 — F-LIB-DEDUP partial unique index migration).
+- **References:** `Planning/.tmp/task-D.6-codex-round1.md` (verbatim quota error); `Planning/.tmp/task-D.6-output.md` §12 (attempt log) + §13 (deferral); D.4 precedent — see F-D4-IDENTIFIER-PAYLOAD-DRIFT + F-D4-RPC-SCHEMA-DRIFT (both deferred with the same mitigation pattern of regression-test contract lock).
+- **Acknowledges D.4 precedent:** Same root cause class (account-level quota cap with deterministic reset). Regression-test contract lock is the documented mitigation pattern when Codex is unreachable for non-design reasons (quota / network / provider outage).
+
+## High Priority — Task D.4 Codex Round 1 deferrals (2026-05-15)
+
+### F-D4-IDENTIFIER-PAYLOAD-DRIFT — opaque `.insert(payload)` / `.update(patch)` references silently pass schema-drift check
+
+- **Status:** Open (High — scanner blind spot blocking Stage-2 flip).
+- **Severity:** High — Codex Round 1 Finding #2 (deferred per categorization). The scanner records identifier-payload references with `unsupported: 'identifier-payload'` and an empty `columns` array. `detectDrift` only validates columns that are present in `reference.columns`, so these references silently pass even when the payload variable carries a column that drifts. Many existing call sites (e.g. `app/api/entries/save/route.ts`, `app/api/library/[id]/log-now/route.ts`, every place that builds a payload via `const insertPayload = { ... }` and then `.insert(insertPayload)`) sit in this blind spot.
+- **Source:** Task D.4 Codex Round 1 (post-implementation adversarial review). Codex Finding #2 (high), deferred to followups per Codex Round 1 categorization decision.
+- **Discovered:** 2026-05-15.
+- **File / surface:** `scripts/schema-drift-check.mjs` — `extractReferencesFromFile` (identifier-payload emission path, lines ~363-381) + `detectDrift` (column validation, lines ~813-851).
+- **Symptom:** A migration that drops a column referenced by an opaque payload variable produces zero scanner warnings; Stage 2 (block mode) misses the regression entirely. The implementation today depends on hand-written inline-object literals at the call site for scanner coverage.
+- **Recommended fix (per Codex):** Two options — choose ONE before flipping `--mode block`:
+  1. **Same-file binding resolution** — extend `extractReferencesFromFile` with a lightweight pass that resolves `const|let|var <id> = { ... };` in the same module and inlines the object literal at the `.insert(<id>)` site. This is bounded scope (same-file) so a regex/AST hybrid is feasible.
+  2. **Block opaque payloads** — change `detectDrift` to emit a finding `{ reason: 'opaque-payload' }` when `unsupported === 'identifier-payload'`. The annotation would say "scanner cannot validate this payload — refactor to inline object literal OR add to an allowlist." This shifts cost to the developer but keeps the scanner honest. Initially noisy; mitigate via a `OPAQUE_PAYLOAD_ALLOWLIST` of known-safe call sites.
+- **Why deferred:** Resolving same-file bindings is a real parser extension (≥2-4h). Flipping `detectDrift` to flag opaque payloads would emit ~10-20 immediate annotations on existing call sites that need triage. Either fix is bigger than the Round-1 auto-fix window for D.4.
+- **Production impact:** Schema-drift CI guard surface is incomplete. Stage 2 (block mode) cannot be flipped while this gap exists OR Stage 2 must be scoped narrower (e.g. lib/** only, where opaque-payload usage is rarer).
+- **Estimate:** 2-4h (option 2) — 4-6h (option 1, same-file binding resolution + tests).
+- **Owner:** D.4-phase-codex follow-up OR later phase before Stage-2 flip.
+- **Related task:** Task D.4 (US-STAB-D4 — Schema-drift CI guard).
+- **References:** `planning/.tmp/task-D.4-output.md` (Codex Round 1 Finding #2 verbatim); `scripts/schema-drift-check.mjs` `isIdentifierPayload` helper (definition of the blind spot).
+
+### F-D4-RPC-SCHEMA-DRIFT — `.rpc(...)` calls bypass schema-drift CI guard entirely
+
+- **Status:** Open (Medium — scanner blind spot for the RPC surface).
+- **Severity:** Medium — Codex Round 1 Finding #4 (deferred). The scanner's builder verb set is `select | insert | update | upsert` only. `.rpc(<name>, <args>)` calls are explicitly omitted, so any drift in RPC signatures (renamed RPC, renamed arg key, dropped RPC) goes undetected. Kalori has real RPC sites: `log_water_with_cap` (water logging atomic cap), `cascade_delete_user_data` (account deletion), `library_merge_*` (library deduplication), `weight_recalc_*` (weight-history reconciliation).
+- **Source:** Task D.4 Codex Round 1 (post-implementation adversarial review). Codex Finding #4 (medium), deferred to followups per Codex Round 1 categorization decision.
+- **Discovered:** 2026-05-15.
+- **File / surface:** `scripts/schema-drift-check.mjs` — `extractReferencesFromFile` (verb set, line ~419); `parseSchemaFromTypes` (only reads `public.Tables`, not `public.Functions`).
+- **Symptom:** A migration that renames `log_water_with_cap` to `log_water_with_cap_v2` (or drops a positional arg) produces zero scanner warnings; the call site keeps the old name silently and fails only at runtime. Same for `cascade_delete_user_data`, `library_merge_*`, `weight_recalc_*`.
+- **Recommended fix (per Codex):**
+  1. Extend `parseSchemaFromTypes` to also harvest `public.Functions` — Supabase's generated types file already includes a `Functions: { <rpc_name>: { Args: { ... }; Returns: ... } }` block. Walk it the same way as `Tables`, mapping each `<rpc_name>` to its `Args` key set.
+  2. Add `rpc` to the builder verb set in `extractReferencesFromFile`. Parse `.rpc('<name>', { arg_a: ..., arg_b: ... })` — the first argument is the RPC name (literal), second is an inline object literal of named args.
+  3. Extend `detectDrift` so an unknown RPC name yields `{ reason: 'unknown-rpc' }` and unknown arg keys yield column-style findings against the `<rpc>:args` namespace.
+  4. Add regression tests against the real RPC call sites — fixtures should exercise valid RPC + invalid RPC + missing arg + extra arg.
+- **Why deferred:** New parser branch (Functions block) + new verb logic + new finding-reason vocabulary — each non-trivial to land + test inside D.4 Round 1 window.
+- **Production impact:** Schema-drift CI guard surface excludes the RPC class entirely. Acceptable for Stage 1 (report-only) since these are high-traffic surfaces the developer touches manually; risky for Stage 2 (block mode) when a future migration rename breaks the cascade-delete or water-cap flow silently.
+- **Estimate:** 4-6h (Functions parser + `.rpc()` verb extraction + drift detection + regression tests).
+- **Owner:** D.4-phase-codex follow-up OR later phase — recommended before Stage-2 flip OR document Stage 2 as "Tables-only" scope.
+- **Related task:** Task D.4 (US-STAB-D4 — Schema-drift CI guard).
+- **References:** `planning/.tmp/task-D.4-output.md` (Codex Round 1 Finding #4 verbatim); `scripts/schema-drift-check.mjs` verb-set definition; `app/api/water/log/route.ts`, `app/api/account/delete/route.ts`, `app/api/library/merge/route.ts` (real `.rpc()` call sites).
+
+## Low Priority — Task D.4 close (2026-05-15)
+
+### F-ONBOARDING-STORE-PERSIST-FLAKE — `useOnboardingStore` persist test flaky under full-suite parallel execution
+
+- **Status:** Open (Low — transient; passes in isolation).
+- **Severity:** Low — test-only flake. No production code impact.
+- **Source:** Task D.4 C9 re-verification full-suite run (2026-05-15) AND D.4 Round 2 TDD circuit-breaker fix observation.
+- **Discovered:** 2026-05-15.
+- **File / surface:** `lib/stores/useOnboardingStore.test.ts > writes persisted slice to sessionStorage` (single test case; other 12 tests in the same file are stable).
+- **Symptom:** Test intermittently asserts `currentStep === 3` and receives `1` when run under full vitest suite parallel execution. Passes 13/13 in isolation (`pnpm vitest run lib/stores/useOnboardingStore.test.ts`). Outside D.4 diff scope — verified pre-existing per `git log 1be0b0b..HEAD -- lib/stores/useOnboardingStore.*` empty for D.4 commits.
+- **Recommended fix:** Pick ONE:
+  1. **Serialize the file** — add a vitest config `poolOptions.threads.singleThread` override or `// @vitest-isolate-file` marker so the file runs alone.
+  2. **Use fake timers** — wrap the persist assertion in `vi.useFakeTimers(); vi.runAllTimers();` to deterministically flush Zustand's persist middleware before the assertion.
+  3. **Migrate that single test file from happy-dom to jsdom** — add a `// @vitest-environment jsdom` pragma at file top. jsdom's storage API has more deterministic behavior under teardown races.
+  Option 2 is the cheapest if Zustand's persist write path is timer-driven; option 1 is the most robust if the race is in happy-dom's storage layer itself.
+- **Why deferred:** Pre-existing flake (not introduced by D.4); D.4 is `[testing][infrastructure][FA]` scope-limited to schema-drift CI guard; absorbing this fix into D.4 would violate the surgical-changes principle.
+- **Production impact:** None — test-only.
+- **Estimate:** 30 min – 1h (any of the three options + verify GREEN under both `pnpm test` and isolation runs).
+- **Owner:** Phase D-end testing sweep (D.SWEEP) OR next maintenance window.
+- **Scope:** Before final-stabilization phase close.
+- **Related task:** Task D.4 (US-STAB-D4 — Schema-drift CI guard) — discovered during D.4 C9 re-verify and Round 2 TDD work.
+- **References:** `lib/stores/useOnboardingStore.test.ts`; D.4 commit `e240481` (Round 2 TDD circuit-breaker fix) observation log.
 
 ## High Priority — Bug Bundle 2026-05-09-water-custom-button (2026-05-09)
 
@@ -894,9 +1547,10 @@ Option 1 is cleanest — isolates the spec from layout flux that doesn't represe
 ---
 
 ### F-OFFLINE-5.1.5-CLIENT-WINS-RESUBMIT — Client-wins re-submit path for entry/water/weight conflicts
-**Status:** Open (deferred)
+**Status:** Open (deferred — D3 honest-copy-only scope-down verified in MVP Stabilization sprint per DT-2; full client-wins-resubmit impl remains DEFERRED to post-MVP cleanup. No duplicate `-IMPL` ID minted.)
 **Source:** Codex Round 1 F1 — design-doc §14.751 + §18.1 reconciliation
 **Found:** 2026-04-30
+**Last status update:** 2026-05-15 (Task D.3 close — verified F10 modal honest-copy + added i18n + handler-binding regression guards; full server-side client-wins-resubmit remains deferred under this ID)
 **Severity:** Improvement (medium — currently fails loud, not data-corrupting)
 **File:** `lib/offline/conflict-resolver.ts`, `lib/offline/network-state.tsx`, server APIs for entries/water/weight
 
@@ -1147,11 +1801,19 @@ These items reached Phase 3 close without being resolved and need explicit user 
 ## Open
 
 ### F-LIB-DEDUP-DUPLICATE-INSERT — `/api/entries/save` library insert lacks pre-insert dedup
-**Type:** Data quality / dedup integrity · **Severity:** Minor · **Owner:** unassigned (Phase 5 polish or post-MVP)
+**Status:** RESOLVED 2026-05-15 by Task D.6 (US-STAB-D6) — migration `supabase/migrations/0020_food_library_dedup_index.sql` adds the partial unique index on `food_library_items (user_id, normalized_name) WHERE deleted_at IS NULL AND normalized_name IS NOT NULL` with a 7-step transactional cleanup (ACCESS EXCLUSIVE lock → soft-delete cleanup CTE → ASSERT zero remaining → CREATE UNIQUE INDEX → COMMIT). Migration renumbered from sprint-planned 0018 to 0020 (slots 0018 + 0019 claimed by water-log bugfix work mid-sprint). Closing commit: `<fill after commit>`. The DB-level 23505 contract is now the source of truth. The downstream route-side concern — mapping the new 23505 surface to a structured user-visible error in `app/api/entries/save/route.ts` — is intentionally OUT OF SCOPE for D.6 per briefing §14 firewall (the route swallows `libError` to Sentry and proceeds; user sees the entry insert succeed); tracked as new sibling followup `F-LIB-DEDUP-DUPLICATE-INSERT-ROUTE-409` below if/when the route should surface a 409 instead of silent Sentry capture.
+**Type:** Data quality / dedup integrity · **Severity:** Minor · **Owner:** ~~unassigned (Phase 5 polish or post-MVP)~~ → CLOSED via Task D.6
 **Surfaced in:** Task 4.7.3 briefing
 **What:** `app/api/entries/save/route.ts` library-row insert path (the `body.save_to_library && (source === 'text' || 'photo')` block) doesn't check for an existing active row with the same `normalized_name` before inserting. Result: rapid double-save can create duplicate active library rows. ConfirmationScreen's preflight + "Reuse existing" UI path is the existing user-facing dedup mechanism, but the server has no DB UNIQUE constraint or query-time dedup as backstop.
 **Action:** Add `WHERE deleted_at IS NULL AND user_id = ?` dedup check before insert; OR add partial unique index on `(user_id, normalized_name) WHERE deleted_at IS NULL`. Decide approach based on Phase 5 cache-invalidation strategy.
 **Do NOT do now:** out-of-scope for B2 fix; tracked here for future remediation.
+
+### F-LIB-DEDUP-DUPLICATE-INSERT-ROUTE-409 — Surface DB 23505 to a structured 409 in `/api/entries/save` library-insert branch
+**Type:** Backend error-shape · **Severity:** Minor · **Owner:** unassigned (post-MVP polish)
+**Surfaced in:** Task D.6 close (2026-05-15)
+**What:** After D.6 migration 0020, the `food_library_items` partial unique index returns Postgres `23505` on duplicate active `(user_id, normalized_name)` inserts. `app/api/entries/save/route.ts:545-553` currently catches `libError` from the `food_library_items` insert and silently Sentry-captures it (per design-doc §10.3 "library is enrichment, entry is authoritative"). So a duplicate save lands the food_entries row, returns HTTP 200, and the user sees the entry — but the library is not augmented and there is no UI signal that the second attempt collided. This is BEHAVIOURALLY equivalent to the pre-D.6 dedup-poisoning swallow, just shifted from "silent duplicate row" to "silent dedup rejection".
+**Action:** Map `libError.code === '23505'` AND `libError.constraint === 'food_library_items_user_normalized_name_unique'` to a structured app-level signal (Option A: emit `revalidateTag(TAGS.userLibrary(userId), 'max')` so the client refetches and shows the EXISTING row — least intrusive; Option B: return a 409 from the save route with `{error: 'library_duplicate_name', existing_id: <uuid>}` so the client can route the user to the matching row). Option A preferred — Option B would change the route contract and require client work.
+**Do NOT do now:** D.6 scope is the DB index ONLY (per briefing §14 forbidden-files). Wait for soft-launch user feedback to decide whether silent swallow is acceptable.
 
 ### F-TASK-4.2-I2-UI-ROUNDTRIP — LibraryTab hydration from LogPageClient store seed (~1h)
 **Status:** RESOLVED 2026-04-26 by commit `60ed008` — `LibraryTab` now consumes `librarySelection` from the store; the deep-linked row is visually selected and the quantity input is prefilled with the seeded value. New DOM-level integration test at `tests/components/log-flow/library-tab-preselect.test.tsx` covers the contract.
@@ -1464,6 +2126,7 @@ Result: `tests/e2e/nav-responsive.spec.ts` interactive cases (9 total = 3 viewpo
 **What:** The save-to-library enrichment path (lines 150-168) wraps its insert in `try/catch {}` with no logging. On 23505 (concurrent same-user save-to-library race), the library row is lost and the user sees no error — the food_entries row persists (authoritative) but the library enrichment silently fails. No Sentry breadcrumb or console.warn marks the failure.
 **Action:** Add `console.warn('[entries/save] library enrichment failed', { userId, normalized_name, err })` in dev; in prod, call `Sentry.captureException(err, { tags: { path: 'entries/save/library' } })` as a breadcrumb. Library is not load-bearing so the 200 + entry response stays; only the diagnostic signal changes.
 **Do NOT do now:** Task 3.4 closed; library enrichment is non-critical and concurrent-library-write races are rare in single-user MVP.
+**Re-flagged 2026-05-17 by E.CODEX Phase E review (A-M1, Improvement/Medium):** Codex independently surfaced the same swallowed-23505 behavior on `/api/entries/save`. Design-doc §10.3 contract ("library is enrichment, entry is authoritative") matches the current code — reversing the contract would be a design pivot, not a bug fix. Defer remains correct; the Sentry-breadcrumb action above is still the right next step. Owner unchanged.
 
 ### F-UI-3.4-12 — ConfirmationScreen save() skips row-level invalid-state pre-flight
 **Type:** IMPL · **Severity:** Minor · **Owner:** Task 5.x form-polish or any dedicated UX-hardening pass
@@ -1926,5 +2589,454 @@ Phase B Testing Sweep ran the full test matrix (`pnpm test`, `pnpm test:e2e`, `p
 > **Integration test fence-mock is a single point of failure for AI-route tests.** The fence-mock helper (`tests/_helpers/fence-mock.ts`) is the one shared mock surface that AI-route integration tests depend on; any drift in fence semantics, response shape, or error contract across phases (A.3 fence change is the canonical example) cascades into widespread red surfaces in tests that legitimately want to assert AI-route behavior — not fence behavior. The pattern is sufficiently well-attested across A.3 + B.SWEEP that it warrants a lesson-learned entry calling out (a) the single-point-of-failure risk, (b) the maintenance contract for fence-mock when fence semantics change, and (c) consideration of fence-mock versioning or per-test isolation patterns.
 >
 > NOTE only — the main agent will write the actual lesson at Step 5.5 of the post-task protocol. Flagged here so it is not lost in the B.SWEEP residual queue.
+
+---
+
+## F-C4-CODEX-R2-1 — Counter drift under concurrent re-log/undo writers
+**Severity:** High (residual)
+**Source:** Codex Round 2 review of Task C.4 (2026-05-14)
+**File:line:** app/api/entries/save/route.ts:329-362 and app/api/entries/[id]/route.ts equivalent
+**Status:** Accepted as residual risk for C.4 close; ship-ready
+**Finding:**
+> Codex's verbatim finding: "COUNT-after-mutation can still lose updates under concurrent writers. The save path performs COUNT and UPDATE as separate PostgREST statements. A request can count N+1 before a concurrent insert commits, then have its stale UPDATE arrive after the other request already wrote N+2, leaving log_count undercounted. This contradicts the code comment's last-writer-is-truthful assumption and is durable until a later operation happens to reconcile the item. The same pattern exists in the DELETE reverse path."
+
+**Disposition rationale:**
+- Kalori is a single-user PWA (per project CLAUDE.md). True concurrent re-logs require either two browser tabs racing or a tab + offline replay collision. The probability is bounded by retry storms and dual-tab usage — both edge cases.
+- The drift is bounded and self-healing: any subsequent save/undo on the affected library item re-derives log_count from food_entries via COUNT(*), correcting the drift.
+- True atomic fix requires a Postgres RPC with FOR UPDATE locking plus a new migration. That doubles C.4 scope for a near-zero probability event.
+
+**Followup task (optional, future):**
+- Open Task C.4-FOLLOWUP-1 to author migration 0019 — `bump_library_counter` RPC with row-level lock.
+- Defer until Phase E (post-MVP-stabilization hardening).
+
+## F-C4-CODEX-R2-2 — copy-yesterday route creates linked entries without updating library counters
+**Severity:** High
+**Source:** Codex Round 2 review of Task C.4 (2026-05-14)
+**File:line:** app/api/entries/copy-yesterday/route.ts:120-165 (estimated; verify path)
+**Status:** Out of C.4 scope; open as new task
+**Finding:**
+> Codex's verbatim finding: "copy-yesterday copies library_item_id into every inserted row, but after insertion it only invalidates entry/progress caches and never recomputes food_library_items.log_count or last_used_at for the affected library items. A normal user-facing batch copy can therefore add multiple authoritative entries while the Library tab frequency/order and merge-winner inputs remain stale indefinitely unless a later save/undo happens to touch the same item."
+
+**Disposition rationale:**
+- C.4 task card explicitly scopes to app/api/entries/save/route.ts + the undo path. copy-yesterday is a separate code path discovered via brownfield FA-mode review.
+- The bump logic from C.4 (COUNT-after-mutation pattern) can be reused — same code shape, different mutation source.
+- Belongs to a new task: **C.4-FOLLOWUP-2: copy-yesterday route library counter recompute** (Medium, [API][backend][FA][brownfield], add to Phase C or D).
+
+**Recommendation per Codex:** "After successful fresh or replayed copy, recompute counters and last-used timestamps for each distinct non-null copied library_item_id and invalidate the library cache."
+
+## F-C4-CODEX-R2-3 — PATCH route does not reconcile library counters when library_item_id changes
+**Severity:** Medium
+**Source:** Codex Round 2 review of Task C.4 (2026-05-14)
+**File:line:** app/api/entries/[id]/route.ts:121-143 (PATCH handler)
+**Status:** Out of C.4 scope; open as new task
+**Finding:**
+> Codex's verbatim finding: "The PATCH route accepts and writes library_item_id, but its success path only revalidates entry/progress state. If an edit links, unlinks, or repoints an entry, neither the old nor new library item gets a COUNT/MAX refresh, so log_count, last_used_at, Library ordering, and merge-winner selection can diverge from food_entries."
+
+**Disposition rationale:**
+- C.4 task card explicitly scopes to the re-log save branch + the undo (DELETE) handler. The PATCH handler is in the same file but is a separate operation outside C.4's described scope.
+- Edit operations are less common than save/undo, so drift accumulation is slower. Still worth addressing.
+- Belongs to: **C.4-FOLLOWUP-3: PATCH route library counter reconcile** (Medium, [API][backend][FA][brownfield], can bundle with FOLLOWUP-2 since same file).
+
+**Recommendation per Codex:** "When PATCH changes library_item_id, recompute derived library fields for both the previous and resulting library item ids and invalidate TAGS.userLibrary."
+
+## F-C5-DEFER-1 — Edit-mode TimeEditor changes silently dropped (PATCH contract does not accept logged_at)
+**Severity:** Medium
+**Source:** Codex Round 1 review of Task C.5 (2026-05-14); partial fix shipped in `8393f26` (input rendered `readOnly` + edit-disabled hint).
+**File:line:** app/(app)/log/_components/Confirmation/TimeEditor.tsx (readonly wiring) + app/api/entries/[id]/route.ts (PATCH route — does NOT validate or persist `logged_at` today) + app/(app)/log/_components/ConfirmationScreen.tsx (edit-path branch in `save()` ternary uses `originalLoggedAt` directly, bypassing `state.loggedAt`).
+**Status:** C.5 R1 deferred — partial fix preventing user confusion; full contract extension out of C.5 scope.
+
+**Finding (Codex R1 verbatim):**
+> "TimeEditor renders unconditionally in default variant. Edit-path builds PATCH body with only `meal_category` and `items`. `logged_at` is omitted. User opens an existing entry, changes the time via TimeEditor, clicks Save, gets success toast — timestamp does NOT change in the DB. For entries >30d old, the control even renders an invalid state while Save still succeeds."
+
+**What C.5 shipped (partial fix):**
+- TimeEditor consumes `meta.isEditing` from `ConfirmationContext`.
+- On edit-path: input is `readOnly={true}` + `aria-readonly="true"` + `.is-readonly` CSS class (cursor not-allowed + reduced opacity).
+- New i18n hint string `confirmationTimeEditorEditDisabledHint`: "Time cannot be changed when editing an existing entry — delete and re-add to change the time."
+- `outsideWindow` check is gated on `!meta.isEditing` so legacy >30d entries don't show a misleading error state.
+- `onChange` handler short-circuits on `meta.isEditing` for defense-in-depth against script-driven changes.
+
+**What is NOT done (the deferred work):**
+- Decide: should changing-existing-time be supported in MVP?
+  - **Option A: Support it.** Extend PATCH contract — add `logged_at: z.string().datetime().optional()` to the Zod schema, persist + re-bucket day-window if changed, add the 30-day-past + future-skew guards on the new value, also update any UI elsewhere that displays entry timestamps. Confirmation edit-path then sends `loggedAt` and uses `state.loggedAt` over `originalLoggedAt`. Existing `ConfirmationScreen.test.tsx` "PATCHes edits with the updated item snapshot and no unused create-only fields" test will need to either accept the new field or migrate to a complementary test.
+  - **Option B: Document the limitation.** Add a user-visible note in Settings or in the edit-mode hint making explicit that changing time requires delete + re-add.
+
+**Severity:** MEDIUM. **Owner:** TBD (could fold into Phase D hardening or a dedicated Phase E polish task). **Estimated:** 2-4h for Option A (single endpoint + Zod + Confirmation send-loggedAt + 1-2 test updates), 30min for Option B.
+
+**Why deferred from C.5:** The C.5 task card explicitly scopes to the create-path TimeEditor + 30-day backfill window. Extending the PATCH contract is a separate brownfield decision touching the entries PATCH route and potentially every UI element that reads entry timestamps. The partial fix removes the silent-drop bug (user can no longer accidentally believe their edit landed) and is the minimum-viable correctness fix per Codex R1 finding F2 recommendation.
+
+---
+
+## F-AI-CACHE-VERSIONING — AI response cache key lacks schema/prompt-contract version
+**Severity:** High
+**Source:** Codex Round 2 review of Task C.1 (2026-05-14); HIGH 1 finding deferred per 2-round cap.
+**File:line:** `lib/ai/cache.ts:61` (`computeCacheKey` material: `${callType}:${userId}:${normalizedInput}`)
+**Status:** Open — deferred from Task C.1 (out of scope, cross-cutting cache change).
+
+**Finding (Codex R2 verbatim):**
+> "Cache key is `callType:userId:normalizedInput` — pre-C.1 cached payloads bypass new ParseResult schema + transform on cache hit. AI responses generated before the canonical-micros prompt change can still be served from `ai_response_cache` without ever passing through the new Zod transform that enforces the 30-key canonical set + fills missing keys with 0. Result: dashboard micros panel can render under-reported values when a cache hit lands."
+
+**Disposition rationale:**
+- Cache versioning is a cross-cutting infrastructure change touching ALL AI callers (text-parse + vision + VN fallback + weekly-review).
+- Risk is bounded by cache TTL — `DEFAULT_TTL_DAYS` expires legacy entries naturally within hours/days.
+- Out of C.1's micros-specific scope. Better as a standalone follow-up with explicit testing of every caller path.
+
+**Recommended fix (pick one or both):**
+1. **Option A — Version the cache key.** Add a `PROMPT_CONTRACT_VERSION` constant (bumped whenever the prompt or schema changes) into the SHA-256 material: `${callType}:${userId}:${promptVersion}:${normalizedInput}`. Legacy rows become unreachable; new writes carry the new version. Old TTL'd rows expire harmlessly.
+2. **Option B — Re-validate on read.** In `lookup<T>`, run the cached `parsed_payload` through the current `ParseResult.safeParse(...)` parser before returning. Misses on schema-incompatibility get logged + treated as cache miss; new write replaces the stale row.
+- Option A is simpler and lower-runtime-cost; Option B is more defensive against future schema drift. Could ship both: A as primary, B as belt-and-braces.
+
+**Estimate:** 2-4h (constant + key-builder change + 1-2 unit tests for legacy-row miss behavior + verify no test fixture relies on stable key shape).
+
+**Owner:** TBD — Phase D hardening / AI infrastructure batch.
+**Related task:** Task C.1 (US-STAB-C1) Codex Round 2 HIGH 1.
+**References:** `Planning/.tmp/task-C.1-output.md` (Codex R2 findings section).
+
+---
+
+## F-RDA-TABLE-UNIFICATION — `aggregateMicros` RDA lookup diverges from `DEFAULT_MICROS_LIST`
+**Severity:** Medium
+**Source:** Codex Round 2 review of Task C.1 (2026-05-14); MEDIUM 4 finding deferred per 2-round cap.
+**File:line:** `lib/dashboard/aggregate.ts:387-404` (`rdaLookup()` — sparse subset).
+**Status:** Open — deferred from Task C.1 (Task 3.5 regression risk).
+
+**Finding (Codex R2 verbatim):**
+> "`CANONICAL_CODE_TO_DISPLAY_NAME` covers all 30 codes, but the existing `aggregateMicros` RDA lookup is a sparse subset. Many canonical codes (Pantothenic, Thiamin, B6, Choline, Copper, Selenium, Manganese, Phosphorus, Sodium, Chloride, Biotin, Iodine, Chromium, Molybdenum, Fluoride, Sulfur) get `rda=null` in the old panel. Some overlapping values differ from `DEFAULT_MICROS_LIST` (e.g., calcium 1000 vs 1300, magnesium 400 vs 420, potassium 3500 vs 4700)."
+
+**Disposition rationale:**
+- Unifying the RDA tables touches Task 3.5 territory — `MicronutrientPanel` currently renders the OLD `rdaLookup` percentages, and `microStatus()` thresholds were calibrated against those numbers. Switching to `DEFAULT_MICROS_LIST` values changes UI output and could shift `status` buckets ('low' ↔ 'mid' ↔ 'high').
+- Requires regression check against Task 3.5 functional + visual behavior. Not safely auto-fixable as a Round-2 patch.
+- Moderate scope; better as standalone follow-up with explicit Task 3.5 regression test pass.
+
+**Recommended fix:**
+1. Replace the hardcoded `rdaLookup()` in `aggregate.ts` with a single-source-of-truth read from `DEFAULT_MICROS_LIST`. Keep the display-name keying convention so existing legacy rows still resolve.
+2. Run the Task 3.5 visual regression + integration suite. Document deltas as intentional (FDA Daily Values are the new baseline per `lib/nutrition/micros-rda.ts` header).
+3. Optional: align `microStatus()` thresholds if any existing 'mid'/'high' boundary now sits awkwardly under the new RDA values.
+
+**Estimate:** 2-4h (single-source unification + Task 3.5 regression + delta documentation + 1-2 new tests).
+
+**Owner:** TBD — Phase D hardening / Task 3.5 follow-up batch.
+**Related task:** Task C.1 (US-STAB-C1) Codex Round 2 MEDIUM 4; Task 3.5 (MicronutrientPanel).
+**References:** `Planning/.tmp/task-C.1-output.md` (Codex R2 findings section).
+
+---
+
+## F-MICROS-RDA-OVERRIDE-COLUMN — per-user RDA override column (DT-5 / O-2 follow-up)
+**Severity:** Low (post-MVP enhancement)
+**Source:** Task C.1 (US-STAB-C1) design-time deferral — DT-5 (resolver signature carries no `profile` parameter) and design option O-2 (per-user override). Minted 2026-05-14.
+**File:line:** `lib/dashboard/micros-rda-resolver.ts` (signature is currently `(aggregated) => MicrosRdaItem[]` with no profile parameter); future column in `profiles` table.
+**Status:** Open — design-time deferral; no Task C.1 implementation required.
+
+**Finding (design-time):**
+> "C.1 chose a flat resolver with no profile parameter (DT-5) to keep the canonical-RDA pipeline simple and avoid coupling to the profiles schema. Users with non-default macronutrient/micronutrient needs (high-protein athletes, pregnancy, plant-based, allergies, individual deficiencies) cannot adjust RDAs per nutrient. Future enhancement: add a `profiles.micros_rda_override JSONB` column (or sidecar `user_micros_rda` table) so the resolver can prefer user overrides where defined and fall back to canonical `DEFAULT_MICROS_LIST` values."
+
+**Disposition rationale:**
+- Single-user MVP doesn't need per-user RDA overrides — FDA Daily Values are the right baseline default.
+- Adding a profile column / sidecar table is a brownfield schema migration plus a resolver signature change and a UI affordance — wholly out of C.1 scope.
+- The resolver was deliberately designed with NO profile parameter so this enhancement can be added later without breaking the existing call surface (additive: parameter becomes optional).
+
+**Recommended fix:**
+1. Add `profiles.micros_rda_override JSONB DEFAULT '{}'::jsonb` column (or `user_micros_rda` sidecar table) with RLS owner-only policy.
+2. Extend resolver signature to optionally accept a `profile` (or `overrides: Partial<Record<MicroKey, number>>`) parameter; prefer overrides where defined, fall back to `DEFAULT_MICROS_LIST.rda`.
+3. Add a Settings UI affordance for editing overrides (deferred to UX design pass).
+4. Migration + tests covering: default behavior (no overrides) byte-identical to current pipeline; partial overrides applied per-key; null / missing rows fall back to canonical default.
+
+**Estimate:** 4-8h (schema migration + RLS + resolver signature + targeted tests + minimal Settings UI).
+
+**Owner:** TBD — post-MVP enhancement batch.
+**Related task:** Task C.1 (US-STAB-C1) design-time DT-5 / O-2.
+**References:** `Planning/.tmp/task-C.1-briefing.md` (DT-5 / O-2 design-time decision section).
+
+---
+
+## F-AI-CRITICAL-EXPAND-30 — expand `critical.ts` AI-accuracy fixtures from 8 to 30
+**Severity:** Medium (regression confidence)
+**Source:** Task C.1 (US-STAB-C1) planning-time target deferred during execution. Minted 2026-05-14.
+**File:line:** `tests/fixtures/ai-accuracy/critical.ts` (currently 8 fixtures; planning target was 30).
+**Status:** Open — planning-time target reconciliation; no Task C.1 implementation blocker.
+
+**Finding (planning-time reconciliation):**
+> "C.1 briefing assumed `tests/fixtures/ai-accuracy/critical.ts` contained 30 critical fixtures for AC2 invariant verification. Actual file contains 8 fixtures. C.1 reconciled the AC2 invariant target to actual 8/8 (which holds pre and post). Expanding the fixture set to 30 (covering Vietnamese staples, Western breakfast/lunch/dinner, mixed dishes, low-confidence parses, edge-case portions) is a separate fixture-curation task that improves regression confidence but is not a C.1 ship blocker."
+
+**Disposition rationale:**
+- 8/8 critical fixtures pass the AC2 invariant pre and post — the canonical 30-key + nonnegative + finite + reject-unknowns contract is verified.
+- Expanding to 30 fixtures requires curating realistic Vietnamese + Western meals with expected micros vectors — a research/data task, not a code task.
+- Better as a standalone fixture-curation batch with explicit coverage targets per cuisine.
+
+**Recommended fix:**
+1. Curate 22 additional fixtures targeting: 8 Vietnamese staples (pho, banh mi, com tam, bun cha, goi cuon, banh xeo, ca kho to, canh chua), 6 Western breakfast/lunch/dinner (oatmeal, sandwich, salad, pasta, steak, chicken bowl), 4 mixed dishes (stir-fry, sushi roll, taco, ramen), 4 edge cases (low-confidence parse, mixed portion ambiguity, tiny portions, large portions).
+2. For each fixture: input text + expected canonical micros vector (30 keys with realistic values) + expected confidence band.
+3. Run aggregated `ai-accuracy` suite; assert 30/30 invariant pass.
+4. Document curation methodology so future fixtures stay consistent.
+
+**Estimate:** 4-6h (research + curation + fixture authoring + test run).
+
+**Owner:** TBD — Phase D hardening / AI fixture curation batch.
+**Related task:** Task C.1 (US-STAB-C1) planning-time target reconciliation.
+**References:** `Planning/.tmp/task-C.1-briefing.md` (AC2 invariant target section).
+
+---
+
+## F-COVERAGE-V8-ROLLDOWN-PARSE-FLAKE — `@vitest/coverage-v8@4.1.4` + `rolldown@1.0.0-rc.15` parse error on mixed value+type import excludes `lib/aggregations/progress-fetch.ts` from coverage report
+**Severity:** Low (coverage-reporter scope only; production runtime unaffected — Vitest test execution itself is unaffected)
+**Source:** Task C.SWEEP Vitest coverage run, 2026-05-15.
+**File:line:** `lib/aggregations/progress-fetch.ts` — mixed value+type import statement.
+**Status:** Open — workaround documented; defer to Phase D pre-flight cleanup batch or opportunistic touch.
+
+**Finding:**
+> "`@vitest/coverage-v8@4.1.4`'s `getCoverageMapForUncoveredFiles` post-processor calls `parseAstAsync` on `lib/aggregations/progress-fetch.ts` and rejects the valid TypeScript syntax `import { value, type X } from './progress'`. Deterministically reproduces on coverage runs (not transient — confirmed across multiple C.SWEEP retry attempts). Result: file is silently excluded from the emitted coverage report. Other source files using the same mixed value+type import idiom may share the symptom."
+
+**Root cause:**
+- `rolldown@1.0.0-rc.15` (release-candidate parser used internally by the v8 coverage reporter for uncovered-file AST traversal) regression on mixed value+type imports.
+- Test execution path uses a different parser pipeline — production behavior and Vitest's main test runner are unaffected; only the coverage reporter's post-processor stage fails on this file.
+
+**Disposition rationale:**
+- Out of C.SWEEP scope per Step 1.5 briefing — the sweep contract is "verify, not extend." Sweep is allowed only to fix tests that BLOCK GREEN; this file's content is structurally fine and emits no test failure.
+- Touching source code purely to placate a coverage-reporter quirk in a pre-release dependency is the wrong direction; the right fix is upstream (rolldown stable release) or a single-line refactor at the next planned touch of `progress-fetch.ts`.
+
+**Recommended fix:**
+1. Split the mixed import into two statements:
+   - `import { value } from './progress'`
+   - `import type { X } from './progress'`
+2. Single-line diff per affected file. Eliminates the parse error and restores the file to the coverage report.
+3. Audit other source files for the same idiom (`import { value, type X } from ...`) and apply the same split if they recur.
+4. Re-verify coverage report includes the previously-excluded file(s); expect a small downward adjustment to the headline branch % once the file is included (one previously-uncovered surface re-entering the denominator).
+
+**Estimate:** <30min (single-line refactor + coverage re-run + headline % delta confirmation).
+
+**Owner:** TBD — bundle with Phase D pre-flight cleanup OR address opportunistically when next touching `lib/aggregations/progress-fetch.ts`.
+**Related task:** Task C.SWEEP Vitest coverage run residual.
+**References:** Phase C testing sweep evidence (`Planning/.tmp/task-C.SWEEP-output.md`); `@vitest/coverage-v8@4.1.4` source for `getCoverageMapForUncoveredFiles`; `rolldown@1.0.0-rc.15` parser regression.
+
+---
+
+## F-COVERAGE-RUN-BLOCKED-BY-FAILURES — Vitest v8 coverage reporter does not emit `coverage/` artifact when ≥1 test fails
+**Severity:** Note (documentation-only; not a regression)
+**Source:** Task C.SWEEP Vitest coverage run, 2026-05-15.
+**File:line:** N/A — tooling behavior of `@vitest/coverage-v8` + `vitest run --coverage`.
+**Status:** Open — documentation-only; investigate `--coverage.reportOnFailure` flag in Vitest 4.x docs.
+
+**Finding:**
+> "Vitest's v8 coverage post-processor does not emit the `coverage/` directory when ≥1 test fails. `vitest run` exits with code 1 on test failure, skipping the report-writer step entirely. Observed during C.SWEEP — the initial Vitest sweep had 5 failing tests, which suppressed coverage artifact emission; only after all 5 were fixed and the suite went 2128/2128 GREEN did the coverage report emit. Result: coverage trend tracking is gated on GREEN-only test runs, which is an implicit dependency the sweep workflow must satisfy."
+
+**Disposition rationale:**
+- Documentation-only — this is a tooling behavior, not a defect in our codebase.
+- The implicit dependency is fine for sweep workflows (GREEN before measure is the right order anyway), but worth documenting so future sweeps that find themselves wondering "where's the coverage report?" can recognize the symptom immediately.
+
+**Recommended fix:**
+1. Investigate `--coverage.reportOnFailure` flag (or equivalent) in Vitest 4.x docs — if available, enable so the reporter emits artifacts even on partial failure.
+2. Update `Planning/features/2026-05-01-mvp-stabilization/testing-strategy.md` (or root `testing-strategy.md`) to document this constraint in the sweep workflow: "coverage measurement requires GREEN test suite; fix failures first, then re-run with `--coverage`."
+3. Optional: add a sweep-time check that warns if coverage artifact is missing after a run, with a hint that this implies pre-existing test failures.
+
+**Estimate:** <1h (docs lookup + flag verification + testing-strategy.md addendum + optional sweep-time warning).
+
+**Owner:** TBD — bundle with Phase D pre-flight cleanup OR address opportunistically when next updating testing-strategy.md.
+**Related task:** Task C.SWEEP Vitest coverage run observation.
+**References:** Phase C testing sweep evidence (`Planning/.tmp/task-C.SWEEP-output.md`); Vitest 4.x coverage docs.
+
+---
+
+## 2026-05-15 — Phase D Task D.1 (US-STAB-D1 Dashboard a11y) — 2 deferred
+
+Task D.1 shipped axe-zero-violations + ivory-focus-ring coverage across
+the dashboard. Phase 2 implementation surfaced 2 Critical
+`nested-interactive` axe violations (MealColumn `<article role="button">`
+with `<button>` child; ChronometerRing `role="img"` wrapper containing a
+focusable `<details><summary>` descendant) and applied 3 audit-recommended
+ARIA improvements (MealsBulletin / MicronutrientPanel `aria-labelledby` +
+WeeklyInsightSkeleton `aria-busy`). Codex Round 1 flagged 3 test-discipline
+gaps (composed-dashboard axe coverage, E2E click-through DOM assertion,
+full-tab-walk focus-ring coverage) — all auto-fixed in tests only. Codex
+Round 2 revealed Round 1's auto-fix was partial on the same 3 findings
+(cascading-carryover pattern) AND surfaced 1 new Medium coverage-gap
+finding (auto-mode nudge fixture omission). Round 3 (cap-break per
+C.CODEX precedent for cascading carryovers) addressed the 3 carryovers
+in tests only. The 1 new Medium finding is deferred below.
+
+### F-AUTO-MODE-NUDGE-A11Y-AXE-COVERAGE — composed-dashboard fixture omits `TargetUpdatedNudgeWrapper` auto-mode branch
+**Severity:** Medium (coverage gap — no known production a11y defect, but a real auto-mode branch is currently un-scanned)
+**Source:** Codex Round 2 (Task D.1, finding 4), 2026-05-15.
+**File:line:** `tests/integration/dashboard-a11y.test.tsx:408-447` (composed `ComposedDashboard` fixture — currently skips the nudge branch entirely).
+**Status:** Open — deferred per R1-firewall handling requirement.
+
+**Finding:**
+> The composed-dashboard fixture mirrors only the manual-mode branch of `app/(app)/dashboard/page.tsx` and skips `TargetUpdatedNudgeWrapper` entirely. Production renders that wrapper above the hero row for auto-mode users with a newer recalculation. The wrapper contains a named region, live regions, disclosure / dismiss / recalc controls — i.e., it IS within D.1's dashboard a11y surface. The current fixture's `target_mode === 'manual'` shape silently elides the branch, so any auto-mode-only a11y regression (duplicate IDs surfacing inside `TargetUpdatedNudge`, region-naming drift, live-region drift, disclosure-control naming drift) would pass the composed gate undetected.
+
+**Why deferred (R1 firewall):**
+- `TargetUpdatedNudgeWrapper` imports `authPost` from `lib/api/authFetch.ts`, which is owned by Task 2.1's R1 firewall.
+- Adding the fixture requires mocking `authPost` correctly so the test never reaches the firewalled code path. Done sloppily this risks normalizing a firewall-violating import pattern in test fixtures.
+- Codex explicitly notes this is tractable as a test-scope add (~30 LOC mocked fixture + auto-mode composed axe + duplicate-ID check) and acknowledges the firewall is the actual obstacle, not the test design.
+- Round 3 was a cap-break specifically scoped to carryover findings from Round 1's auto-fix; widening Round 3 to add a new fixture would violate the cap-break discipline.
+
+**Recommended approach (when picked up):**
+1. Add a new vitest mock for `lib/api/authFetch.ts` at the top of `tests/integration/dashboard-a11y.test.tsx` (alongside the existing `next/navigation` / Zustand mocks) that returns no-op stubs for `authPost` / `authGet`.
+2. Render `TargetUpdatedNudge` (the inner presentational component) directly inside a new `ComposedAutoModeDashboard` fixture, with no-op `onDismiss` / `onAcceptRecalc` handlers.
+3. Run `axe(container, AXE_RUN_OPTIONS)` against this fixture under the same WCAG AA tag set.
+4. Run the duplicate-ID sibling test against this fixture too (every `[id]` in the auto-mode tree must be unique).
+
+**Acceptance:**
+- Composed auto-mode fixture axe = 0 violations under WCAG AA tag set.
+- Composed auto-mode fixture duplicate-ID check = 0 collisions.
+- `authPost` import path never reached at test runtime (mock asserts this).
+- R1 firewall files (`lib/auth/refresh-interceptor.ts`, `lib/auth/cross-tab-signout.ts`, `lib/api/authFetch.ts`, `app/(app)/(modals)/ConfirmationScreen.tsx`) untouched.
+
+**Owner:** D.2+ (or its own micro-task in Phase D before D.E2E).
+
+**Related task:** Phase D Task D.1 (US-STAB-D1) Codex Round 2 close (Round 3 cap-break).
+
+---
+
+### F-MASTHEAD-EDITION-A11Y-LABEL — Masthead edition line could carry a more descriptive aria-label
+**Severity:** Low (improvement — no AA failure, no axe violation)
+**Source:** Task D.1 Phase 1 design-lead audit §Phase 2 step 5 + briefing §16 risk-1.
+**File:line:** `components/dashboard/Masthead.tsx:85` (the edition `<p>` element); `lib/i18n/en.ts` (potential new key `t.masthead.editionA11y`).
+**Status:** Open — deferred per Task D.1 briefing §17 anti-scope rule.
+
+**Finding:**
+> The Masthead edition `<p>` renders a formatted "No. 142 · Thursday, 18 April 2026" string. The format reads cleanly for sighted users but is non-conversational for screen-reader users. Design-lead Phase 2 step 5 recommended a parallel `t.masthead.editionA11y` key that expands abbreviations and reads as a complete sentence. The ux-specialist Phase 1 Part B row 1 marked this "Possible Moderate — Verify in implementation, do not blind-add" — the in-implementation check confirmed there is no axe violation and no WCAG AA gap, so D.1 deferred the improvement.
+
+**Disposition rationale:**
+- D.1 briefing §17 anti-scope: no surgical refactors beyond what AC requires.
+- Improvement is design-quality, not compliance. No axe / AA / SR contract is broken.
+- Adding the i18n key + wiring belongs in either a follow-up polish task or a future iteration when Masthead is otherwise edited.
+
+**Owner:** TBD — Phase D polish batch OR opportunistic touch next time `Masthead.tsx` is edited for an unrelated reason.
+
+**Related task:** Phase D Task D.1 (US-STAB-D1) Codex Round 1 close.
+
+---
+
+## 2026-05-15 — Task C.CODEX (Phase C Codex Adversarial Review) — 4 deferred + 1 resolved
+
+Phase C Codex Adversarial Review ran 3 rounds (1 base + 2 documented cap-breaks for R2 critical data-loss class + R3 cascading regression introduced by R2 fix). R4 SKIPPED per cap discipline. 7 findings resolved (R1: 4 / R2: 2 / R3: 1); 47 new tests; vitest 2175/2175 GREEN. 4 followups deferred to Phase D; 1 prior open carry-forward (F-C2-R2-1) resolved as a side-effect of R1 Fix 2.
+
+### F-LIBRARY-CLIENT-ID-PERSISTENCE-AUDIT — confirmatory audit on Library mutation handlers' fresh-`client_id`-per-click pattern
+**Severity:** Low (audit-only — likely no functional regression)
+**Source:** Task C.CODEX R3-1 residual, 2026-05-15.
+**File:line:** `app/(app)/library/_components/FoodDetail/FoodDetail.tsx` (Delete, Edit handlers); `app/(app)/library/_components/LibraryClient.tsx` (Bulk-delete, Merge handlers).
+**Status:** Open — audit deferred to Phase D when Library mutation surface is next touched.
+
+**Finding:**
+> "4 Library mutation handlers (Delete, Edit, Bulk-delete, Merge) use a fresh-`client_id`-per-click pattern instead of stable retention. Identified during C.CODEX R3 audit-then-fix sub-agent pattern (analogous to the Confirmation save audit that prevented a wasted fix on already-correct code). UPDATE/DELETE operations are naturally idempotent (no duplicate-on-retry failure mode by SQL semantics — second DELETE is a no-op; second UPDATE re-sets the same values), so this is likely a false-positive flag. Worth confirmatory audit when Phase D touches Library mutation surface."
+
+**Disposition rationale:**
+- Audit-only — out of C.CODEX scope per 2-round-cap discipline (this surfaced AFTER the data-loss-justified R3 fix on log-now).
+- The 4 handlers' fresh-client_id pattern is structurally different from log-now's INSERT-retry path (where stale `client_id` would defeat idempotency). For mutation-only verbs (UPDATE/DELETE), stable vs. fresh client_id is observationally equivalent.
+- Confirmatory audit recommended at Phase D touch time, not as a standalone sweep.
+
+**Recommended fix:**
+1. When Phase D first touches any of the 4 Library mutation handlers, audit the `client_id` lifecycle to confirm idempotency holds under retry.
+2. If audit confirms idempotency holds: close this followup as RESOLVED with no code change.
+3. If audit identifies a duplicate-mutation failure mode: switch to stable `client_id` retention pattern (analogous to log-now R3 Fix 1 in `f2f5a33`).
+
+**Estimate:** ~1h audit + 0-2h fix if needed.
+
+**Owner:** TBD — bundle with first Phase D Library mutation touch.
+**Related task:** Phase C Task C.CODEX → Phase D Library mutation work.
+**References:** C.CODEX R3 sub-agent output (`Planning/.tmp/task-C.CODEX-R3-output.md`); R3 Fix 1 commit `f2f5a33`.
+
+---
+
+### F-API-RECHECK-HYGIENE — 14 `{ data: X }` destructures across API routes swallow `error` field
+**Severity:** Low (hygiene — no current data-loss risk)
+**Source:** Task C.CODEX R2-1 residual, 2026-05-15.
+**File:line:** 14 occurrences across `app/api/**/*` routes (full list in C.CODEX R2 sub-agent output).
+**Status:** Open — hygiene sweep candidate for a dedicated bugfix-tomi pass.
+
+**Finding:**
+> "14 `{ data: X }` destructures across API routes silently swallow the Supabase `error` field. After R2 Fix 1 (save-route recheck non-destructive), each of the remaining 14 was hand-audited: none are post-mutation tombstone-rechecks with compensating-delete consequences (they are pre-mutation reads or 23505 re-SELECTs whose failure mode is harmless re-throw). Worst case is silent 500 fallthrough on a transient Supabase error, not data loss. Hygiene sweep candidate."
+
+**Disposition rationale:**
+- Pattern is consistent across 14 sites — sweep is the right fix shape, not a per-task tactical patch.
+- R2 Fix 1 closed the one site where the swallow had compensating-delete consequences (save-route recheck — would have deleted user's just-written entry on transient error).
+- The remaining 14 are correctness-correct under the current contract; a sweep would harden them to fail-loud (503 instead of silent 500 fallthrough).
+
+**Recommended fix:**
+1. Spawn a dedicated bugfix-tomi sweep on `app/api/**` routes.
+2. For each `{ data: X }` destructure, decide: (a) keep silent if the read is purely advisory; (b) switch to `{ data: X, error }` + fail-loud 503 if the read is on the critical path.
+3. Add Sentry breadcrumbs to all swallowed-error sites that remain silent so observability is intact.
+
+**Estimate:** ~3-5h (audit 14 sites + fix + tests + Sentry wiring).
+
+**Owner:** TBD — bugfix-tomi sweep candidate.
+**Related task:** Phase C Task C.CODEX → Phase D API hygiene sweep.
+**References:** C.CODEX R2 sub-agent output (`Planning/.tmp/task-C.CODEX-R2-output.md`); R2 Fix 1 commit `50311c3`.
+
+---
+
+### F-RDA-LOOKUP-COMPLETENESS — `rdaLookup()` covers 15 of 30 canonical micros; remaining 15 fall through with `rda: null`
+**Severity:** Medium (user-facing feature gap)
+**Source:** Task C.CODEX R2-2 residual, 2026-05-15.
+**File:line:** `lib/nutrition/micros-rda.ts` — `rdaLookup()` function.
+**Status:** Open — feature-gap work, scope TBD.
+
+**Finding:**
+> "`rdaLookup()` in `lib/nutrition/micros-rda.ts` covers 15 of 30 canonical micros. The remaining 15 fall through with `rda: null` in BOTH the RDA panel (Task C.1) and the 7-day panel (R2 Fix 2 in `50311c3` propagated the alias map but not the lookup table). User-facing micro-coverage gap — half of the canonical 30-micro list shows current value but no RDA % chip."
+
+**Disposition rationale:**
+- R2 Fix 2 closed the 7-day alias-map gap (parity with single-day panel) but did not extend `rdaLookup()` itself — that's a feature-gap fix, not a Codex auto-fix.
+- Sourcing the missing 15 RDA values requires WHO/EFSA/FDA Daily Value table research (not a mechanical fix).
+- Coordinates with F-AI-CACHE-VERSIONING (Task C.1 deferral): both touch the canonical 30-micro contract.
+
+**Recommended fix:**
+1. Source RDA values for the missing 15 canonical micros from FDA Daily Values + WHO/EFSA fallbacks (same provenance as the existing 15).
+2. Extend `rdaLookup()` table; add regression tests asserting all 30 canonical keys return non-null `rda`.
+3. Coordinate with F-AI-CACHE-VERSIONING — schema-version bump on the AI cache key once the table is canonical-complete.
+
+**Estimate:** ~4-6h (source research + table extension + tests + cache-key version bump).
+
+**Owner:** TBD — Phase D nutrition data hardening.
+**Related task:** Phase C Task C.CODEX → Phase D nutrition data hardening (coordinates with F-AI-CACHE-VERSIONING).
+**References:** C.CODEX R2 sub-agent output (`Planning/.tmp/task-C.CODEX-R2-output.md`); R2 Fix 2 commit `50311c3`.
+
+---
+
+### F-LIBRARY-MICROS-CANONICAL — harmonize library UI persistence to canonical micro codes (drops `LEGACY_MICRO_KEY_ALIASES` long-term)
+**Severity:** Medium (refactor — structural fix vs. tactical bridge)
+**Source:** Task C.CODEX R1 Fix 3 residual, 2026-05-15.
+**File:line:** `lib/dashboard/micros-rda-resolver.ts` (alias map `LEGACY_MICRO_KEY_ALIASES`); library UI persistence layer; DB micro-key storage.
+**Status:** Open — refactor scoped for Phase D or later.
+
+**Finding:**
+> "R1 Fix 3 added `LEGACY_MICRO_KEY_ALIASES` at `lib/dashboard/micros-rda-resolver.ts` as a tactical bridge between library-stored legacy micro keys and the canonical 30-micro contract. This unblocked Library re-log chips showing correct RDA % values immediately, but the structural fix is harmonizing library UI persistence to canonical codes + DB key migration. Dropping the alias map long-term reduces resolver-time complexity and eliminates a drift surface where future canonical-set additions risk breaking legacy library entries."
+
+**Disposition rationale:**
+- The alias map is a tactical bridge — correct for closing the R1 finding immediately, but structurally inferior to canonical-key persistence.
+- Library UI refactor + DB key migration is a coordinated change (touches schema, RLS, library mutation routes, and the resolver), not a Codex auto-fix surface.
+- Coordinates with F-RDA-LOOKUP-COMPLETENESS — both touch the canonical 30-micro contract and should land together to minimize migration churn.
+
+**Recommended fix:**
+1. Migrate library UI persistence to write canonical micro codes (not legacy keys).
+2. Backfill DDL migration to remap existing library rows from legacy keys → canonical codes (one-shot data migration).
+3. Drop `LEGACY_MICRO_KEY_ALIASES` from `lib/dashboard/micros-rda-resolver.ts` once migration completes.
+4. Add regression test asserting library re-log writes canonical codes only.
+
+**Estimate:** ~6-8h (UI refactor + DDL migration + data backfill + alias-map drop + regression tests).
+
+**Owner:** TBD — Phase D library data hardening (coordinates with F-RDA-LOOKUP-COMPLETENESS).
+**Related task:** Phase C Task C.CODEX → Phase D library data hardening.
+**References:** C.CODEX R1 sub-agent output (`Planning/.tmp/task-C.CODEX-R1-output.md`); R1 Fix 3 commit `e6604fc`.
+
+---
+
+### F-C2-R2-1 — RESOLVED 2026-05-15 by C.CODEX R1 Fix 2
+
+**Status:** RESOLVED 2026-05-15 by C.CODEX R1 Fix 2 (commit `e6604fc`) — `normalizeProfileTimezone()` now applied at `entries/save` + `entries/[id]` PATCH/DELETE.
+
+The MEDIUM open carry-forward "F-C2-R2-1 — `/api/entries/save` shares the timezone-vulnerability pattern fixed in `/api/library/[id]/log-now`; recommend a dedicated tz audit task scoped to `/api/entries/save` + sibling routes that read `profile.timezone` without IANA validation" (logged at Task C.2 R2 close, carried forward through C.SWEEP) was discharged by C.CODEX R1 Fix 2. `normalizeProfileTimezone()` is now invoked at `/api/entries/save` + `/api/entries/[id]` PATCH/DELETE; the TZ-validation pattern is parity-aligned across all three mutation surfaces (log-now, save, entries/[id]).
+
+---
+
+### F-DEP-NODE22-APP-RUNTIME — Node 22 application-runtime alignment (separate from GHA workflow runtime)
+
+**Severity:** MEDIUM
+**Status:** OPEN — registered 2026-05-15 at Task D.5 close.
+**Source:** Task D.5 (US-STAB-D5) AC3 — explicitly deferred per D.5 briefing §3 decision; out of Node-24 GHA-runtime scope.
+**Scope:** `package.json` `engines.node` field + Next.js / Vercel runtime version + any `.nvmrc` / `.node-version` / Vercel project Node setting. NOT GitHub-Actions workflow `uses:` versions (that surface is locked by D.5's floor-table contract test).
+**Why deferred:** D.5 is `[infrastructure][FA]` Small scope, locked to GHA `uses:` action floors. Node 22 app-runtime bump is a separate concern with its own validation surface (Next.js build smoke, Vercel preview deploy, local `pnpm dev`). Folding it into D.5 would violate Small-task scope + force a Codex per-task gate that wasn't on the briefing.
+**Recommended fix:** Dedicated task in Phase D wrap-up or Phase E warm-up — bump `engines.node` to `>=22 <25`, verify Next.js 16 supports the bumped target, set Vercel project Node version, regression-test the build pipeline.
+**Estimate:** ~1-2h (engines bump + Vercel setting + smoke test on a preview deploy).
+**Owner:** TBD.
+**Related task:** Phase D (post-D.5) or Phase E.
+**References:** Task D.5 briefing §3; D.5 close in `Planning/progress.md` (2026-05-15 ~21:40 GMT+7).
 
 ---

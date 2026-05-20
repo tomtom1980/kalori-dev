@@ -18,7 +18,13 @@ import * as Sentry from '@sentry/nextjs';
 // eslint-disable-next-line kalori/no-admin-in-app
 import { getAdminSupabase } from '@/lib/supabase/admin';
 
-export type AICallType = 'text-parse' | 'vision' | 'weekly-review';
+export type AICallType =
+  | 'text-parse'
+  | 'vision'
+  | 'weekly-review'
+  | 'image-analysis-sketch'
+  | 'nutrition-summary'
+  | 'library-recipe';
 
 export interface AICallLogInput {
   readonly userId: string;

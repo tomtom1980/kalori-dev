@@ -47,6 +47,7 @@ import {
   type RecalcProfileInput,
   type TargetMode,
 } from '@/lib/nutrition/recalc';
+import { calculateAgeOnDate, isAgeInSupportedRange } from '@/lib/profile/age';
 import { getServerSupabase } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -182,7 +183,7 @@ export async function POST(request: Request): Promise<Response> {
   const { data: profileRow, error: profileErr } = (await supabase
     .from('profiles')
     .select(
-      'target_mode, current_weight_kg, recalc_threshold_pct, bio_sex, age, height_cm, activity_level, goal_weight_kg, goal_pace',
+      'target_mode, current_weight_kg, recalc_threshold_pct, bio_sex, birthday, age, height_cm, activity_level, goal_weight_kg, goal_pace',
     )
     .eq('id', userId)
     .maybeSingle()) as {
@@ -193,9 +194,13 @@ export async function POST(request: Request): Promise<Response> {
   let recalcBlock: { newBmr: number; newTdee: number; newTarget: number } | undefined;
 
   if (!profileErr && profileRow) {
+    const ageFromBirthday =
+      typeof profileRow.birthday === 'string'
+        ? calculateAgeOnDate(profileRow.birthday, body.date)
+        : null;
     const profile: RecalcProfileInput = {
       bio_sex: profileRow.bio_sex as RecalcProfileInput['bio_sex'],
-      age: Number(profileRow.age),
+      age: isAgeInSupportedRange(ageFromBirthday) ? ageFromBirthday : Number(profileRow.age),
       height_cm: Number(profileRow.height_cm),
       current_weight_kg:
         profileRow.current_weight_kg === null ? null : Number(profileRow.current_weight_kg),

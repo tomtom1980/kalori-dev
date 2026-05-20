@@ -10,6 +10,8 @@
  * Positioning + visibility (shown below md, hidden on xl+) happens at the
  * layout level via Tailwind responsive utilities, not in this component.
  */
+import { t } from '@/lib/i18n/en';
+
 import { ProfileMenu } from './profile-menu';
 
 export interface TopAppBarProps {
@@ -18,11 +20,10 @@ export interface TopAppBarProps {
   userInitials: string;
 }
 
-export function TopAppBar({ sectionKicker, editionLine, userInitials }: TopAppBarProps) {
+export function TopAppBar({ userInitials }: TopAppBarProps) {
   return (
     <header
       data-testid="top-app-bar"
-      className="kalori-top-app-bar"
       style={{
         height: '44px',
         display: 'flex',
@@ -35,28 +36,37 @@ export function TopAppBar({ sectionKicker, editionLine, userInitials }: TopAppBa
         borderBottomColor: 'var(--color-rule)',
       }}
     >
-      <span
+      <div
+        data-testid="top-app-bar-brand"
+        aria-label={t.brand.name}
         style={{
-          fontFamily: 'var(--font-sans)',
-          fontSize: 'var(--type-label)',
-          letterSpacing: '0.18em',
-          textTransform: 'uppercase',
-          color: 'var(--color-dust)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          minWidth: 0,
         }}
       >
-        {sectionKicker}
-      </span>
-      <span
-        aria-hidden="true"
-        style={{
-          fontFamily: 'var(--font-serif)',
-          fontStyle: 'italic',
-          fontSize: '11px',
-          color: 'var(--color-dust)',
-        }}
-      >
-        {editionLine}
-      </span>
+        <span
+          style={{
+            fontFamily: 'var(--font-serif)',
+            fontSize: '22px',
+            fontWeight: 300,
+            letterSpacing: '-0.02em',
+            color: 'var(--color-ivory)',
+          }}
+        >
+          {t.brand.name}
+        </span>
+        <span
+          aria-hidden="true"
+          style={{
+            width: 7,
+            height: 7,
+            flex: '0 0 auto',
+            backgroundColor: 'var(--color-oxblood)',
+          }}
+        />
+      </div>
       <ProfileMenu userInitials={userInitials} />
     </header>
   );

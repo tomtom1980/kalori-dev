@@ -50,12 +50,12 @@ describe('<WizardShell />', () => {
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
-  it('renders StepBioSex body at step 1 with 3 radios', async () => {
+  it('renders StepBioSex body at step 1 with male and female radios', async () => {
     const { WizardShell } = await import('@/app/(app)/onboarding/_components/WizardShell');
     render(<WizardShell />);
     expect(screen.getByRole('radio', { name: t.onboarding.bioSexMale })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: t.onboarding.bioSexFemale })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: t.onboarding.bioSexOther })).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: t.onboarding.bioSexOther })).not.toBeInTheDocument();
   });
 
   it('advances to step 2 after selecting bio sex and clicking Next', async () => {

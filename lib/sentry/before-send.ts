@@ -79,6 +79,28 @@ export function createBeforeSend(): (event: ErrorEvent, hint: EventHint) => Erro
     const event = rawEvent as unknown as AnyEvent | null;
     if (!event) return null;
 
+    // Drop Node stdio EPIPE errors (broken pipe on process.stdout / stderr).
+    // These fire when a parent process closes mid-write — the canonical case
+    // is a dev server whose terminal goes away (Claude Code background-task
+    // reaping, CI runner teardown, manual Ctrl+C in some shells). The error
+    // originates inside Next.js's own dev request logger and never represents
+    // an application bug, so suppressing it removes pure infrastructure noise.
+    // ECONNRESET intentionally NOT included — that often signals a real
+    // upstream socket drop worth investigating.
+    if (isPlainObject(event.exception)) {
+      const values = (event.exception as { values?: unknown }).values;
+      if (Array.isArray(values) && values.length > 0) {
+        const first = values[0];
+        if (
+          isPlainObject(first) &&
+          typeof first.value === 'string' &&
+          /^EPIPE:/.test(first.value)
+        ) {
+          return null;
+        }
+      }
+    }
+
     // Drop the dedicated /api/sentry-test route in production.
     if (
       process.env.KALORI_ENV === 'production' &&

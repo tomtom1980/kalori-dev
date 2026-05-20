@@ -8,7 +8,7 @@
  *   - Escape dismisses tooltip
  */
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 
 import { MicronutrientHeatmap } from '@/components/charts/MicronutrientHeatmap';
@@ -16,6 +16,32 @@ import { MicronutrientHeatmap } from '@/components/charts/MicronutrientHeatmap';
 import type { MicronutrientHeatmapData, ProgressRange } from '@/lib/aggregations/progress';
 
 const NUTRIENTS = ['vitamin_a', 'vitamin_c', 'vitamin_d', 'iron', 'calcium'] as const;
+const originalMatchMedia = window.matchMedia;
+
+function setHoverCapability(matches: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
+
+afterEach(() => {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: originalMatchMedia,
+  });
+});
 
 function makeData(overrides?: Partial<MicronutrientHeatmapData>): MicronutrientHeatmapData {
   const buckets = [
@@ -41,6 +67,7 @@ function makeData(overrides?: Partial<MicronutrientHeatmapData>): MicronutrientH
     range: 'W',
     tz: 'Asia/Ho_Chi_Minh',
     nutrients: NUTRIENTS,
+    allNutrients: NUTRIENTS,
     targets: {
       vitamin_a: 900,
       vitamin_c: 90,
@@ -69,6 +96,77 @@ function makeData(overrides?: Partial<MicronutrientHeatmapData>): MicronutrientH
     },
     ...overrides,
   };
+}
+
+function makeRankedData(): MicronutrientHeatmapData {
+  const buckets = [
+    '2026-04-18',
+    '2026-04-19',
+    '2026-04-20',
+    '2026-04-21',
+    '2026-04-22',
+    '2026-04-23',
+    '2026-04-24',
+  ];
+  const allNutrients = [
+    'calcium',
+    'magnesium',
+    'sodium',
+    'vitamin_c',
+    'vitamin_d',
+    'vitamin_e',
+    'vitamin_a',
+    'vitamin_k',
+    'folate',
+    'potassium',
+    'zinc',
+    'selenium',
+  ] as const;
+  const pctByNutrient: Record<(typeof allNutrients)[number], number> = {
+    calcium: 1,
+    magnesium: 2,
+    sodium: 4,
+    vitamin_c: 10,
+    vitamin_d: 20,
+    vitamin_e: 100,
+    vitamin_a: 35,
+    vitamin_k: 45,
+    folate: 55,
+    potassium: 65,
+    zinc: 75,
+    selenium: 85,
+  };
+  const targets: Record<(typeof allNutrients)[number], number> = {
+    calcium: 1300,
+    magnesium: 420,
+    sodium: 2300,
+    vitamin_c: 90,
+    vitamin_d: 20,
+    vitamin_e: 15,
+    vitamin_a: 900,
+    vitamin_k: 120,
+    folate: 400,
+    potassium: 4700,
+    zinc: 11,
+    selenium: 55,
+  };
+  return makeData({
+    nutrients: ['calcium', 'magnesium', 'vitamin_c', 'vitamin_d'],
+    allNutrients,
+    targets,
+    cells: allNutrients.flatMap((nutrient) =>
+      buckets.map((bucket) => ({
+        nutrient,
+        bucket,
+        actual: bucket === '2026-04-24' ? (targets[nutrient] * pctByNutrient[nutrient]) / 100 : 0,
+        pctDv: bucket === '2026-04-24' ? pctByNutrient[nutrient] : 0,
+        rampClass: 'c0' as const,
+        isToday: bucket === '2026-04-24',
+      })),
+    ),
+    srSummary:
+      'Micronutrient heatmap, this week: 4 default nutrients, 12 eligible nutrients by 7 time buckets.',
+  });
 }
 
 // Build a valid D-range dataset (24 hourly buckets).
@@ -168,6 +266,73 @@ describe('<MicronutrientHeatmap />', () => {
     expect(screen.getByText(/View heatmap as table/i)).toBeInTheDocument();
   });
 
+  it('defaults to four under-target non-upper-limit rows and expands to all eligible rows', () => {
+    render(<MicronutrientHeatmap data={makeRankedData()} />);
+
+    let rowHeaders = within(screen.getByRole('grid')).getAllByRole('rowheader');
+    expect(rowHeaders.map((row) => row.textContent)).toEqual([
+      'Calcium',
+      'Magnesium',
+      'Vitamin C',
+      'Vitamin D',
+    ]);
+    expect(screen.queryByRole('rowheader', { name: 'Sodium' })).toBeNull();
+    expect(screen.getByRole('button', { name: /show all micronutrients/i })).toBeInTheDocument();
+    expect(screen.getByTestId('heatmap-expanded-scroll')).toHaveStyle({
+      overflowX: 'hidden',
+      overflowY: 'visible',
+    });
+    expect(screen.getByTestId('heatmap-expanded-scroll').style.maxHeight).toBe('');
+    expect(screen.getByTestId('chart-heatmap-grid')).toHaveStyle({ tableLayout: 'fixed' });
+    expect(screen.getAllByRole('gridcell')[0]).toHaveStyle({ minWidth: '0' });
+
+    fireEvent.click(screen.getByRole('button', { name: /show all micronutrients/i }));
+
+    rowHeaders = within(screen.getByRole('grid')).getAllByRole('rowheader');
+    expect(rowHeaders).toHaveLength(12);
+    expect(rowHeaders.length).toBeGreaterThan(10);
+    expect(screen.getByRole('rowheader', { name: 'Sodium' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /hide all micronutrients/i })).toBeInTheDocument();
+    expect(screen.getByTestId('heatmap-expanded-scroll')).toHaveStyle({ overflowX: 'hidden' });
+    expect(screen.getByTestId('heatmap-expanded-scroll')).toHaveStyle({ overflowY: 'auto' });
+    expect(screen.getByTestId('heatmap-expanded-scroll')).toHaveStyle({ maxHeight: '320px' });
+    expect(screen.getByTestId('chart-heatmap-grid')).toHaveStyle({ tableLayout: 'fixed' });
+
+    fireEvent.click(screen.getByRole('button', { name: /hide all micronutrients/i }));
+
+    rowHeaders = within(screen.getByRole('grid')).getAllByRole('rowheader');
+    expect(rowHeaders.map((row) => row.textContent)).toEqual([
+      'Calcium',
+      'Magnesium',
+      'Vitamin C',
+      'Vitamin D',
+    ]);
+    expect(screen.getByTestId('heatmap-expanded-scroll')).toHaveStyle({
+      overflowX: 'hidden',
+      overflowY: 'visible',
+    });
+    expect(screen.getByTestId('heatmap-expanded-scroll').style.maxHeight).toBe('');
+  });
+
+  it('data-table view includes all eligible nutrients, including sodium', () => {
+    render(<MicronutrientHeatmap data={makeRankedData()} />);
+
+    fireEvent.click(screen.getByText(/View heatmap as table/i));
+
+    expect(screen.getByText('Sodium')).toBeInTheDocument();
+    expect(screen.getByText('Vitamin E')).toBeInTheDocument();
+  });
+
+  it('data-table drawer close is an icon-only X button with stable accessible name', () => {
+    render(<MicronutrientHeatmap data={makeRankedData()} />);
+
+    fireEvent.click(screen.getByText(/View heatmap as table/i));
+
+    const close = screen.getByRole('button', { name: 'Close' });
+    expect(close).toHaveClass('kalori-log-close');
+    expect(close.textContent).toBe('');
+  });
+
   it('renders empty-state caption when zero days logged', () => {
     render(
       <MicronutrientHeatmap
@@ -255,6 +420,59 @@ describe('<MicronutrientHeatmap /> 2D keyboard nav (Task 4.3a R1)', () => {
     // Tooltip live region receives label
     const live = screen.getByTestId('heatmap-live');
     expect(live.textContent).toBeTruthy();
+  });
+
+  it('hover shows a quick value tooltip and pointer leave removes it', () => {
+    setHoverCapability(true);
+    render(<MicronutrientHeatmap data={makeData()} />);
+    const first = screen
+      .getAllByRole('button')
+      .filter((b) => b.className.includes('heatmap-cell-button'))[0]!;
+
+    fireEvent.pointerEnter(first);
+    expect(screen.getByRole('tooltip')).toHaveTextContent('50.0');
+
+    fireEvent.pointerLeave(first);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('desktop click does not duplicate the hover-only cell detail', () => {
+    setHoverCapability(true);
+    render(<MicronutrientHeatmap data={makeData()} />);
+    const first = screen
+      .getAllByRole('button')
+      .filter((b) => b.className.includes('heatmap-cell-button'))[0]!;
+
+    fireEvent.click(first);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('touch click opens a persistent detail popup that closes via X, outside click, and Escape', () => {
+    setHoverCapability(false);
+    const { rerender } = render(<MicronutrientHeatmap data={makeData()} />);
+    const first = screen
+      .getAllByRole('button')
+      .filter((b) => b.className.includes('heatmap-cell-button'))[0]!;
+
+    fireEvent.click(first);
+    expect(screen.getByRole('dialog', { name: /Vitamin A, 2026-04-18/i })).toBeInTheDocument();
+    const closeButton = screen.getByRole('button', { name: 'Close nutrient detail' });
+    expect(closeButton).toHaveFocus();
+    fireEvent.click(closeButton);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(first).toHaveFocus();
+
+    rerender(<MicronutrientHeatmap data={makeData()} />);
+    const second = screen
+      .getAllByRole('button')
+      .filter((b) => b.className.includes('heatmap-cell-button'))[0]!;
+    fireEvent.click(second);
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    fireEvent.click(second);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('Escape dismisses tooltip', () => {

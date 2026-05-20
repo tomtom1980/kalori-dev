@@ -12,6 +12,8 @@
  * module (JSX-only scope), but we route through i18n anyway for
  * consistency per briefing §4 Option A.
  */
+import { BookOpen, LayoutDashboard, LineChart, Settings, type LucideIcon } from 'lucide-react';
+
 import { t } from '@/lib/i18n/en';
 
 export interface PrimaryDestination {
@@ -19,6 +21,24 @@ export interface PrimaryDestination {
   label: string;
   testId: string;
   shortLabel: string;
+  iconAccent: string;
+  /**
+   * Lucide-react icon component rendered in the bottom tab bar (mobile, <768px).
+   *
+   * Bugfix-tomi 2026-05-17 bug #1 — ui-design.md §6.4 prescribes a 3-column
+   * state table for each bottom-tab slot: `Icon | Label | Top bar`. Sidebar
+   * (≥1280px) + Tablet Rail (768-1279px) intentionally do NOT render this
+   * field — those surfaces are text-led per ui-design.md §6.2 / §6.3.
+   *
+   * Icon picks (final, per Phase 2 user approval gate):
+   *   - Dashboard → LayoutDashboard (matches "dashboard panels" semantic)
+   *   - Library   → BookOpen        (Ledger metaphor: editorial broadsheet)
+   *   - Progress  → LineChart       (matches /progress chart-heavy route;
+   *                                  v1.8.0 exports LineChart as alias
+   *                                  for ChartLine — see lucide-react v1)
+   *   - Settings  → Settings        (no controversy)
+   */
+  icon: LucideIcon;
 }
 
 export const PRIMARY_DESTINATIONS: readonly PrimaryDestination[] = [
@@ -27,24 +47,32 @@ export const PRIMARY_DESTINATIONS: readonly PrimaryDestination[] = [
     label: t.nav.dashboard,
     shortLabel: t.nav.shortLabel.dashboard,
     testId: 'nav-dashboard',
+    icon: LayoutDashboard,
+    iconAccent: 'var(--color-ember)',
   },
   {
     href: '/library',
     label: t.nav.library,
     shortLabel: t.nav.shortLabel.library,
     testId: 'nav-library',
+    icon: BookOpen,
+    iconAccent: 'var(--color-ochre)',
   },
   {
     href: '/progress',
     label: t.nav.progress,
     shortLabel: t.nav.shortLabel.progress,
     testId: 'nav-progress',
+    icon: LineChart,
+    iconAccent: 'var(--color-moss)',
   },
   {
     href: '/settings',
     label: t.nav.settings,
     shortLabel: t.nav.shortLabel.settings,
     testId: 'nav-settings',
+    icon: Settings,
+    iconAccent: 'var(--color-slate)',
   },
 ] as const;
 

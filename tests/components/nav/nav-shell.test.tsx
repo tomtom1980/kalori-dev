@@ -5,8 +5,11 @@
  *
  * Task 1.2 CI-fix coverage:
  *   - Renders all three responsive wrappers (`nav-shell-sidebar`,
- *     `nav-shell-top`, `nav-shell-mobile`) unconditionally — CSS decides
- *     visibility per viewport (ui-design.md §6.6).
+ *     `nav-shell-top`, `nav-shell-mobile`) at non-onboarding routes — CSS
+ *     decides visibility per viewport (ui-design.md §6.6). On `/onboarding*`
+ *     routes all three chrome wrappers are hidden — the user is mid-
+ *     registration and none of the nav surfaces (incl. mobile food + water
+ *     FABs) are usable yet.
  *   - The active-tab indicator on `/dashboard` routes through to both
  *     Sidebar + BottomTabBar: their nav links expose `aria-current="page"`.
  *   - Falls back to `/dashboard` section-kicker when `usePathname()` returns
@@ -19,6 +22,7 @@
  */
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 
 const usePathnameMock = vi.fn<() => string | null>(() => '/dashboard');
 const searchParamsGetMock = vi.fn<(key: string) => string | null>(() => null);
@@ -59,24 +63,29 @@ vi.mock('next/navigation', () => ({
 // error.
 const authPostMock = vi.fn<(url: string, body: unknown) => Promise<unknown>>();
 const authFetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>();
-authFetchMock.mockImplementation(async (url, init) => {
-  let result: unknown;
-  try {
-    result = await authPostMock(url, init?.body ? JSON.parse(init.body as string) : undefined);
-  } catch (err) {
-    if (err instanceof SessionExpiredError) throw err;
-    const e = err as { status?: number; body?: unknown };
-    const status = typeof e.status === 'number' ? e.status : 500;
-    return new Response(JSON.stringify(e.body ?? { error: 'mock_error' }), {
-      status,
+
+function installAuthFetchMock(): void {
+  authFetchMock.mockImplementation(async (url, init) => {
+    let result: unknown;
+    try {
+      result = await authPostMock(url, init?.body ? JSON.parse(init.body as string) : undefined);
+    } catch (err) {
+      if (err instanceof SessionExpiredError) throw err;
+      const e = err as { status?: number; body?: unknown };
+      const status = typeof e.status === 'number' ? e.status : 500;
+      return new Response(JSON.stringify(e.body ?? { error: 'mock_error' }), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify(result ?? {}), {
+      status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  }
-  return new Response(JSON.stringify(result ?? {}), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
   });
-});
+}
+
+installAuthFetchMock();
 
 vi.mock('@/lib/auth/refresh-interceptor', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/auth/refresh-interceptor')>();
@@ -109,6 +118,7 @@ vi.mock('@/lib/time/device-timezone', () => ({
   getDeviceTimeZone: (fallback?: string) => getDeviceTimeZoneMock(fallback),
 }));
 
+import { useLogFlowStore } from '@/lib/stores/useLogFlowStore';
 import { useUndoQueueStore } from '@/lib/stores/useUndoQueueStore';
 import { useWaterMutationStore } from '@/lib/stores/useWaterMutationStore';
 import { useDashboardDateTransitionStore } from '@/lib/stores/useDashboardDateTransitionStore';
@@ -116,8 +126,136 @@ import { NavShell } from '@/components/nav/nav-shell';
 import { SessionExpiredError } from '@/lib/auth/refresh-interceptor';
 import { t } from '@/lib/i18n/en';
 
+function resetUndoQueueForNavTest(): void {
+  for (const entry of useUndoQueueStore.getState().stack) {
+    clearTimeout(entry.timerId);
+  }
+  useUndoQueueStore.setState({ stack: [] });
+}
+
+function cleanupModalGlobalsForNavTest(): void {
+  document.body.removeAttribute('data-scroll-locked');
+  document.body.removeAttribute('data-scroll-lock');
+  document.body.style.removeProperty('pointer-events');
+  document.body.style.removeProperty('overflow');
+  document
+    .querySelectorAll('[data-radix-focus-guard], [data-radix-portal]')
+    .forEach((node) => node.remove());
+}
+
+function resetWaterFabActionState(): void {
+  authPostMock.mockReset();
+  authFetchMock.mockReset();
+  installAuthFetchMock();
+  routerRefreshMock.mockClear();
+  announcePoliteMock.mockClear();
+  resetUndoQueueForNavTest();
+  useWaterMutationStore.getState().reset();
+}
+
+async function waitForWaterToast(
+  matcher: string | RegExp,
+): Promise<ReturnType<typeof useUndoQueueStore.getState>['stack'][number]> {
+  return await waitFor(() => {
+    const stack = useUndoQueueStore.getState().stack;
+    const entry = stack.find((item) =>
+      typeof matcher === 'string' ? item.description === matcher : matcher.test(item.description),
+    );
+    expect(entry).toBeDefined();
+    return entry!;
+  });
+}
+
+function beginWaterFabAction(): number {
+  authPostMock.mockClear();
+  authFetchMock.mockClear();
+  return authPostMock.mock.calls.length;
+}
+
+function expectAuthPostCallsSince(
+  baseline: number,
+  count: number,
+): Array<[url: string, body: unknown]> {
+  const calls = authPostMock.mock.calls.slice(baseline);
+  expect(calls).toHaveLength(count);
+  return calls;
+}
+
+function setDocumentScrollTopForNavTest(value: number): void {
+  Object.defineProperty(window, 'scrollY', {
+    configurable: true,
+    value,
+  });
+  document.documentElement.scrollTop = value;
+}
+
+function setNavigatorForNavTest({
+  userAgent,
+  platform,
+  maxTouchPoints,
+}: {
+  userAgent: string;
+  platform: string;
+  maxTouchPoints: number;
+}): void {
+  Object.defineProperty(window.navigator, 'userAgent', {
+    configurable: true,
+    value: userAgent,
+  });
+  Object.defineProperty(window.navigator, 'platform', {
+    configurable: true,
+    value: platform,
+  });
+  Object.defineProperty(window.navigator, 'maxTouchPoints', {
+    configurable: true,
+    value: maxTouchPoints,
+  });
+}
+
+function firePullGesture(
+  target: Element,
+  {
+    startX = 20,
+    startY = 0,
+    endX = 24,
+    endY = 92,
+  }: {
+    startX?: number;
+    startY?: number;
+    endX?: number;
+    endY?: number;
+  } = {},
+): void {
+  fireEvent.touchStart(target, {
+    touches: [{ clientX: startX, clientY: startY }],
+    changedTouches: [{ clientX: startX, clientY: startY }],
+  });
+  fireEvent.touchMove(target, {
+    touches: [{ clientX: endX, clientY: endY }],
+    changedTouches: [{ clientX: endX, clientY: endY }],
+  });
+  fireEvent.touchEnd(target, {
+    touches: [],
+    changedTouches: [{ clientX: endX, clientY: endY }],
+  });
+}
+
 describe('<NavShell />', () => {
+  const originalLocation = window.location;
+  let locationReloadMock: Mock<() => void>;
+
   beforeEach(() => {
+    vi.useRealTimers();
+    locationReloadMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      configurable: true,
+      value: {
+        ...originalLocation,
+        reload: locationReloadMock,
+      },
+    });
+    cleanupModalGlobalsForNavTest();
     usePathnameMock.mockReset();
     usePathnameMock.mockReturnValue('/dashboard');
     searchParamsGetMock.mockReset();
@@ -125,6 +263,8 @@ describe('<NavShell />', () => {
     routerPushMock.mockReset();
     routerRefreshMock.mockReset();
     authPostMock.mockReset();
+    authFetchMock.mockReset();
+    installAuthFetchMock();
     announcePoliteMock.mockReset();
     // Default `userTzToday` to a deterministic stable value; per-test
     // setup overrides it (e.g., the C2 tap-time recomputation case
@@ -133,9 +273,15 @@ describe('<NavShell />', () => {
     userTzTodayMock.mockReturnValue('2026-05-08');
     getDeviceTimeZoneMock.mockReset();
     getDeviceTimeZoneMock.mockImplementation((fallback = 'UTC') => fallback);
-    useUndoQueueStore.setState({ stack: [] });
+    resetUndoQueueForNavTest();
     useWaterMutationStore.getState().reset();
     useDashboardDateTransitionStore.getState().clearLoadingDay();
+    setNavigatorForNavTest({
+      userAgent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      platform: 'Win32',
+      maxTouchPoints: 0,
+    });
     // Deterministic client_id mint so payload-shape assertions are stable.
     let i = 0;
     vi.spyOn(crypto, 'randomUUID').mockImplementation(
@@ -144,10 +290,20 @@ describe('<NavShell />', () => {
     );
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    resetUndoQueueForNavTest();
+    vi.useRealTimers();
     vi.restoreAllMocks();
     useWaterMutationStore.getState().reset();
     useDashboardDateTransitionStore.getState().clearLoadingDay();
+    cleanupModalGlobalsForNavTest();
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      configurable: true,
+      value: originalLocation,
+    });
   });
 
   it('renders all three responsive nav wrappers', () => {
@@ -161,6 +317,29 @@ describe('<NavShell />', () => {
     expect(screen.getByTestId('nav-shell-mobile')).toBeInTheDocument();
     // Children render inside <main>.
     expect(screen.getByTestId('page-body')).toBeInTheDocument();
+  });
+
+  describe('onboarding chrome suppression', () => {
+    it('hides sidebar / top app bar / mobile FAB bar on /onboarding and still renders wizard children', () => {
+      usePathnameMock.mockReturnValue('/onboarding');
+      render(
+        <NavShell>
+          <p data-testid="onboarding-body">wizard step</p>
+        </NavShell>,
+      );
+      expect(screen.queryByTestId('nav-shell-sidebar')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('nav-shell-top')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('nav-shell-mobile')).not.toBeInTheDocument();
+      expect(screen.getByTestId('onboarding-body')).toBeInTheDocument();
+    });
+
+    it('also hides chrome on /onboarding sub-routes (forward-compat for /onboarding/step-N)', () => {
+      usePathnameMock.mockReturnValue('/onboarding/step-2');
+      render(<NavShell>{null}</NavShell>);
+      expect(screen.queryByTestId('nav-shell-sidebar')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('nav-shell-top')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('nav-shell-mobile')).not.toBeInTheDocument();
+    });
   });
 
   it('marks the dashboard tab active when on /dashboard in both sidebar + bottom tab bar', () => {
@@ -192,6 +371,95 @@ describe('<NavShell />', () => {
     expect(within(sidebar).getByTestId('nav-dashboard')).toHaveAttribute('aria-current', 'page');
   });
 
+  describe('Bug #4 — app-shell pull-to-refresh', () => {
+    it('refreshes the active route after a one-finger downward pull at document top', () => {
+      setDocumentScrollTopForNavTest(0);
+      render(
+        <NavShell>
+          <p data-testid="page-body">body</p>
+        </NavShell>,
+      );
+
+      firePullGesture(screen.getByTestId('page-body'));
+
+      expect(routerRefreshMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('pull-to-refresh-overlay')).toHaveTextContent(/refreshing/i);
+    });
+
+    it('does not refresh for below-threshold, horizontal, scrolled, multi-touch, or button-start gestures', () => {
+      render(
+        <NavShell>
+          <p data-testid="page-body">body</p>
+        </NavShell>,
+      );
+      const pageBody = screen.getByTestId('page-body');
+
+      setDocumentScrollTopForNavTest(0);
+      firePullGesture(pageBody, { endY: 48 });
+
+      setDocumentScrollTopForNavTest(0);
+      firePullGesture(pageBody, { endX: 120, endY: 26 });
+
+      setDocumentScrollTopForNavTest(64);
+      firePullGesture(pageBody);
+
+      setDocumentScrollTopForNavTest(0);
+      fireEvent.touchStart(pageBody, {
+        touches: [
+          { clientX: 20, clientY: 0 },
+          { clientX: 40, clientY: 0 },
+        ],
+        changedTouches: [
+          { clientX: 20, clientY: 0 },
+          { clientX: 40, clientY: 0 },
+        ],
+      });
+      fireEvent.touchMove(pageBody, {
+        touches: [
+          { clientX: 20, clientY: 96 },
+          { clientX: 40, clientY: 96 },
+        ],
+        changedTouches: [
+          { clientX: 20, clientY: 96 },
+          { clientX: 40, clientY: 96 },
+        ],
+      });
+      fireEvent.touchEnd(pageBody, {
+        touches: [],
+        changedTouches: [{ clientX: 20, clientY: 96 }],
+      });
+
+      firePullGesture(screen.getByTestId('log-fab-water'));
+
+      expect(routerRefreshMock).not.toHaveBeenCalled();
+    });
+
+    it('hard-reloads on iPad Safari pull-to-refresh instead of using the soft router refresh', async () => {
+      setNavigatorForNavTest({
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+        platform: 'MacIntel',
+        maxTouchPoints: 5,
+      });
+      setDocumentScrollTopForNavTest(0);
+      render(
+        <NavShell>
+          <p data-testid="page-body">body</p>
+        </NavShell>,
+      );
+
+      firePullGesture(screen.getByTestId('page-body'));
+
+      expect(screen.getByTestId('pull-to-refresh-overlay')).toHaveTextContent(/refreshing/i);
+      expect(locationReloadMock).not.toHaveBeenCalled();
+      expect(routerRefreshMock).not.toHaveBeenCalled();
+
+      await waitFor(() => {
+        expect(locationReloadMock).toHaveBeenCalledTimes(1);
+      });
+    });
+  });
+
   describe('Bug #5 — dual FAB pair (food primary + water secondary)', () => {
     it('renders BOTH the food FAB and the water FAB at mobile viewport', () => {
       render(<NavShell>{null}</NavShell>);
@@ -219,6 +487,18 @@ describe('<NavShell />', () => {
       expect(routerPushMock).not.toHaveBeenCalled();
     });
 
+    it('food FAB opens the log-flow modal on the library subview (Add Food default)', () => {
+      // Add Food tab merge — mobile FAB lands on library subview by default
+      // for parity with the dashboard column FAB (Task 9). User flows into
+      // AI parse via the + icon or empty-state CTA inside LibraryList.
+      useLogFlowStore.setState({ activeTab: 'snap', isOpen: false });
+      render(<NavShell>{null}</NavShell>);
+      fireEvent.click(screen.getByTestId('log-fab-food'));
+      const state = useLogFlowStore.getState();
+      expect(state.isOpen).toBe(true);
+      expect(state.activeTab).toBe('library');
+    });
+
     it('disables both mobile FABs while a dashboard day transition is pending', () => {
       useDashboardDateTransitionStore.getState().setLoadingDay('2026-05-09');
 
@@ -237,13 +517,15 @@ describe('<NavShell />', () => {
     it('clicking the water FAB POSTs /api/water/log with snake_case { client_id, unit, count, logged_on }', async () => {
       authPostMock.mockResolvedValueOnce({});
       render(<NavShell timezone="UTC">{null}</NavShell>);
+      resetWaterFabActionState();
+      authPostMock.mockResolvedValueOnce({});
       const water = screen.getByTestId('log-fab-water');
+      const postBaseline = beginWaterFabAction();
       fireEvent.click(water);
       // Let the async handler run.
       await Promise.resolve();
       await Promise.resolve();
-      expect(authPostMock).toHaveBeenCalledTimes(1);
-      const [url, body] = authPostMock.mock.calls[0]!;
+      const [url, body] = expectAuthPostCallsSince(postBaseline, 1)[0]!;
       expect(url).toBe('/api/water/log');
       expect(body).toEqual({
         client_id: '00000000-0000-4000-8000-000000000000',
@@ -272,10 +554,11 @@ describe('<NavShell />', () => {
     it('on POST failure, pushes an error toast with t.fab.waterLoggedFailed', async () => {
       authPostMock.mockRejectedValueOnce(new Error('5xx'));
       render(<NavShell timezone="UTC">{null}</NavShell>);
+      resetWaterFabActionState();
+      authPostMock.mockRejectedValueOnce(new Error('5xx'));
       fireEvent.click(screen.getByTestId('log-fab-water'));
-      await Promise.resolve();
-      await Promise.resolve();
       // The failure-side toast surfaces with the localized failure copy.
+      await waitForWaterToast(t.fab.waterLoggedFailed);
       const stack = useUndoQueueStore.getState().stack;
       expect(stack).toHaveLength(1);
       expect(stack[0]?.description).toBe(t.fab.waterLoggedFailed);
@@ -290,11 +573,14 @@ describe('<NavShell />', () => {
       });
       authPostMock.mockImplementationOnce(() => first.then(() => ({})));
       render(<NavShell timezone="UTC">{null}</NavShell>);
+      resetWaterFabActionState();
+      authPostMock.mockImplementationOnce(() => first.then(() => ({})));
       const water = screen.getByTestId('log-fab-water');
+      const postBaseline = beginWaterFabAction();
       fireEvent.click(water);
       fireEvent.click(water);
       // Second click is suppressed before authPost is invoked again.
-      expect(authPostMock).toHaveBeenCalledTimes(1);
+      expectAuthPostCallsSince(postBaseline, 1);
       // Now release and let the latch clear.
       resolveFirst();
       await Promise.resolve();
@@ -347,6 +633,8 @@ describe('<NavShell />', () => {
     it('keeps the water mutation in-flight after dashboard POST success until the water card receives totalMl', async () => {
       authPostMock.mockResolvedValueOnce({ totalMl: 250 });
       render(<NavShell timezone="UTC">{null}</NavShell>);
+      resetWaterFabActionState();
+      authPostMock.mockResolvedValueOnce({ totalMl: 250 });
 
       fireEvent.click(screen.getByTestId('log-fab-water'));
 
@@ -354,17 +642,18 @@ describe('<NavShell />', () => {
       expect(useWaterMutationStore.getState().inFlight).toBe(1);
       expect(useWaterMutationStore.getState().pendingServerTotalMl).toBe(250);
 
+      const postBaseline = beginWaterFabAction();
       fireEvent.click(screen.getByTestId('log-fab-water'));
-      expect(authPostMock).toHaveBeenCalledTimes(1);
+      expectAuthPostCallsSince(postBaseline, 0);
     });
 
     it('on POST failure, does NOT call router.refresh() (nothing fresh to fetch)', async () => {
       authPostMock.mockRejectedValueOnce(new Error('5xx'));
       render(<NavShell timezone="UTC">{null}</NavShell>);
+      resetWaterFabActionState();
+      authPostMock.mockRejectedValueOnce(new Error('5xx'));
       fireEvent.click(screen.getByTestId('log-fab-water'));
-      await waitFor(() =>
-        expect(useUndoQueueStore.getState().stack[0]?.description).toBe(t.fab.waterLoggedFailed),
-      );
+      await waitForWaterToast(t.fab.waterLoggedFailed);
       // The error toast is the only side effect — refreshing on failure
       // would mask the error and cause an unnecessary RSC re-fetch.
       expect(routerRefreshMock).not.toHaveBeenCalled();
@@ -391,11 +680,13 @@ describe('<NavShell />', () => {
       // render and tap, the calendar date advances. The handler MUST
       // re-call `userTzToday` and pick up the new value.
       userTzTodayMock.mockReturnValue('2026-05-09');
+      resetWaterFabActionState();
+      authPostMock.mockResolvedValueOnce({});
+      const postBaseline = beginWaterFabAction();
       fireEvent.click(screen.getByTestId('log-fab-water'));
       await Promise.resolve();
       await Promise.resolve();
-      expect(authPostMock).toHaveBeenCalledTimes(1);
-      const [, body] = authPostMock.mock.calls[0]!;
+      const [, body] = expectAuthPostCallsSince(postBaseline, 1)[0]!;
       // Critical assertion — the POST body uses TODAY (post-midnight),
       // not the render-time YESTERDAY value. Stale-prop bug would emit
       // '2026-05-08' here.
@@ -440,6 +731,8 @@ describe('<NavShell />', () => {
     it('on POST failure, dismisses the success toast and pushes an error toast (swap, not stack)', async () => {
       authPostMock.mockRejectedValueOnce(new Error('5xx'));
       render(<NavShell timezone="UTC">{null}</NavShell>);
+      resetWaterFabActionState();
+      authPostMock.mockRejectedValueOnce(new Error('5xx'));
       fireEvent.click(screen.getByTestId('log-fab-water'));
 
       // Success toast is pushed synchronously (already proven above).
@@ -447,17 +740,13 @@ describe('<NavShell />', () => {
       expect(stack).toHaveLength(1);
       expect(stack[0]?.description).toBe(t.fab.waterLoggedToast);
 
-      // Drain the rejected microtask cycle.
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-
       // After the failure, only the error toast remains — the optimistic
       // success toast was retracted. If the success toast were left in
       // the stack, `selectLiveTop` would re-surface it once the error
       // toast TTLs out (success is older but still has time left), so
       // the user would see "logged" right after seeing "couldn't log",
       // which is the worst possible UX.
+      await waitForWaterToast(t.fab.waterLoggedFailed);
       stack = useUndoQueueStore.getState().stack;
       expect(stack).toHaveLength(1);
       expect(stack[0]?.description).toBe(t.fab.waterLoggedFailed);
@@ -503,6 +792,8 @@ describe('<NavShell />', () => {
     it('on SessionExpiredError, dismisses success toast and pushes error toast (truthful feedback for non-persisting writes)', async () => {
       authPostMock.mockRejectedValueOnce(new SessionExpiredError());
       render(<NavShell timezone="UTC">{null}</NavShell>);
+      resetWaterFabActionState();
+      authPostMock.mockRejectedValueOnce(new SessionExpiredError());
       fireEvent.click(screen.getByTestId('log-fab-water'));
 
       // Success toast is pushed synchronously (proven elsewhere). Capture
@@ -513,15 +804,11 @@ describe('<NavShell />', () => {
       expect(stack[0]?.description).toBe(t.fab.waterLoggedToast);
       const successToastId = stack[0]?.toastId;
 
-      // Drain the rejected microtask cycle so the catch branch runs.
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-
       // After the SessionExpiredError, only the error toast remains. The
       // optimistic success toast was retracted. If the success toast were
       // left in the stack, the user would still see "250 ml logged" while
       // the redirect to /login is in flight (mobile networks: 100s of ms).
+      await waitForWaterToast(t.fab.waterLoggedFailed);
       stack = useUndoQueueStore.getState().stack;
       expect(stack).toHaveLength(1);
       expect(stack[0]?.toastId).not.toBe(successToastId);
@@ -541,12 +828,15 @@ describe('<NavShell />', () => {
       });
       authPostMock.mockImplementationOnce(() => first);
       render(<NavShell timezone="UTC">{null}</NavShell>);
+      resetWaterFabActionState();
+      authPostMock.mockImplementationOnce(() => first);
       const water = screen.getByTestId('log-fab-water');
+      const postBaseline = beginWaterFabAction();
       fireEvent.click(water);
       fireEvent.click(water);
 
       // Network: still exactly ONE call.
-      expect(authPostMock).toHaveBeenCalledTimes(1);
+      expectAuthPostCallsSince(postBaseline, 1);
       // Toast: still exactly ONE entry (the optimistic success toast).
       expect(useUndoQueueStore.getState().stack).toHaveLength(1);
       expect(useUndoQueueStore.getState().stack[0]?.description).toBe(t.fab.waterLoggedToast);
@@ -574,6 +864,8 @@ describe('<NavShell />', () => {
       overLimit.body = { error: 'OVER_DAILY_LIMIT', currentTotalMl: 5000, limitMl: 5000 };
       authPostMock.mockRejectedValueOnce(overLimit);
       render(<NavShell timezone="UTC">{null}</NavShell>);
+      resetWaterFabActionState();
+      authPostMock.mockRejectedValueOnce(overLimit);
       fireEvent.click(screen.getByTestId('log-fab-water'));
 
       // Synchronous push — success toast is in the stack first.
@@ -583,6 +875,7 @@ describe('<NavShell />', () => {
 
       // After the 409, only the cap toast remains. The optimistic
       // success toast was retracted.
+      await waitForWaterToast(/limit reached/i);
       await waitFor(() => {
         stack = useUndoQueueStore.getState().stack;
         expect(stack[0]?.description).toMatch(/limit reached/i);
@@ -615,6 +908,8 @@ describe('<NavShell />', () => {
       overLimit.body = { error: 'OVER_DAILY_LIMIT', currentTotalMl: 5000, limitMl: 5000 };
       authPostMock.mockRejectedValueOnce(overLimit);
       render(<NavShell timezone="UTC">{null}</NavShell>);
+      resetWaterFabActionState();
+      authPostMock.mockRejectedValueOnce(overLimit);
       fireEvent.click(screen.getByTestId('log-fab-water'));
       // Dashboard re-fetches `snapshot.water.consumedMl` so a stale
       // visible total reconciles to the server's `currentTotalMl`.
@@ -637,6 +932,9 @@ describe('<NavShell />', () => {
       authPostMock.mockRejectedValueOnce(overLimit());
       authPostMock.mockRejectedValueOnce(overLimit());
       render(<NavShell timezone="UTC">{null}</NavShell>);
+      resetWaterFabActionState();
+      authPostMock.mockRejectedValueOnce(overLimit());
+      authPostMock.mockRejectedValueOnce(overLimit());
       const water = screen.getByTestId('log-fab-water');
       fireEvent.click(water);
       fireEvent.click(water);
@@ -650,20 +948,13 @@ describe('<NavShell />', () => {
     });
   });
 
-  it('renders a kicker for each primary destination + /log + brand fallback', () => {
-    const cases: Array<[string, RegExp]> = [
-      ['/dashboard', /dashboard/i],
-      ['/library', /library/i],
-      ['/progress', /progress/i],
-      ['/settings', /settings/i],
-      ['/log', /log/i],
-      ['/something-else', /kalori/i],
-    ];
-    for (const [path, expected] of cases) {
+  it('renders the stable brand top bar across primary destinations + /log + fallback', () => {
+    const cases = ['/dashboard', '/library', '/progress', '/settings', '/log', '/something-else'];
+    for (const path of cases) {
       usePathnameMock.mockReturnValue(path);
       const { unmount } = render(<NavShell>{null}</NavShell>);
       const top = screen.getByTestId('nav-shell-top');
-      expect(top.textContent ?? '').toMatch(expected);
+      expect(top.textContent ?? '').toMatch(/kalori/i);
       unmount();
     }
   });

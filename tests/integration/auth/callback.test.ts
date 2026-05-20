@@ -30,6 +30,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   exchangeCodeForSession: vi.fn(),
   from: vi.fn(),
+  captureException: vi.fn(),
+  captureMessage: vi.fn(),
+  setUser: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -41,9 +44,15 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }));
 
-async function invoke(url: string): Promise<Response> {
+vi.mock('@sentry/nextjs', () => ({
+  captureException: mocks.captureException,
+  captureMessage: mocks.captureMessage,
+  setUser: mocks.setUser,
+}));
+
+async function invoke(url: string, headers?: Record<string, string>): Promise<Response> {
   const { GET } = await import('@/app/auth/callback/route');
-  const request = new Request(url);
+  const request = new Request(url, headers ? { headers } : undefined);
   // NextRequest extends Request; the handler only reads `nextUrl` +
   // `searchParams` + `url`. A plain Request with a URL resolves nextUrl
   // lazily via the NextRequest constructor used inside the handler.
@@ -78,6 +87,9 @@ describe('I4 — /auth/callback route contract', () => {
   beforeEach(() => {
     mocks.exchangeCodeForSession.mockReset();
     mocks.from.mockReset();
+    mocks.captureException.mockReset();
+    mocks.captureMessage.mockReset();
+    mocks.setUser.mockReset();
   });
 
   afterEach(() => {
@@ -85,7 +97,10 @@ describe('I4 — /auth/callback route contract', () => {
   });
 
   it('CALLBACK-MISSING-CODE: GET without ?code returns 307 to /login?error=callback', async () => {
-    const res = await invoke('http://kalori.test/auth/callback');
+    const res = await invoke('http://kalori.test/auth/callback', {
+      'user-agent': 'TestAgent/1.0',
+      referer: 'http://kalori.test/login',
+    });
 
     expect(res.status).toBe(307);
     const location = res.headers.get('location');
@@ -93,25 +108,79 @@ describe('I4 — /auth/callback route contract', () => {
     expect(location).toContain('/login');
     expect(location).toContain('error=callback');
     expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+    // Observability: missing ?code is a warning (likely a stale link / bot
+    // probe / misconfigured provider) — captureMessage at warning severity.
+    expect(mocks.captureMessage).toHaveBeenCalledTimes(1);
+    const msgCall = mocks.captureMessage.mock.calls[0]!;
+    expect(typeof msgCall[0]).toBe('string');
+    expect(msgCall[1]).toMatchObject({
+      level: 'warning',
+      extra: { ua: 'TestAgent/1.0', referer: 'http://kalori.test/login' },
+    });
+    expect(mocks.captureException).not.toHaveBeenCalled();
+    expect(mocks.setUser).not.toHaveBeenCalled();
   });
 
   it('CALLBACK-EXCHANGE-ERROR: invalid code redirects to /login?error=callback', async () => {
+    const exchangeError = { message: 'invalid_request' };
     mocks.exchangeCodeForSession.mockResolvedValue({
       data: { session: null },
-      error: { message: 'invalid_request' },
+      error: exchangeError,
     });
 
-    const res = await invoke('http://kalori.test/auth/callback?code=invalid');
+    const res = await invoke('http://kalori.test/auth/callback?code=invalid', {
+      'user-agent': 'TestAgent/1.0',
+    });
 
     expect(res.status).toBe(307);
     const location = res.headers.get('location');
     expect(location).toContain('/login');
     expect(location).toContain('error=callback');
+    // Observability: surface the underlying exchange error with route +
+    // auth_flow tags so we can tell OAuth/PKCE failures apart from other
+    // /auth/callback paths.
+    expect(mocks.captureException).toHaveBeenCalledTimes(1);
+    const errCall = mocks.captureException.mock.calls[0]!;
+    expect(errCall[0]).toBe(exchangeError);
+    expect(errCall[1]).toMatchObject({
+      tags: { route: 'auth/callback', auth_flow: 'oauth_or_pkce' },
+      extra: { code_present: true, ua: 'TestAgent/1.0' },
+    });
+    expect(mocks.setUser).not.toHaveBeenCalled();
+  });
+
+  it('CALLBACK-NULL-SESSION: exchange returns no error but null session → captureException with sentinel', async () => {
+    // PKCE failure mode we just hit in prod: Supabase returns
+    // `{ data: { session: null }, error: null }` (e.g. the code_verifier
+    // cookie was missing). Today this silently redirects to /login with
+    // zero Sentry events. The new contract: captureException with a
+    // sentinel Error so the alert fires.
+    mocks.exchangeCodeForSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+
+    const res = await invoke('http://kalori.test/auth/callback?code=valid-but-null', {
+      'user-agent': 'TestAgent/1.0',
+    });
+
+    expect(res.status).toBe(307);
+    const location = res.headers.get('location');
+    expect(location).toContain('/login');
+    expect(location).toContain('error=callback');
+    expect(mocks.captureException).toHaveBeenCalledTimes(1);
+    const nullSessionCall = mocks.captureException.mock.calls[0]!;
+    expect(nullSessionCall[0]).toBeInstanceOf(Error);
+    expect(nullSessionCall[1]).toMatchObject({
+      tags: { route: 'auth/callback', auth_flow: 'oauth_or_pkce' },
+      extra: { code_present: true, ua: 'TestAgent/1.0' },
+    });
+    expect(mocks.setUser).not.toHaveBeenCalled();
   });
 
   it('CALLBACK-ONBOARDING-INCOMPLETE: new user (null onboarding_completed_at) lands on /onboarding', async () => {
     mocks.exchangeCodeForSession.mockResolvedValue({
-      data: { session: { user: { id: 'user-new' } } },
+      data: { session: { user: { id: 'user-new', email: 'new@example.test' } } },
       error: null,
     });
     mockProfileQuery({ onboarding_completed_at: null });
@@ -122,11 +191,17 @@ describe('I4 — /auth/callback route contract', () => {
     const location = res.headers.get('location');
     expect(location).toContain('/onboarding');
     expect(location).not.toContain('/dashboard');
+    // Happy-path observability: setUser must be called once with the
+    // session's user (id + email) — gives every subsequent Sentry event in
+    // the request context a stable user attribution.
+    expect(mocks.setUser).toHaveBeenCalledTimes(1);
+    expect(mocks.setUser).toHaveBeenCalledWith({ id: 'user-new', email: 'new@example.test' });
+    expect(mocks.captureException).not.toHaveBeenCalled();
   });
 
   it('CALLBACK-ONBOARDING-COMPLETE: completed user lands on /dashboard', async () => {
     mocks.exchangeCodeForSession.mockResolvedValue({
-      data: { session: { user: { id: 'user-done' } } },
+      data: { session: { user: { id: 'user-done', email: 'done@example.test' } } },
       error: null,
     });
     mockProfileQuery({ onboarding_completed_at: '2026-01-01T00:00:00Z' });
@@ -137,6 +212,9 @@ describe('I4 — /auth/callback route contract', () => {
     const location = res.headers.get('location');
     expect(location).toContain('/dashboard');
     expect(location).not.toContain('/onboarding');
+    expect(mocks.setUser).toHaveBeenCalledTimes(1);
+    expect(mocks.setUser).toHaveBeenCalledWith({ id: 'user-done', email: 'done@example.test' });
+    expect(mocks.captureException).not.toHaveBeenCalled();
   });
 
   it('CALLBACK-HOSTILE-REDIRECT-TO: hostile absolute redirect_to is IGNORED (open-redirect guard)', async () => {
@@ -292,7 +370,7 @@ describe('I4 — /auth/callback route contract', () => {
     // treat an error as "unknown state" and redirect to a safe login
     // error surface — NOT /onboarding.
     mocks.exchangeCodeForSession.mockResolvedValue({
-      data: { session: { user: { id: 'user-transient-err' } } },
+      data: { session: { user: { id: 'user-transient-err', email: 'err@example.test' } } },
       error: null,
     });
     mockProfileQueryError({ code: '42501', message: 'permission denied' });
@@ -307,5 +385,75 @@ describe('I4 — /auth/callback route contract', () => {
     // the product can show a specific retry message.
     expect(location).toContain('/login');
     expect(location).toContain('error=profile_lookup_failed');
+    // Observability: profile lookup errors must surface to Sentry with the
+    // profile_lookup stage tag so we can alert on auth-disrupting DB/RLS
+    // regressions.
+    expect(mocks.captureException).toHaveBeenCalledTimes(1);
+    const lookupErrCall = mocks.captureException.mock.calls[0]!;
+    expect(lookupErrCall[1]).toMatchObject({
+      tags: { route: 'auth/callback', auth_flow: 'profile_lookup' },
+    });
+  });
+
+  it('CALLBACK-PROFILE-LOOKUP-THROWS: network failure during lookup is captured to Sentry', async () => {
+    mocks.exchangeCodeForSession.mockResolvedValue({
+      data: { session: { user: { id: 'user-net-fail', email: 'net@example.test' } } },
+      error: null,
+    });
+    const networkError = new Error('ECONNRESET');
+    mocks.from.mockReturnValue({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => {
+            throw networkError;
+          },
+        }),
+      }),
+    });
+
+    const res = await invoke('http://kalori.test/auth/callback?code=valid');
+
+    expect(res.status).toBe(307);
+    const location = res.headers.get('location');
+    expect(location).toContain('/login');
+    expect(location).toContain('error=profile_lookup_failed');
+    expect(mocks.captureException).toHaveBeenCalledTimes(1);
+    const throwCall = mocks.captureException.mock.calls[0]!;
+    expect(throwCall[0]).toBe(networkError);
+    expect(throwCall[1]).toMatchObject({
+      tags: { route: 'auth/callback', auth_flow: 'profile_lookup' },
+    });
+  });
+});
+
+describe('HEAD /auth/callback (prefetch defense)', () => {
+  beforeEach(() => {
+    mocks.exchangeCodeForSession.mockReset();
+    mocks.from.mockReset();
+    mocks.captureException.mockReset();
+    mocks.captureMessage.mockReset();
+    mocks.setUser.mockReset();
+  });
+
+  afterEach(() => {
+    vi.resetModules();
+  });
+
+  it('CALLBACK-HEAD-NOOP: HEAD request returns 200 without calling exchangeCodeForSession', async () => {
+    // HEAD handler takes no arguments — response is deterministic regardless
+    // of query params or headers. We still construct the NextRequest to
+    // mirror the realistic shape a prefetcher (Gmail, Facebook, Defender)
+    // would deliver, even though the handler ignores it.
+    const { NextRequest } = await import('next/server');
+    void new NextRequest('https://example.com/auth/callback?code=real_code', {
+      method: 'HEAD',
+    });
+    const { HEAD } = await import('@/app/auth/callback/route');
+    const res = await HEAD();
+    expect(res.status).toBe(200);
+    expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+    expect(mocks.captureException).not.toHaveBeenCalled();
+    const text = await res.text();
+    expect(text).toBe('');
   });
 });

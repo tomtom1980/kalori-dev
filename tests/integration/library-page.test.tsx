@@ -155,10 +155,9 @@ describe('<LibraryClient /> integration', () => {
     await user.click(screen.getByTestId('library-card-b'));
     const bar = await screen.findByTestId('library-bulk-actions-bar');
     expect(bar).toBeInTheDocument();
-    expect(within(bar).getByTestId('library-merge-button')).toHaveAttribute(
-      'aria-disabled',
-      'false',
-    );
+    // Bug 2 (library bulk overhaul 2026-05-17): bulk MERGE replaced by
+    // bulk LOG. The bar exposes a `library-bulk-log-button` instead.
+    expect(within(bar).getByTestId('library-bulk-log-button')).toBeInTheDocument();
   });
 
   it('bulk-delete dialog open flag flips on BULK DELETE click', async () => {
@@ -177,39 +176,41 @@ describe('<LibraryClient /> integration', () => {
     expect(useLibrarySelectionStore.getState().ids.size).toBe(2);
   });
 
-  it('merge button is enabled with exactly 2 selected + disabled otherwise', async () => {
+  it('bulk LOG button materializes at N>=2 (bulk MERGE was retired 2026-05-17)', async () => {
     const user = userEvent.setup();
     render(<LibraryClient initial={SEED} uid="u1" />);
     await user.click(screen.getByTestId('library-select-toggle'));
     await user.click(screen.getByTestId('library-card-a'));
     // Phase 3 F2 threshold: bar renders only at N≥2, so at N=1 the
-    // merge button is not in the DOM yet.
-    expect(screen.queryByTestId('library-merge-button')).not.toBeInTheDocument();
+    // bulk-log button is not in the DOM yet.
+    expect(screen.queryByTestId('library-bulk-log-button')).not.toBeInTheDocument();
     await user.click(screen.getByTestId('library-card-b'));
-    // 2 selected → bar + merge enabled.
-    expect(screen.getByTestId('library-merge-button')).toHaveAttribute('aria-disabled', 'false');
+    // 2 selected → bar visible with bulk LOG button.
+    expect(screen.getByTestId('library-bulk-log-button')).toBeInTheDocument();
     await user.click(screen.getByTestId('library-card-c'));
-    // 3 selected → bar visible, merge disabled.
-    expect(screen.getByTestId('library-merge-button')).toHaveAttribute('aria-disabled', 'true');
+    // 3 selected → bulk LOG still available (no exact-count gate).
+    expect(screen.getByTestId('library-bulk-log-button')).toBeInTheDocument();
   });
 
   it('sort change reorders visible cards', async () => {
     const user = userEvent.setup();
     render(<LibraryClient initial={SEED} uid="u1" />);
-    // Default sort is most-logged → Banh Mi (5) first.
+    // Bug 7 — Default sort is name-asc → Apple (id=a) first on initial render
+    // (no sessionStorage interaction). Was previously most-logged.
     const grid = screen.getByTestId('library-grid');
-    const buttons = within(grid).queryAllByRole('button');
-    // First visible card is most-logged (Banh Mi / id=b).
-    expect(buttons[0]).toHaveAttribute('data-testid', 'library-card-b');
+    const cards = within(grid).getAllByTestId(/^library-card-[abc]$/);
+    expect(cards[0]).toHaveAttribute('data-testid', 'library-card-a');
+    // Switching to most-logged via the dropdown reorders the grid so the
+    // highest log_count item (Banh Mi / id=b) comes first — preserves
+    // coverage of "sort change reorders".
     await user.click(screen.getByTestId('library-sort-trigger'));
-    await user.click(screen.getByTestId('library-sort-option-name-asc'));
+    await user.click(screen.getByTestId('library-sort-option-most-logged'));
     await act(async () => {
       await new Promise((r) => setTimeout(r, 30));
     });
     const postSortGrid = screen.getByTestId('library-grid');
-    const postButtons = within(postSortGrid).queryAllByRole('button');
-    // After name-asc: Apple (id=a) should be first.
-    expect(postButtons[0]).toHaveAttribute('data-testid', 'library-card-a');
+    const postSortCards = within(postSortGrid).getAllByTestId(/^library-card-[abc]$/);
+    expect(postSortCards[0]).toHaveAttribute('data-testid', 'library-card-b');
   });
 
   it('filter=with-photos hides items without thumbnails', async () => {

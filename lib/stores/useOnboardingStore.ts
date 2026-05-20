@@ -27,6 +27,7 @@ export type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export type DraftProfile = Partial<{
   bio_sex: BioSex;
+  birthday: string;
   age: number;
   height_cm: number;
   current_weight_kg: number;

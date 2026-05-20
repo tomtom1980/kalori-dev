@@ -280,13 +280,14 @@ test.describe('US-STAB-A2 — sidebar identity row', () => {
     // not the legacy "dev user" stub.
     await authedPage.goto('/dashboard');
 
-    // Wait for the dashboard to fully render (the H1 KALORI is RSC-emitted
-    // and is a reliable post-hydration signal). Use page-level testid
+    // Wait for the dashboard to fully render. The page H1 is the stable
+    // post-RSC signal; the KALORI wordmark is sidebar text, not a heading.
+    // Use page-level testid
     // for the identity row directly — `nav-shell-sidebar` is a div WRAPPER
     // and the `complementary <aside>` Sidebar with its IdentityRow lives
     // INSIDE that wrapper, but Playwright chained getByTestId can race
     // against the sidebar's hydration order on first paint.
-    await expect(authedPage.locator('h1', { hasText: /^KALORI$/ }).first()).toBeVisible({
+    await expect(authedPage.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible({
       timeout: 15_000,
     });
 
@@ -466,16 +467,28 @@ test.describe('US-STAB-A3 — orphan-profile dashboard read fence', () => {
     // Sanity — fixture must have populated orphanUserId.
     expect(orphanUserId).toMatch(/^[0-9a-f-]{36}$/i);
 
+    const admin = buildAdminClientForTest();
+    const { data: preNavData, error: preNavError } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('id', orphanUserId);
+    expect(preNavError).toBeNull();
+    expect(preNavData ?? []).toEqual([]);
+
+    const profileSaveRequests: string[] = [];
+    await page.route('**/api/profile/save', async (route) => {
+      const request = route.request();
+      profileSaveRequests.push(`${request.method()} ${request.postData() ?? '<no-body>'}`);
+      await route.continue();
+    });
+
     // Drive the redirect end-to-end (browser-side, not just request-mode)
     // so Next runs the full RSC pipeline that COULD have inserted a fallback
     // row if the impl chose that branch.
     await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/onboarding(?:\?.*)?$/);
 
-    // WHEN — user-action API: focus a step 1 radiogroup option to confirm
-    // the redirected /onboarding page is fully interactive (proves the SC
-    // ran to completion; if it had errored mid-render, the wizard would
-    // not be hydrated).
+    // WHEN — wait for the redirected /onboarding page to finish rendering.
     const bioSexGroup = page.getByRole('radiogroup', { name: /Biological sex/i });
     await expect(bioSexGroup).toBeVisible({ timeout: 10_000 });
 
@@ -484,18 +497,15 @@ test.describe('US-STAB-A3 — orphan-profile dashboard read fence', () => {
       fullPage: true,
     });
 
-    // Click "Female" so the radiogroup state changes after the redirect ran.
-    await bioSexGroup.getByText(/^Female$/i, { exact: true }).click();
-    const femaleInput = page.locator('input[type="radio"][name="bio_sex"][value="female"]');
-    await expect(femaleInput).toBeChecked();
-
     // THEN — service-role SELECT against profiles WHERE id = orphanUserId
     // MUST return zero rows. If the impl had a fallback-create-profile
-    // branch, the SC's redirect path would have inserted on the way.
-    const admin = buildAdminClientForTest();
+    // branch, the dashboard SC's redirect path would have inserted on the
+    // way. Keep this assertion before onboarding wizard interactions so the
+    // redirect contract is not conflated with the wizard's self-heal writes.
     const { data, error } = await admin.from('profiles').select('id').eq('id', orphanUserId);
     expect(error).toBeNull();
     expect(data ?? []).toEqual([]); // zero rows — pure-redirect proven
+    expect(profileSaveRequests).toEqual([]);
 
     // Overlay status onto the page so the screenshot has visible evidence
     // beyond the bare onboarding state.
@@ -515,5 +525,11 @@ test.describe('US-STAB-A3 — orphan-profile dashboard read fence', () => {
       path: `${SCREENSHOT_DIR}/A3-ac6-02-profiles-still-empty-evidence.png`,
       fullPage: true,
     });
+
+    // User-action API: click "Female" so the redirected wizard demonstrates
+    // hydrated interactivity after the no-fallback redirect assertion above.
+    await bioSexGroup.getByText(/^Female$/i, { exact: true }).click();
+    const femaleInput = page.locator('input[type="radio"][name="bio_sex"][value="female"]');
+    await expect(femaleInput).toBeChecked();
   });
 });

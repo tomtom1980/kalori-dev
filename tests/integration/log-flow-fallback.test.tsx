@@ -17,10 +17,24 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { TypeTab } from '@/app/(app)/log/_components/TypeTab';
+import { AiParseForm } from '@/app/(app)/log/_components/AddFoodTab/AiParseForm';
 import { SnapTab } from '@/app/(app)/log/_components/SnapTab';
-import { LibraryTab } from '@/app/(app)/log/_components/LibraryTab';
+import {
+  LibraryList,
+  type LibraryListProps,
+} from '@/app/(app)/log/_components/AddFoodTab/LibraryList';
 import { useLogFlowStore } from '@/lib/stores/useLogFlowStore';
+
+// Task 10 — migrated imports. `<TypeTab>` is now `<AiParseForm>` (renamed +
+// moved into AddFoodTab/) and `<LibraryTab>` is now `<LibraryList>`. Alias
+// `TypeTab` to `AiParseForm` (no required props) and wrap `LibraryList` to
+// supply the now-required `onAddNew` so the body of the test does not have
+// to be rewritten.
+const TypeTab = AiParseForm;
+function LibraryTab(props: Partial<LibraryListProps> = {}) {
+  const { onAddNew = () => {}, ...rest } = props;
+  return <LibraryList onAddNew={onAddNew} {...rest} />;
+}
 
 const MODES: Array<'network' | 'timeout' | 'rate-limit' | 'zod'> = [
   'network',

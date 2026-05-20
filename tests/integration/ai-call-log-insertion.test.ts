@@ -91,7 +91,7 @@ function stubGeminiSuccess() {
             unit: 'bowl',
             kcal: 520,
             macros: { protein_g: 32, carbs_g: 65, fat_g: 14, fiber_g: 3 },
-            micros: {},
+            micros: { sodium: 900 },
             confidence: 0.85,
           },
         ],

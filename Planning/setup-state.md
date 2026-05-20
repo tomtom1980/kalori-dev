@@ -12,7 +12,7 @@
 
 | Service | Purpose | PROD | DEV | Blocker for |
 |---|---|---|---|---|
-| **Supabase** | Postgres + Auth + Storage | ✅ | ✅ | — |
+| **Supabase** | Postgres + Auth + Storage (21 migrations applied to BOTH prod + dev as of 2026-05-16) | ✅ | ✅ | — |
 | **Gemini** | AI (text parse + vision + weekly review) | ✅ | ✅ | — |
 | **GitHub** | Code repo + Actions CI | ✅ | — (shared) | — |
 | **Vercel** | Hosting + preview URLs + env var storage | ✅ | ✅ | — |
@@ -66,6 +66,7 @@ Using **NEW format** (`sb_publishable_*` / `sb_secret_*`) per Supabase 2026 reco
 
 ### What's NOT done yet (handled during execution)
 - [x] **Production migration cutover — DONE 2026-05-01.** All migrations `0001..0017` applied to **kalori-prod** via new `scripts/apply-prod-migrations.mjs` (commit `1ba09cd`) during the Production Readiness Audit. Production DB was previously empty (0 of 17 applied) and root cause of "logo on black" symptom report. Verified via Playwright on https://kalori-one.vercel.app.
+- [x] **Phase E prod migration cutover — DONE 2026-05-16.** Migrations `0018..0021` (4-migration batch: `0018_water_log_atomic_cap.sql`, `0019_water_log_negative_ml_adjustments.sql`, `0020_food_library_dedup_index.sql`, `0021_water_log_negative_ml_adjustments_step2.sql`) applied to **kalori-prod** via incremental `scripts/apply-prod-migrations.mjs` (Task E.1.7 commit `9b7eba0`). Prod high-water mark now `0021`. All 21 migrations applied to both kalori-dev and kalori-prod.
 - [ ] Auth redirect URL allowlist (Vercel URLs) — handled at Task 2.1 (already configured per Google OAuth setup; verify before prod cut)
 
 ### Operational notes — CLI-driven migrations on this network

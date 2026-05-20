@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * <MealColumn /> - dashboard meal category column.
  *
@@ -10,7 +8,6 @@
 import { EntryRowActions, MealAddButton } from './MealEntryContextTrigger';
 
 import { t } from '@/lib/i18n/en';
-import { m, AnimatePresence, useReducedMotion } from '@/lib/motion/defaults';
 import { formatTimeInTimeZone } from '@/lib/time/format';
 import type { FoodEntry, MealCategory, MealColumnData } from '@/lib/dashboard/types';
 
@@ -39,7 +36,6 @@ function primaryPortion(e: FoodEntry): string {
 }
 
 export function MealColumn({ data, timezone = 'UTC', viewedDay }: MealColumnProps) {
-  const reducedMotion = useReducedMotion();
   const cat: MealCategory = data.category;
   const headingId = `meal-head-${cat}`;
   const kcal = data.totalKcal;
@@ -129,47 +125,31 @@ export function MealColumn({ data, timezone = 'UTC', viewedDay }: MealColumnProp
           minHeight: 60,
         }}
       >
-        <AnimatePresence mode="popLayout">
-          {isEmpty ? (
-            <m.p
-              layout="position"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              data-testid={`meal-empty-${cat}`}
-              style={{
-                fontFamily: 'var(--font-serif)',
-                fontStyle: 'italic',
-                fontSize: 14,
-                color: 'var(--color-sand)',
-                margin: 0,
-              }}
-            >
-              {empty}
-            </m.p>
-          ) : (
+        {isEmpty ? (
+          <p
+            data-testid={`meal-empty-${cat}`}
+            style={{
+              fontFamily: 'var(--font-serif)',
+              fontStyle: 'italic',
+              fontSize: 14,
+              color: 'var(--color-sand)',
+              margin: 0,
+            }}
+          >
+            {empty}
+          </p>
+        ) : (
           data.entries.map((entry) => {
-            const isHeaviest = entry.id === data.heaviestEntryId;
             const entryKcal = entryTotalKcal(entry);
             return (
-              <m.article
-                layout="position"
-                initial={reducedMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                whileTap={{ scale: 0.97 }}
-                viewport={{ once: true, margin: '0px 0px -20px 0px' }}
-                transition={reducedMotion ? { duration: 0 } : { duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              <article
                 key={entry.id}
                 data-testid={`entry-${entry.id}`}
-                role="button"
-                tabIndex={0}
                 aria-label={t.dashboard.meals.entryAriaLabel
                   .replace('{name}', primaryName(entry))
                   .replace('{portion}', primaryPortion(entry))
                   .replace('{kcal}', String(entryKcal))
                   .replace('{time}', formatEntryTime(entry.logged_at, timezone))}
-                aria-haspopup="menu"
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -204,24 +184,25 @@ export function MealColumn({ data, timezone = 'UTC', viewedDay }: MealColumnProp
                     color: 'var(--color-dust)',
                   }}
                 >
-                  <span className="num">{primaryPortion(entry)}</span>
+                  <span className="num">
+                    {formatEntryTime(entry.logged_at, timezone)} &bull; {primaryPortion(entry)}
+                  </span>
                   <span
                     className="num"
                     style={{
                       fontFamily: 'var(--font-serif)',
                       fontStyle: 'italic',
                       fontSize: 14,
-                      color: isHeaviest ? 'var(--color-ember)' : 'var(--color-sand)',
+                      color: 'var(--color-sand)',
                     }}
                   >
                     {`${entryKcal} ${t.dashboard.ring.kcalUnit}`}
                   </span>
                 </div>
-              </m.article>
+              </article>
             );
           })
-          )}
-        </AnimatePresence>
+        )}
       </div>
 
       <MealAddButton category={cat} timezone={timezone} viewedDay={viewedDay} />

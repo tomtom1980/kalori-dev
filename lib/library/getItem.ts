@@ -13,9 +13,25 @@
 import 'server-only';
 import { cache } from 'react';
 
+import { signThumbnailUrl } from '@/lib/storage/sign-thumbnail';
 import { getServerSupabase } from '@/lib/supabase/server';
 
 import type { LibraryItem } from './fetch';
+
+function portionFallbackFromEntryItems(items: unknown): {
+  default_portion: number | null;
+  default_unit: string | null;
+} | null {
+  if (!Array.isArray(items)) return null;
+  const first = items[0];
+  if (!first || typeof first !== 'object') return null;
+  const portion = (first as { portion?: unknown }).portion;
+  const unit = (first as { unit?: unknown }).unit;
+  const defaultPortion = typeof portion === 'number' && Number.isFinite(portion) ? portion : null;
+  const defaultUnit = typeof unit === 'string' && unit.trim() ? unit.trim() : null;
+  if (defaultPortion === null && defaultUnit === null) return null;
+  return { default_portion: defaultPortion, default_unit: defaultUnit };
+}
 
 /**
  * Fetch a single active (non-tombstoned) library item by id. Wrapped in
@@ -29,7 +45,7 @@ export const getLibraryItemById = cache(
     const { data, error } = await supabase
       .from('food_library_items')
       .select(
-        'id, client_id, display_name, normalized_name, default_portion, default_unit, nutrition, thumbnail_url, log_count, last_used_at, user_edited_flag, created_from, created_at',
+        'id, client_id, display_name, normalized_name, default_portion, default_unit, nutrition, thumbnail_url, thumbnail_kind, recipe_eligibility, recipe_eligibility_reason, recipe_eligibility_checked_at, log_count, last_used_at, user_edited_flag, created_from, created_at',
       )
       .eq('id', id)
       .eq('user_id', userId)
@@ -39,7 +55,38 @@ export const getLibraryItemById = cache(
     if (error) {
       throw new Error(`library_item_fetch_failed: ${error.message}`);
     }
-    return (data as LibraryItem | null) ?? null;
+    const row = (data as LibraryItem | null) ?? null;
+    if (!row) return null;
+
+    let hydratedRow = row;
+    if (row.default_portion === null || row.default_unit === null) {
+      const { data: entry } = (await supabase
+        .from('food_entries')
+        .select('items')
+        .eq('library_item_id', id)
+        .eq('user_id', userId)
+        .order('logged_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()) as { data: { items?: unknown } | null };
+      const fallback = portionFallbackFromEntryItems(entry?.items);
+      if (fallback) {
+        hydratedRow = {
+          ...row,
+          default_portion: row.default_portion ?? fallback.default_portion,
+          default_unit: row.default_unit ?? fallback.default_unit,
+        };
+      }
+    }
+
+    // Codex Round 1 Critical #1 — sign-on-read for the single-item
+    // detail page. Sketch rows store the storage path in
+    // `thumbnail_url`; the renderer needs a signed URL with a short
+    // TTL.
+    if (hydratedRow.thumbnail_url) {
+      const signed = await signThumbnailUrl(hydratedRow.thumbnail_url, supabase);
+      return { ...hydratedRow, thumbnail_url: signed };
+    }
+    return hydratedRow;
   },
 );
 
@@ -100,14 +147,26 @@ export const getLibraryItemHistory = cache(
       throw new Error(`library_item_history_first_failed: ${firstError.message}`);
     }
 
-    // Exact count — head:true makes PostgREST return headers only + count.
-    const { count, error: countError } = await supabase
-      .from('food_entries')
-      .select('id', { count: 'exact', head: true })
-      .eq('library_item_id', libraryItemId)
-      .eq('user_id', userId);
-    if (countError) {
-      throw new Error(`library_item_history_count_failed: ${countError.message}`);
+    // Bug 1 (library detail false "Never logged") — totalLogCount is now
+    // read from the canonical `food_library_items.log_count` column, NOT
+    // from a `COUNT(food_entries WHERE library_item_id=id)` query. Some
+    // save paths bump `log_count` without populating
+    // `food_entries.library_item_id`, leaving the FK-based count at 0
+    // while the library list (which reads `log_count`) correctly shows
+    // the item as logged. Sourcing both surfaces from the same column
+    // eliminates the divergence.
+    //
+    // `recent` and `firstLoggedAt` continue to walk `food_entries` — they
+    // produce useful (if incomplete) data and degrade gracefully when an
+    // entry lacks the FK.
+    const { data: libRow, error: libErr } = await supabase
+      .from('food_library_items')
+      .select('log_count')
+      .eq('id', libraryItemId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (libErr) {
+      throw new Error(`library_item_history_count_failed: ${libErr.message}`);
     }
 
     const rows = (recentData ?? []) as Array<{
@@ -118,7 +177,7 @@ export const getLibraryItemHistory = cache(
 
     return {
       firstLoggedAt: (firstRow?.logged_at as string | undefined) ?? null,
-      totalLogCount: count ?? 0,
+      totalLogCount: (libRow?.log_count as number | undefined) ?? 0,
       recent: rows.map((r) => ({
         id: r.id,
         loggedAt: r.logged_at,

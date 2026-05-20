@@ -79,6 +79,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
   // transient blip — the visibility gain is in error reporting, not in
   // route-level failure mode.
   let timezone = 'UTC';
+  let hasProfileRow = false;
   if (user) {
     const { data: profileRow, error: profileError } = await supabase
       .from('profiles')
@@ -93,13 +94,14 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
         },
       });
     }
+    hasProfileRow = profileRow !== null;
     timezone = (profileRow?.timezone as string | null) ?? 'UTC';
   }
 
   return (
     <OfflineQueueProvider>
       <OfflineBar />
-      <DeviceTimezoneSync profileTimezone={timezone} />
+      {hasProfileRow ? <DeviceTimezoneSync profileTimezone={timezone} /> : null}
       <NavShell userId={userId} identity={identity} timezone={timezone}>
         {children}
       </NavShell>

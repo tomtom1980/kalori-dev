@@ -42,7 +42,6 @@ import { useDashboardDateTransitionStore } from '@/lib/stores/useDashboardDateTr
 // user was already on the dashboard.
 import { announcePolite } from '@/lib/a11y/announce';
 import { authFetch } from '@/lib/auth/refresh-interceptor';
-import { m, motion, useReducedMotion } from '@/lib/motion/defaults';
 import { useUndoQueueStore } from '@/lib/stores/useUndoQueueStore';
 import { useWaterMutationStore } from '@/lib/stores/useWaterMutationStore';
 import { getDeviceTimeZone } from '@/lib/time/device-timezone';
@@ -58,11 +57,12 @@ import { SrLiveRegions } from '@/components/chrome/SrLiveRegions';
 import { UndoCrossTabBridge } from '@/components/toast/UndoCrossTabBridge';
 import { UndoToastMount } from '@/components/toast/UndoToastMount';
 
-import { BottomTabBar } from './bottom-tab-bar';
+import { BottomTabBar, BOTTOM_TAB_BAR_HEIGHT_PX } from './bottom-tab-bar';
 import { LogFAB } from './log-fab';
 import { LogFlowKeybinding } from './log-flow-keybinding';
 import { LogFlowModalMount } from './log-flow-modal-mount';
 import { LogFlowUserScopeSync } from './log-flow-user-scope-sync';
+import { PullToRefresh } from './pull-to-refresh';
 import { ShortcutsOverlay } from './shortcuts-overlay';
 import { Sidebar } from './sidebar';
 import { TopAppBar } from './top-app-bar';
@@ -144,12 +144,17 @@ export function NavShell({
   timezone = 'UTC',
 }: NavShellProps) {
   const pathname = usePathname() ?? '/dashboard';
+  // Suppress all nav chrome (sidebar / top app bar / mobile FAB bar) on
+  // onboarding routes — the user is mid-registration and none of these
+  // surfaces are usable yet. The mobile food + water FABs in particular
+  // would invite write attempts before the profile row that authorizes
+  // them exists.
+  const isOnboarding = pathname.startsWith('/onboarding');
   const searchParams = useSearchParams();
   const dashboardDateLoadingDay = useDashboardDateTransitionStore((state) => state.loadingDay);
   const clearDashboardDateLoading = useDashboardDateTransitionStore(
     (state) => state.clearLoadingDay,
   );
-  const reducedMotion = useReducedMotion();
   // Task A.2 + Codex Round 1 #3 — top-app-bar monogram comes from the
   // server-resolved DTO. Null/unauthenticated chrome mounts use the
   // ANONYMOUS_IDENTITY default → em-dash monogram.
@@ -390,17 +395,16 @@ export function NavShell({
   }
 
   return (
-    <div
-      className="kalori-app-shell"
-      style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
-    >
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <a href="#app-main" className="kalori-skip-link" data-testid="skip-to-main">
         {t.nav.skipToMain}
       </a>
       <div className="nav-shell-grid" style={{ display: 'flex', flex: 1 }}>
-        <div className="nav-shell-sidebar" data-testid="nav-shell-sidebar">
-          <Sidebar pathname={pathname} identity={identity} />
-        </div>
+        {!isOnboarding && (
+          <div className="nav-shell-sidebar" data-testid="nav-shell-sidebar">
+            <Sidebar pathname={pathname} identity={identity} />
+          </div>
+        )}
         {/*
           Phase 7 regression fix (REG-1): the flex column that hosts the top
           app bar + main content defaults to `min-width: auto` (= min-content),
@@ -412,15 +416,16 @@ export function NavShell({
           page.
         */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <div className="nav-shell-top" data-testid="nav-shell-top">
-            <TopAppBar
-              sectionKicker={sectionKickerFor(pathname)}
-              editionLine={STUB_EDITION}
-              userInitials={topBarInitials}
-            />
-          </div>
-          <m.main
-            key={pathname}
+          {!isOnboarding && (
+            <div className="nav-shell-top" data-testid="nav-shell-top">
+              <TopAppBar
+                sectionKicker={sectionKickerFor(pathname)}
+                editionLine={STUB_EDITION}
+                userInitials={topBarInitials}
+              />
+            </div>
+          )}
+          <main
             id="app-main"
             tabIndex={-1}
             className="kalori-page-main"
@@ -432,19 +437,17 @@ export function NavShell({
               // widths only — re-applied as a media query in globals.css
               // would be redundant since the rule has no effect once the
               // bottom tab bar hides at >=768.
-              paddingBottom: 'calc(56px + env(safe-area-inset-bottom) + var(--spacing-16))',
+              paddingBottom: `calc(${BOTTOM_TAB_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom) + var(--spacing-16))`,
             }}
-            initial={reducedMotion ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={reducedMotion ? { duration: 0 } : motion.expressive}
           >
             {children}
-          </m.main>
+          </main>
         </div>
       </div>
 
-      <div className="nav-shell-mobile" data-testid="nav-shell-mobile">
-        {/*
+      {!isOnboarding && (
+        <div className="nav-shell-mobile" data-testid="nav-shell-mobile">
+          {/*
           Bug #5 (bugfix-tomi 2026-05-08-mobile-ui-overhaul, tiebreaker
           #24): the single 56-square FAB grew into a SIDE-BY-SIDE PAIR
           — food primary (oxblood) + water secondary (bg-1 + ivory
@@ -471,38 +474,41 @@ export function NavShell({
           a polite SR message. No navigation — the user stays on
           whatever route they tapped from.
         */}
-        <div
-          className="kalori-fab-pair"
-          style={{
-            position: 'fixed',
-            left: 'calc(50% - 60px)',
-            bottom: 'calc(56px + env(safe-area-inset-bottom) + var(--spacing-2))',
-            zIndex: 41,
-            display: 'flex',
-            gap: '8px',
-          }}
-        >
-          <LogFAB
-            variant="food"
-            disabled={dashboardDateTransitionPending}
-            onClick={() => {
-              if (dashboardDateTransitionPending) return;
-              const viewedDay = dashboardViewedDayAtTap();
-              useLogFlowStore.getState().openModal('type', {
-                ...(viewedDay ? { logDate: viewedDay, timezone } : {}),
-              });
+          <div
+            style={{
+              position: 'fixed',
+              left: 'calc(50% - 60px)',
+              bottom: `calc(${BOTTOM_TAB_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom) + var(--spacing-2))`,
+              zIndex: 41,
+              display: 'flex',
+              gap: '8px',
             }}
-          />
-          <LogFAB
-            variant="water"
-            disabled={dashboardDateTransitionPending}
-            onClick={() => {
-              handleLogWater();
-            }}
-          />
+          >
+            <LogFAB
+              variant="food"
+              disabled={dashboardDateTransitionPending}
+              onClick={() => {
+                if (dashboardDateTransitionPending) return;
+                const viewedDay = dashboardViewedDayAtTap();
+                // Add Food tab merge — open on library subview by default;
+                // user flows into AI parse via the + icon or empty-state
+                // CTA inside LibraryList (parity with MealAddButton, Task 9).
+                useLogFlowStore.getState().openModal('library', {
+                  ...(viewedDay ? { logDate: viewedDay, timezone } : {}),
+                });
+              }}
+            />
+            <LogFAB
+              variant="water"
+              disabled={dashboardDateTransitionPending}
+              onClick={() => {
+                handleLogWater();
+              }}
+            />
+          </div>
+          <BottomTabBar pathname={pathname} />
         </div>
-        <BottomTabBar pathname={pathname} />
-      </div>
+      )}
 
       <ShortcutsOverlay />
       <LogFlowKeybinding />
@@ -511,6 +517,7 @@ export function NavShell({
           current session user so drafts don't leak across logout → login
           on a shared device. */}
       <LogFlowUserScopeSync userId={userId} />
+      {!isOnboarding && <PullToRefresh />}
       {/* Task 3.4 — chrome-level toast + sr-only regions; mounted once
           so the undo toast survives route changes (F6 3 AM scenario). */}
       <UndoToastMount />

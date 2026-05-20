@@ -3,11 +3,18 @@
  *
  * After the Phase-3 fix loop: the `role="alert"` banner is hoisted to
  * <LogFlowErrorBanner /> (rendered above the tab panel by LogFlowTabs).
- * ManualEntryFallback now owns ONLY the form region.
+ * ManualEntryFallback now owns ONLY the manual-entry region.
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
+
+const isMobileMock = vi.hoisted(() => vi.fn<() => boolean>(() => false));
+
+vi.mock('@/lib/hooks/use-is-mobile', () => ({
+  useIsMobile: () => isMobileMock(),
+  MOBILE_QUERY: '(max-width: 1279px)',
+}));
 
 import { ManualEntryFallback } from '@/app/(app)/log/_components/ManualEntryFallback';
 import { useLogFlowStore } from '@/lib/stores/useLogFlowStore';
@@ -15,6 +22,7 @@ import { useLogFlowStore } from '@/lib/stores/useLogFlowStore';
 describe('<ManualEntryFallback />', () => {
   beforeEach(() => {
     useLogFlowStore.getState().resetDraft();
+    isMobileMock.mockReturnValue(false);
   });
 
   it('pre-fills food-name input with originalInput for type failure', () => {
@@ -40,6 +48,7 @@ describe('<ManualEntryFallback />', () => {
     expect(img.src).toContain('data:image/jpeg');
     expect(img.alt).toBeTruthy();
     expect(img.alt.length).toBeGreaterThan(0);
+    expect(screen.getByText(/photo was kept/i)).toBeInTheDocument();
   });
 
   it('form region carries role="region" and aria-labelledby', () => {
@@ -50,11 +59,49 @@ describe('<ManualEntryFallback />', () => {
     expect(region.getAttribute('aria-labelledby')).toBeTruthy();
   });
 
+  it('does not render a nested form warning when mounted inside the Type tab form', () => {
+    useLogFlowStore.getState().setFailureMode('network', 'pho bo');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      render(
+        <form>
+          <ManualEntryFallback forceMode="type" />
+        </form>,
+      );
+    } finally {
+      const nestedFormWarnings = consoleError.mock.calls.filter((call) =>
+        call.some((part) =>
+          String(part).includes('In HTML, <form> cannot be a descendant of <form>'),
+        ),
+      );
+      expect(nestedFormWarnings).toHaveLength(0);
+      expect(screen.getByTestId('manual-entry-fallback').querySelector('form')).toBeNull();
+      consoleError.mockRestore();
+    }
+  });
+
   it('exposes RETRY and SAVE ENTRY buttons with accessible names', () => {
     useLogFlowStore.getState().setFailureMode('rate-limit', 'x');
     render(<ManualEntryFallback forceMode="type" />);
-    expect(screen.getByTestId('manual-entry-fallback-retry')).toBeInTheDocument();
+    const retry = screen.getByTestId('manual-entry-fallback-retry');
+    expect(retry).toBeInTheDocument();
+    expect(retry).toHaveTextContent(/^TRY AGAIN$/i);
+    expect(retry).not.toHaveTextContent(/photo/i);
     expect(screen.getByTestId('manual-entry-fallback-submit')).toBeInTheDocument();
+  });
+
+  it('uses photo-specific retry copy only for snap fallback mode', () => {
+    useLogFlowStore.getState().setFailureMode('zod', '<image>');
+    useLogFlowStore.getState().setSnapDraft({
+      status: 'error',
+      error: 'test',
+      thumbnailDataUrl: 'data:image/jpeg;base64,AAAA',
+    });
+    render(<ManualEntryFallback forceMode="snap" />);
+    expect(screen.getByTestId('manual-entry-fallback-retry')).toHaveTextContent(
+      /^TRY PHOTO AGAIN$/i,
+    );
   });
 
   it('invalid submit sets aria-invalid + aria-errormessage + shows inline error (compliance M4)', async () => {
@@ -132,5 +179,176 @@ describe('<ManualEntryFallback />', () => {
 
     // Assert: portion input STILL has focus — food-name was NOT yanked back.
     expect(document.activeElement).toBe(portionInput);
+  });
+
+  it('lets users choose a unit and preset, then submits the edited manual payload', async () => {
+    useLogFlowStore.getState().setFailureMode('network', '');
+    const onManualSubmit = vi.fn();
+    render(<ManualEntryFallback forceMode="type" onManualSubmit={onManualSubmit} />);
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/food name/i), 'banana');
+    await user.click(screen.getByRole('radio', { name: /^piece$/i }));
+    await user.click(screen.getByRole('button', { name: /^2 piece$/i }));
+    await user.type(screen.getByLabelText(/kcal|calories/i), '210');
+    await user.click(screen.getByTestId('manual-entry-fallback-submit'));
+
+    expect(onManualSubmit).toHaveBeenCalledTimes(1);
+    expect(onManualSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        foodName: 'banana',
+        quantity: 2,
+        portionGrams: 2,
+        unit: 'piece',
+        kcal: 210,
+        source: 'manual',
+      }),
+    );
+  });
+
+  it('submits from text inputs on Enter without requiring an inner form', async () => {
+    useLogFlowStore.getState().setFailureMode('network', '');
+    const onManualSubmit = vi.fn();
+    render(<ManualEntryFallback forceMode="type" onManualSubmit={onManualSubmit} />);
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/food name/i), 'banana');
+    await user.type(screen.getByLabelText(/quantity/i), '100');
+    await user.type(screen.getByLabelText(/kcal|calories/i), '210{Enter}');
+
+    expect(onManualSubmit).toHaveBeenCalledTimes(1);
+    expect(onManualSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        foodName: 'banana',
+        quantity: 100,
+        unit: 'g',
+        kcal: 210,
+      }),
+    );
+  });
+
+  it('keeps optional macros collapsed until requested and includes entered macros', async () => {
+    useLogFlowStore.getState().setFailureMode('network', '');
+    const onManualSubmit = vi.fn();
+    render(<ManualEntryFallback forceMode="type" onManualSubmit={onManualSubmit} />);
+
+    expect(screen.queryByLabelText(/protein/i)).not.toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /optional macros/i }));
+    await user.type(screen.getByLabelText(/food name/i), 'rice bowl');
+    await user.type(screen.getByLabelText(/quantity/i), '1');
+    await user.type(screen.getByLabelText(/kcal|calories/i), '420');
+    await user.type(screen.getByLabelText(/protein/i), '12');
+    await user.type(screen.getByLabelText(/carbs/i), '70');
+    await user.type(screen.getByLabelText(/^fat/i), '8');
+    await user.type(screen.getByLabelText(/fiber/i), '4');
+    await user.click(screen.getByTestId('manual-entry-fallback-submit'));
+
+    expect(onManualSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        macros: {
+          protein_g: 12,
+          carbs_g: 70,
+          fat_g: 8,
+          fiber_g: 4,
+        },
+      }),
+    );
+  });
+
+  it('shows and focuses field-level errors for invalid optional macros', async () => {
+    useLogFlowStore.getState().setFailureMode('network', '');
+    const onManualSubmit = vi.fn();
+    render(<ManualEntryFallback forceMode="type" onManualSubmit={onManualSubmit} />);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /optional macros/i }));
+    await user.type(screen.getByLabelText(/food name/i), 'rice bowl');
+    await user.type(screen.getByLabelText(/quantity/i), '1');
+    await user.type(screen.getByLabelText(/kcal|calories/i), '420');
+    const proteinInput = screen.getByLabelText(/protein/i);
+    await user.type(proteinInput, '-1');
+    await user.click(screen.getByTestId('manual-entry-fallback-submit'));
+
+    expect(onManualSubmit).not.toHaveBeenCalled();
+    expect(proteinInput).toHaveAttribute('aria-invalid', 'true');
+    expect(proteinInput.getAttribute('aria-errormessage')).toBeTruthy();
+    expect(screen.getByTestId('manual-entry-fallback-error-protein')).toHaveTextContent(
+      /positive number/i,
+    );
+    expect(document.activeElement).toBe(proteinInput);
+  });
+
+  it('mobile renders a wheel-sheet quantity picker and commits the selected value', async () => {
+    isMobileMock.mockReturnValue(true);
+    useLogFlowStore.getState().setFailureMode('network', '');
+    const onManualSubmit = vi.fn();
+    render(<ManualEntryFallback forceMode="type" onManualSubmit={onManualSubmit} />);
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/food name/i), 'yogurt');
+    await user.type(screen.getByLabelText(/kcal|calories/i), '120');
+
+    await user.click(screen.getByTestId('manual-entry-fallback-quantity-wheel-trigger'));
+    const wheel = await screen.findByTestId('manual-entry-fallback-quantity-wheel');
+    expect(wheel).toBeInTheDocument();
+    const row150 = Array.from(wheel.querySelectorAll('[role="option"]')).find(
+      (el) => el.textContent?.trim() === '150 g',
+    );
+    expect(row150).toBeDefined();
+    await user.click(row150 as HTMLElement);
+    await user.click(screen.getByRole('button', { name: /^Done$/i }));
+    await user.click(screen.getByTestId('manual-entry-fallback-submit'));
+
+    expect(onManualSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        quantity: 150,
+        unit: 'g',
+        kcal: 120,
+      }),
+    );
+  });
+
+  it('mobile resets stale gram wheel values when switching to a count unit', async () => {
+    isMobileMock.mockReturnValue(true);
+    useLogFlowStore.getState().setFailureMode('network', '');
+    const onManualSubmit = vi.fn();
+    render(<ManualEntryFallback forceMode="type" onManualSubmit={onManualSubmit} />);
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText(/food name/i), 'egg');
+    await user.type(screen.getByLabelText(/kcal|calories/i), '80');
+
+    await user.click(screen.getByTestId('manual-entry-fallback-quantity-wheel-trigger'));
+    let wheel = await screen.findByTestId('manual-entry-fallback-quantity-wheel');
+    const row250 = Array.from(wheel.querySelectorAll('[role="option"]')).find(
+      (el) => el.textContent?.trim() === '250 g',
+    );
+    expect(row250).toBeDefined();
+    await user.click(row250 as HTMLElement);
+    await user.click(screen.getByRole('button', { name: /^Done$/i }));
+    expect(screen.getByTestId('manual-entry-fallback-quantity-wheel-trigger')).toHaveTextContent(
+      '250 g',
+    );
+
+    await user.click(screen.getByRole('radio', { name: /^piece$/i }));
+    expect(screen.getByTestId('manual-entry-fallback-quantity-wheel-trigger')).toHaveTextContent(
+      '1 piece',
+    );
+
+    await user.click(screen.getByTestId('manual-entry-fallback-quantity-wheel-trigger'));
+    wheel = await screen.findByTestId('manual-entry-fallback-quantity-wheel');
+    expect(wheel).toHaveTextContent('1 piece');
+    await user.click(screen.getByRole('button', { name: /^Done$/i }));
+    await user.click(screen.getByTestId('manual-entry-fallback-submit'));
+
+    expect(onManualSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        quantity: 1,
+        unit: 'piece',
+        kcal: 80,
+      }),
+    );
   });
 });

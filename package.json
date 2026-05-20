@@ -4,7 +4,7 @@
   "private": true,
   "description": "Kalori — AI-first calorie/nutrition tracker (PWA, dark-only, single-user).",
   "engines": {
-    "node": "20.x"
+    "node": ">=20.19.0"
   },
   "packageManager": "pnpm@10.29.3",
   "scripts": {
@@ -22,8 +22,10 @@
     "test:unit": "vitest run --pool threads --maxWorkers 1 tests/unit",
     "test:coverage": "vitest run --pool threads --maxWorkers 1 --coverage",
     "test:e2e": "playwright test",
-    "test:a11y": "playwright test --project=chromium tests/axe",
+    "test:a11y": "playwright test --project=chromium tests/e2e/library/library-a11y.spec.ts tests/e2e/web/dashboard-a11y.spec.ts",
+    "test:lh": "lhci autorun --config=lighthouserc.json",
     "check:bundle-budget": "node scripts/check-bundle-budget.mjs",
+    "schema-drift": "node scripts/schema-drift-check.mjs",
     "seed": "tsx scripts/seed.ts",
     "icons": "tsx scripts/generate-pwa-icons.ts",
     "prepare": "husky"

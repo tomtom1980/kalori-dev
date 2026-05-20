@@ -89,7 +89,7 @@ describe('F12 — /api/weight/log refresh reinforcement', () => {
                       target_mode: 'auto',
                       current_weight_kg: 70,
                       recalc_threshold_pct: 2.0,
-                      bio_sex: 'other',
+                      bio_sex: 'male',
                       age: 30,
                       height_cm: 170,
                       activity_level: 'moderate',

@@ -44,4 +44,17 @@ describe('<LogFlowErrorBanner />', () => {
     render(<LogFlowErrorBanner onRetry={() => {}} />);
     expect(screen.getByText(/read the photo/i)).toBeInTheDocument();
   });
+
+  it('uses neutral retry copy for type failures and photo copy for snap failures', () => {
+    useLogFlowStore.getState().setActiveTab('type');
+    useLogFlowStore.getState().setFailureMode('network', 'x');
+    const { rerender } = render(<LogFlowErrorBanner onRetry={() => {}} />);
+    expect(screen.getByTestId('log-flow-error-retry')).toHaveTextContent(/^TRY AGAIN$/i);
+    expect(screen.getByTestId('log-flow-error-retry')).not.toHaveTextContent(/photo/i);
+
+    useLogFlowStore.getState().setActiveTab('snap');
+    useLogFlowStore.getState().setFailureMode('zod', 'x');
+    rerender(<LogFlowErrorBanner onRetry={() => {}} />);
+    expect(screen.getByTestId('log-flow-error-retry')).toHaveTextContent(/^TRY PHOTO AGAIN$/i);
+  });
 });

@@ -28,8 +28,9 @@ import { z } from 'zod';
 import { computeCacheKey, lookup as cacheLookup, write as cacheWrite } from '@/lib/ai/cache';
 import { fetchCacheByHash, findPriorCall, logAICall } from '@/lib/ai/cost-log';
 import { callGeminiWithFallback, getDefaultFallbackModel } from '@/lib/ai/fallback';
+import { hasSuspiciousAllZeroMicros } from '@/lib/ai/micros-quality';
 import { normalizeParsedPortions } from '@/lib/ai/portion-sanity';
-import { v1_foodParse, v1_foodParseVnFallback } from '@/lib/ai/prompts';
+import { v1_foodParse, v1_foodParseMicrosRepair, v1_foodParseVnFallback } from '@/lib/ai/prompts';
 import { ParseResult, type ParseResultT } from '@/lib/ai/schemas';
 import { sanitizeStringArray, sanitizeUserText } from '@/lib/ai/sanitize';
 import { requireProfileOrJson401 } from '@/lib/auth/orphan-profile-fence';
@@ -56,6 +57,15 @@ const BodySchema = z
 
 function normalizeInput(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function addMicrosBreadcrumb(message: string, data?: Record<string, unknown>): void {
+  Sentry.addBreadcrumb({
+    category: 'ai.micros',
+    message,
+    level: 'info',
+    ...(data ? { data } : {}),
+  });
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -97,6 +107,9 @@ export async function POST(request: Request): Promise<Response> {
   });
 
   const start = Date.now();
+  let billableTokens = 0;
+  let billableCostEstimate = 0;
+  let logClientId: string | undefined = parsed.data.client_id;
   try {
     // F-UI-3.6-A-2 — client_id replay short-circuit. If a prior
     // ai_call_log row exists for (user_id, client_id), use its input_hash to
@@ -110,11 +123,18 @@ export async function POST(request: Request): Promise<Response> {
         userId,
         inputHash: prior.inputHash,
       });
-      if (replay) {
+      if (replay && !hasSuspiciousAllZeroMicros(normalizeParsedPortions(replay))) {
         // Do NOT log a second ai_call_log row — the prior row IS the replay
         // receipt. Returning without a fresh log keeps the I2 (exact-once
         // ai_call_log per logical call) invariant intact.
         return NextResponse.json({ result: normalizeParsedPortions(replay) }, { status: 200 });
+      }
+      if (replay) {
+        logClientId = undefined;
+        addMicrosBreadcrumb('Ignored suspicious all-zero micros replay', {
+          callType: 'text-parse',
+          clientId: parsed.data.client_id,
+        });
       }
     }
 
@@ -125,17 +145,24 @@ export async function POST(request: Request): Promise<Response> {
       normalizedInput,
     });
     if (hit.hit && hit.payload) {
-      await logAICall({
-        userId,
+      const normalizedHit = normalizeParsedPortions(hit.payload);
+      if (!hasSuspiciousAllZeroMicros(normalizedHit)) {
+        await logAICall({
+          userId,
+          callType: 'text-parse',
+          inputHash,
+          tokens: 0,
+          costEstimate: 0,
+          latencyMs: Date.now() - start,
+          cachedFlag: true,
+          ...(logClientId ? { clientId: logClientId } : {}),
+        });
+        return NextResponse.json({ result: normalizedHit }, { status: 200 });
+      }
+      addMicrosBreadcrumb('Ignored suspicious all-zero micros cache hit', {
         callType: 'text-parse',
-        inputHash,
-        tokens: 0,
-        costEstimate: 0,
-        latencyMs: Date.now() - start,
-        cachedFlag: true,
         clientId: parsed.data.client_id,
       });
-      return NextResponse.json({ result: normalizeParsedPortions(hit.payload) }, { status: 200 });
     }
 
     // Gemini call with 8s first-byte + 30s total timeout (AbortController
@@ -188,6 +215,8 @@ export async function POST(request: Request): Promise<Response> {
       clearTimeout(firstByteTimer);
       clearTimeout(totalTimer);
     }
+    billableTokens = geminiResult.tokens;
+    billableCostEstimate = geminiResult.costEstimate;
     if (geminiResult.usedFallback) {
       // I7 chain — observability breadcrumb, NOT an exception. The
       // successful recovery is by design; capturing as an exception would
@@ -206,7 +235,48 @@ export async function POST(request: Request): Promise<Response> {
 
     // Zod-validate output (F11 Layer 3 / I10). A parse failure falls to the
     // catch block and produces a fallback payload.
-    const validated = normalizeParsedPortions(ParseResult.parse(geminiResult.raw));
+    let validated = normalizeParsedPortions(ParseResult.parse(geminiResult.raw));
+
+    if (hasSuspiciousAllZeroMicros(validated)) {
+      addMicrosBreadcrumb('Repairing suspicious all-zero micros result', {
+        callType: 'text-parse',
+        clientId: parsed.data.client_id,
+      });
+      const repairDeadlineMs = start + TOTAL_TIMEOUT_MS;
+      const repairRemainingMs = repairDeadlineMs - Date.now();
+      if (repairRemainingMs < 1_000) {
+        throw new Error('all-zero micronutrient repair skipped: deadline exhausted');
+      }
+      const repairController = new AbortController();
+      const repairTimer = setTimeout(
+        () => repairController.abort(new Error('micros repair timeout')),
+        repairRemainingMs,
+      );
+      let repairResult;
+      try {
+        const repairPrompt = v1_foodParseMicrosRepair({
+          userText: sanitized,
+          priorResult: validated,
+          region: parsed.data.region,
+        });
+        repairResult = await callGeminiWithFallback({
+          prompt: repairPrompt,
+          fallbackPrompt: repairPrompt,
+          primaryModel: PRIMARY_MODEL,
+          fallbackModel: getDefaultFallbackModel(),
+          primaryAbortSignal: repairController.signal,
+          deadlineMs: repairDeadlineMs,
+        });
+      } finally {
+        clearTimeout(repairTimer);
+      }
+      billableTokens += repairResult.tokens;
+      billableCostEstimate += repairResult.costEstimate;
+      validated = normalizeParsedPortions(ParseResult.parse(repairResult.raw));
+      if (hasSuspiciousAllZeroMicros(validated)) {
+        throw new Error('all-zero micronutrient repair failed');
+      }
+    }
 
     // Cache write + log.
     await cacheWrite({
@@ -219,11 +289,11 @@ export async function POST(request: Request): Promise<Response> {
       userId,
       callType: 'text-parse',
       inputHash,
-      tokens: geminiResult.tokens,
-      costEstimate: geminiResult.costEstimate,
+      tokens: billableTokens,
+      costEstimate: billableCostEstimate,
       latencyMs: Date.now() - start,
       cachedFlag: false,
-      clientId: parsed.data.client_id,
+      ...(logClientId ? { clientId: logClientId } : {}),
     });
 
     return NextResponse.json({ result: validated }, { status: 200 });
@@ -236,11 +306,11 @@ export async function POST(request: Request): Promise<Response> {
       userId,
       callType: 'text-parse',
       inputHash,
-      tokens: 0,
-      costEstimate: 0,
+      tokens: billableTokens,
+      costEstimate: billableCostEstimate,
       latencyMs: Date.now() - start,
       cachedFlag: false,
-      clientId: parsed.data.client_id,
+      ...(logClientId ? { clientId: logClientId } : {}),
     });
     return NextResponse.json(
       { fallback: true, originalInput: parsed.data.userText },

@@ -148,7 +148,6 @@ export function ExportModal({
     <Dialog.Root open={open} onOpenChange={onOpenChange} modal>
       <Dialog.Portal>
         <Dialog.Overlay
-          className="radix-overlay"
           data-testid="export-modal-overlay"
           style={{
             position: 'fixed',
@@ -158,7 +157,6 @@ export function ExportModal({
           }}
         />
         <Dialog.Content
-          className="radix-content"
           data-testid="export-modal"
           aria-busy={phase === 'fetching' ? 'true' : 'false'}
           style={{
@@ -297,7 +295,6 @@ export function ExportModal({
             </button>
             {phase === 'error' ? (
               <button
-                className="btn-3d"
                 type="button"
                 data-testid="export-modal-retry"
                 onClick={() => {
@@ -320,7 +317,6 @@ export function ExportModal({
               </button>
             ) : (
               <button
-                className="btn-3d"
                 type="button"
                 data-testid="export-modal-cta"
                 aria-disabled={phase === 'fetching' || phase === 'downloading'}

@@ -11,12 +11,17 @@
  * legacy hard-coded `gridTemplateColumns: 'minmax(280px, 1fr) minmax(280px, 1fr)'`
  * is gone.
  *
- * Two hero rows live in `dashboard/page.tsx`:
+ * One hero row lives in `dashboard/page.tsx`:
  *   - Row 1 (chronometer + macros)
- *   - Row 2 (water + micros)
  *
- * Both must use `.kalori-dashboard-hero-row` so they collapse to 1fr at
- * mobile widths and only escalate to two columns at >=768.
+ * It must use `.kalori-dashboard-hero-row` so it collapses to 1fr at
+ * mobile widths and only escalates to two columns at >=768.
+ *
+ * 2026-05-16 update — the dashboard layout was simplified so the
+ * MicrosRdaPanel was removed and the second hero row (water + micros)
+ * was unrolled into stacked full-width sections (entries → micros →
+ * water). Only one hero row remains. The legacy-grid guard below
+ * stays as a regression check.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -27,13 +32,14 @@ const source = readFileSync(resolve(process.cwd(), 'app/(app)/dashboard/page.tsx
 
 describe('app/(app)/dashboard/page.tsx — responsive hero rows (Bug #1)', () => {
   it('uses the .kalori-dashboard-hero-row className (so CSS media rules apply)', () => {
-    // Both hero rows must reference the className. There are exactly two,
-    // so we expect at least two occurrences.
+    // After the 2026-05-16 layout simplification there is exactly one
+    // hero row (chronometer + macros). The legacy two-row layout had
+    // a second one for water + micros which is now unrolled.
     const matches = source.match(/className=["']kalori-dashboard-hero-row["']/g) ?? [];
     expect(
       matches.length,
-      'expected at least 2 .kalori-dashboard-hero-row usages (chronometer/macros + water/micros)',
-    ).toBeGreaterThanOrEqual(2);
+      'expected at least 1 .kalori-dashboard-hero-row usage (chronometer/macros)',
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it('does NOT inline-set the legacy two-column gridTemplateColumns', () => {

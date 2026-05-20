@@ -2828,7 +2828,7 @@ FA:
 - AC2: GIVEN a library item, WHEN I click "Edit", THEN a detail/edit modal opens with all fields populated AND I can save changes via a single CTA. *(test-planned: tests/e2e/web/user-stories/US-STAB-C2.spec.ts::edit-modal-saves)*
 - AC3: GIVEN a library item, WHEN I click "Delete" AND confirm, THEN the row is removed from the list AND from `food_library_items`. *(test-planned: tests/integration/library-crud.test.ts::delete-removes-row)*
 - AC4: GIVEN a library item, WHEN I click "Log Now", THEN a new `food_entries` row is created for today AND I see it in the entries list. *(test-planned: tests/e2e/web/user-stories/US-STAB-C2.spec.ts::log-now-creates-entry)*
-- AC5: GIVEN any CRUD action runs, WHEN the existing 32-assertion RLS harness runs after the migration, THEN every assertion passes (cross-user isolation preserved). *(test: existing RLS harness)*
+- AC5: GIVEN any CRUD action runs, WHEN the existing 32-assertion RLS harness runs after the migration, THEN every assertion passes (cross-user isolation preserved). *(test: tests/rls/library-isolation.test.ts::AC3: User B does NOT see User A library row inserted via save_to_library path)*
 
 **Steps:**
 1. **TDD RED:** Write `::two-sections-visible`, `::edit-modal-saves`, `::delete-removes-row`, `::log-now-creates-entry`. Verify RED.
@@ -2959,6 +2959,8 @@ Triage rule per Task A.VERIFY AC3: a P0/P1 verification-found feature-shaped gap
 - ui-design.md (focus ring + dashboard a11y)
 - testing-strategy.md (axe sweep)
 - architecture.md (dashboard component)
+- features/2026-05-01-mvp-stabilization/impact-analysis.md (§Preserved Behaviours)
+- features/2026-05-01-mvp-stabilization/design-system-snapshot.md (focus-ring + dashboard tokens)
 **Goal:** Resolve all axe-core dashboard violations; ivory 2px focus ring; aria-labels on all charts/gauges.
 **User Story:** US-STAB-D1
 **Acceptance Criteria:**
@@ -3049,6 +3051,7 @@ FA:
 - Followup status update: `Planning/followups.md::F-OFFLINE-5.1.5-CLIENT-WINS-RESUBMIT` note "D3 honest-copy-only scope-down verified in this sprint; full client-wins-resubmit impl remains DEFERRED to post-MVP cleanup."
 **Reads:**
 - features/2026-05-01-mvp-stabilization/design-doc.md (§4 US-STAB-D3, DT-2, DT-10, U-4)
+- features/2026-05-01-mvp-stabilization/impact-analysis.md (§US-STAB-D3 Preserved Behaviours)
 - `components/pwa/GoalWeightConflictModal.tsx` (existing)
 - `lib/offline/conflict-resolver.ts` (existing)
 - `lib/i18n/en.ts` (conflict keys)
@@ -3141,6 +3144,8 @@ FA:
 - `.github/workflows/*.yml` (bump `uses:` major versions for actions running javascript-actions)
 - `tests/integration/ci/action-versions-support-node24.test.ts` (NEW)
 **Reads:**
+- features/2026-05-01-mvp-stabilization/manifest.md
+- features/2026-05-01-mvp-stabilization/impact-analysis.md (§US-STAB-D5 Preserved Behaviours)
 - features/2026-05-01-mvp-stabilization/design-doc.md (§4 US-STAB-D5, O-3)
 - `.github/workflows/*.yml` (audit)
 **Goal:** Bump every `uses:` major version that runs javascript-actions to a Node 24-compatible major (actions/checkout@v4+, actions/setup-node@v4+, pnpm/action-setup@v3+, actions/upload-artifact@v4+).
@@ -3184,8 +3189,10 @@ FA:
 - `tests/integration/library-create.test.ts` (extend with dedup + soft-delete-reinsert cases)
 **Reads:**
 - features/2026-05-01-mvp-stabilization/design-doc.md (§4 US-STAB-D6, §7 Migration 0018, §10 P-3 VN diacritics, FF #C, C2 + N-C1 fixes)
-- features/2026-05-01-mvp-stabilization/migration-plan.md
-- architecture.md (food_library_items DDL + RLS)
+- features/2026-05-01-mvp-stabilization/migration-plan.md (§2 Migration 0018 — full 7-step runbook + §3.1 per-task dev apply + §4 rollback + §5 pre-flight + §6 post-cutover verification)
+- features/2026-05-01-mvp-stabilization/manifest.md (sprint scope, Q7 per-task-to-dev policy, Q3 brownfield-skip rationale)
+- features/2026-05-01-mvp-stabilization/impact-analysis.md (§US-STAB-D6 Preserved Behaviours / Changed Behaviours / RLS / Test surfaces)
+- architecture.md (§2.4 food_library_items DDL + §3.3 RLS policies + §6 idx table)
 **Goal:** Add partial unique index on `food_library_items (user_id, normalized_name) WHERE deleted_at IS NULL AND normalized_name IS NOT NULL`. Single-transaction cleanup with `LOCK TABLE ... IN ACCESS EXCLUSIVE MODE`, executed via SECURITY DEFINER.
 **User Story:** US-STAB-D6
 **User Stories:**
@@ -3243,6 +3250,12 @@ FA:
 - features/2026-05-01-mvp-stabilization/design-doc.md (§4 US-STAB-D1/D2/D6)
 - features/2026-05-01-mvp-stabilization/testing-strategy.md
 - testing-strategy.md (E2E click-through mandate)
+- features/2026-05-01-mvp-stabilization/manifest.md (sprint scope context, FA-mandatory for FA-touching E2E)
+- features/2026-05-01-mvp-stabilization/impact-analysis.md (§US-STAB-D1, §US-STAB-D2, §US-STAB-D6 Preserved Behaviours)
+- architecture.md §8.1 (withAuth route guard contract — D2 JSON 401)
+- architecture.md §2.4 (food_library_items schema — D6 dedup smoke)
+- architecture.md §6 (Route Map — D2 /api/dashboard/aggregate)
+- architecture.md §11 (client_id enforcement — RLS implication shared by D1/D2/D6 surfaces)
 **Goal:** End-to-end Playwright spec covering Phase D user stories US-STAB-D1, D2, D6 (**bundled by design — D1 a11y / D2 auth API 401 / D6 library dedup share post-login flow; D3/D4/D5 verified via integration/unit/CI not E2E per Step 6.4a guidance**). Bundled E2E covers: D1 (dashboard axe via @axe-core/playwright), D2 (API 401 JSON contract assertion via real fetch), D6 (post-migration library dedup smoke).
 
 **Steps:**
@@ -3315,7 +3328,7 @@ FA:
 - features/2026-05-01-mvp-stabilization/verification-report.md
 - bugs/issuelog.txt
 - scripts/apply-prod-migrations.mjs
-**Goal:** Run Phase E manual smoke (re-check 11 issuelog entries with post-fix evidence), apply migration 0018 to kalori-prod, flip sprint to COMPLETE, close project Phase 5.
+**Goal:** Phase 5 closure: ship sprint-introduced F-LIB-DEDUP partial unique index (now numbered `0020_food_library_dedup_index.sql` due to D.6 renumbering after out-of-band bugfix-tomi migrations claimed 0018+0019 slots) PLUS the 3 out-of-band dev-applied migrations that haven't shipped to prod yet: `0018_water_log_atomic_cap.sql` (CHANGELOG-flagged CRITICAL pre-deploy), `0019_water_log_negative_ml_adjustments.sql`, `0021_library_overhaul.sql`. Apply all 4 to kalori-prod via rewritten incremental cutover script, confirm post-apply verification, close FA.
 **User Story:** US-STAB-E1
 **User Stories:**
 - US-STAB-E1:
@@ -3325,16 +3338,22 @@ FA:
   ACs covered: AC1, AC2, AC3
 **Acceptance Criteria:**
 - AC1: GIVEN the 11 issuelog entries, WHEN Phase E runs, THEN each entry has post-fix screenshot evidence AND a diff vs the verification-report.md pre-fix evidence. *(manual: `Planning/features/2026-05-01-mvp-stabilization/acceptance-evidence/phase-E-issuelog-recheck.md`)*
-- AC2: GIVEN sprint-introduced migration 0018 (0019 deferred per DT-5; no 0020), WHEN `scripts/apply-prod-migrations.mjs` runs against kalori-prod, THEN 0018 applies successfully AND the migration table reflects it AND the partial unique index exists with `WHERE deleted_at IS NULL AND normalized_name IS NOT NULL` predicate. *(manual: `Planning/features/2026-05-01-mvp-stabilization/acceptance-evidence/phase-E-prod-migration.md`)*
-- AC3: GIVEN the FINAL-US task runs, WHEN every sprint user story E2E runs against the final build, THEN they all pass (2 fix rounds capped). *(test: full sprint E2E suite under `tests/e2e/web/user-stories/US-STAB-*.spec.ts`)*
+- AC2: GIVEN four prod-pending migrations (`0018_water_log_atomic_cap.sql` — emergency water-cap RPC + advisory lock; `0019_water_log_negative_ml_adjustments.sql` — water adjustment correctness; `0020_food_library_dedup_index.sql` — sprint-introduced F-LIB-DEDUP partial unique index, originally planned as "0018" but renumbered due to D.6 out-of-band migration sequencing; `0021_library_overhaul.sql` — library overhaul CHECK widening + 4 sketch columns), WHEN the rewritten `scripts/apply-prod-migrations-incremental.mjs` runs against kalori-prod, THEN all 4 apply successfully in order AND the supabase migration tracker reflects each AND the post-apply verification suite confirms (a) `food_library_items_dedup_partial_unique` index exists with `WHERE deleted_at IS NULL AND normalized_name IS NOT NULL` predicate (0020); (b) `water_log_create_with_cap` RPC + `pg_try_advisory_xact_lock` usage present (0018); (c) negative-ml adjustment column / trigger present (0019); (d) `food_library_items.created_from` CHECK widening + 4 sketch columns (`sketch_image_storage_path`, `sketch_thumb_storage_path`, `sketch_prompt`, `sketch_meta`) present (0021). Manual evidence at `Planning/features/2026-05-01-mvp-stabilization/acceptance-evidence/phase-E-prod-migration.md` (file to be created during E.1).
+- AC2 reconciliation addendum (E.1.9 Codex finding 4) — the artifact names in AC2 above were paraphrases that drifted from the actual migration body. The script `scripts/apply-prod-migrations-incremental.mjs` verifies the ACTUAL artifacts declared by the migration SQL: (a) index `food_library_items_user_normalized_name_unique` (not `..._dedup_partial_unique`); (b) RPC `public.log_water_with_cap` (not `water_log_create_with_cap`) whose body references `pg_advisory_xact_lock` (the unconditional variant, not `pg_try_advisory_xact_lock`); (c) 0019 widens the existing `water_log_count_check` to permit `unit='ml'` rows in `[-5000, 5000]` AND re-defines `log_water_with_cap` to raise `under_daily_limit` (P0013) — there is no new column or trigger; (d) the 4 sketch columns added by 0021 are `thumbnail_kind`, `sketch_generated_at`, `sketch_attempt_count`, `sketch_last_error` (NOT `sketch_image_storage_path / sketch_thumb_storage_path / sketch_prompt / sketch_meta`, which were an earlier design that did not ship). The migration SQL is the contract; the verification suite passed against these actual artifacts on 2026-05-16. Future cutover reviewers should consult `scripts/apply-prod-migrations-incremental.mjs::buildVerificationQuery()` as the authoritative artifact list, not this AC text.
+- AC3: GIVEN the FINAL-US task runs, WHEN every sprint user story E2E runs against the final build, THEN they all pass (2 fix rounds capped). *(test: sweep — `npx playwright test tests/e2e/web/user-stories/` — full sprint E2E suite, evaluated by FINAL-US runner per Phase E pipeline)*
 
 **Steps:**
 1. **BEFORE other closure work — pre-cutover full test suite gate:** Run full applicable test suite as final pre-cutover verification — `pnpm test`, `pnpm test:e2e`, `pnpm test:axe`, `pnpm test:lh`, `pnpm test:visual`. All must be GREEN before proceeding to manual smoke. (Redundant with the post-cutover E.SWEEP card by design — E.1 verifies pre-cutover state on the final dev build; E.SWEEP verifies post-cutover state at the phase boundary.)
 2. Re-verify all 11 issuelog entries against the live HEAD; capture post-fix screenshot per entry; diff against `verification-report.md` pre-fix evidence; write `acceptance-evidence/phase-E-issuelog-recheck.md`.
 3. Pre-flight: `apply-prod-migrations.mjs` schema diff between dev + prod (P-5 mitigation). Halt if drift exists; resolve manually.
-4. Run `scripts/apply-prod-migrations.mjs` against kalori-prod — applies 0018 ONLY (0019 deferred per DT-5).
-5. Verify post-cutover schema: partial unique index exists in `pg_indexes` with `WHERE deleted_at IS NULL AND normalized_name IS NOT NULL` predicate.
-6. Smoke against prod (read-only, RLS-bound, anon role expected denials).
+4. **Migration cutover** — (a) write replacement script `scripts/apply-prod-migrations-incremental.mjs` that: reads applied migrations from `supabase_migrations.schema_migrations` (or equivalent tracker table); computes delta against `supabase/migrations/*.sql`; applies each missing migration in order via Supabase Management API; runs per-migration verification SQL after each apply; aborts on first failure (no rollback — log + halt + surface). (b) Apply `0018`, `0019`, `0020`, `0021` to `kalori-prod` (ref `dryysypycsexvlbabtwq`) using the new script. (c) Capture verbatim output to `Planning/features/2026-05-01-mvp-stabilization/acceptance-evidence/phase-E-prod-migration.md`.
+5. Smoke against prod (read-only, RLS-bound, anon role expected denials).
+6. **Post-cutover schema verification (all 4 migrations):**
+   - **E.1.9 Codex Round 2 finding 5** — Step 6 supersedes the stale wording below. The authoritative artifact list is what `scripts/apply-prod-migrations-incremental.mjs::buildVerificationQuery()` ACTUALLY verifies. The script runs every predicate after each apply; if anything fails the script exits 4 with the failed predicate. Reviewers MUST use the script output (captured in `acceptance-evidence/phase-E-prod-migration.md`) as evidence — not the names below. The names below are kept ONLY for historical traceability so the divergence is visible.
+   - **0018 (water atomic cap)** — actual artifacts verified: `public.log_water_with_cap(uuid, date, integer, text)` exists in `pg_proc`; function body references `pg_advisory_xact_lock` (the unconditional variant — `pg_try_advisory_xact_lock` was the AC2 paraphrase but the migration uses the blocking call). [Historical AC2 wording was `water_log_create_with_cap` + `pg_try_advisory_xact_lock`, neither of which match the migration body.]
+   - **0019 (water negative-ml adjustments)** — actual artifacts verified: `water_log_count_check` constraint now permits `unit='ml'` rows in `[-5000, 5000]`; `log_water_with_cap` body references `under_daily_limit` (P0013 raise re-defined by 0019). [No new column or trigger was added — historical AC2 paraphrase was incorrect.]
+   - **0020 (F-LIB-DEDUP)** — actual artifact verified: index `food_library_items_user_normalized_name_unique` exists in `pg_indexes` with predicate `WHERE deleted_at IS NULL AND normalized_name IS NOT NULL`. [Historical AC2 name `food_library_items_dedup_partial_unique` is stale; actual is the longer name.]
+   - **0021 (library overhaul)** — actual artifacts verified: `food_library_items_created_from_check` widened to include `'manual'`; 4 columns added to `food_library_items`: `thumbnail_kind`, `sketch_generated_at`, `sketch_attempt_count`, `sketch_last_error`; `thumbnail_kind` CHECK constraint in place. [Historical AC2 columns `sketch_image_storage_path`, `sketch_thumb_storage_path`, `sketch_prompt`, `sketch_meta` were an earlier design that did not ship.]
 7. Update `Planning/followups.md`: mark 9 in-scope as RESOLVED-2026-05-XX, 67 as DEFERRED-soft-launch.
 8. Update `bugs/issuelog.txt`: annotate each of the 11 entries with the post-fix commit hash.
 9. Flip `manifest.md` Status → COMPLETE; flip `brainstorm-state.md` state → complete, `Current Position: complete`.

@@ -189,7 +189,7 @@ function stubGeminiTextParseSuccess(counter: { n: number }) {
             unit: 'bowl',
             kcal: 520,
             macros: { protein_g: 32, carbs_g: 65, fat_g: 14, fiber_g: 3 },
-            micros: {},
+            micros: { sodium: 900 },
             confidence: 0.85,
           },
         ],
@@ -202,9 +202,11 @@ function stubGeminiTextParseSuccess(counter: { n: number }) {
 describe('F-UI-3.6-A-2 — client_id idempotency + z.uuid() validation', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.stubEnv('GEMINI_API_KEY', 'test-gemini-key');
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.doUnmock('@/lib/supabase/server');
     vi.doUnmock('@/lib/supabase/admin');
     vi.doUnmock('next/cache');

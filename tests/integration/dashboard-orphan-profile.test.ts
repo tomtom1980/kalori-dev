@@ -28,6 +28,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 
+// Bug 3 (library overhaul 2026-05-16) — `/api/library/[id]/update` now
+// imports `@/lib/storage/sign-thumbnail` which pulls in `server-only`;
+// the AC2 endpoint matrix imports the update route, so stub it for the
+// node test environment.
+vi.mock('server-only', () => ({}));
+
 const TEST_USER_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_USER_ID = '22222222-2222-4222-8222-222222222222';
 
@@ -279,6 +285,11 @@ vi.mock('@/app/(app)/progress/_components/weekly-review-island', () => ({
 vi.mock('@/components/dashboard/WeightQuickAdd', () => ({ WeightQuickAdd: () => null }));
 vi.mock('@/lib/library/fetch', () => ({
   fetchLibraryPage: vi.fn(async () => ({ items: [] })),
+}));
+// Task C.2 — /library now also parallel-fetches Recent Entries; stub it
+// out so the orphan-fence smoke test doesn't pull in `server-only`.
+vi.mock('@/lib/library/fetchRecentEntries', () => ({
+  fetchRecentEntries: vi.fn(async () => []),
 }));
 vi.mock('@/lib/library/getItem', () => ({
   getLibraryItemById: vi.fn(async () => null),

@@ -8,10 +8,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { LibraryEmptyState } from '@/app/(app)/library/_components/LibraryEmptyState';
 
 describe('<LibraryEmptyState />', () => {
-  it('first-time renders the CTA link to /log?tab=type', () => {
+  it('first-time renders a simple "no library items" heading without a CTA link', () => {
     render(<LibraryEmptyState kind="first-time" />);
-    const cta = screen.getByTestId('library-empty-cta');
-    expect(cta).toHaveAttribute('href', '/log?tab=type');
+    expect(screen.getByTestId('library-empty-first-time')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /no library items yet/i })).toBeInTheDocument();
+    // The old "Open the log flow" CTA has been removed — the page-level
+    // "Add Item" button at the top of the library is now the single entry
+    // point for adding items.
+    expect(screen.queryByTestId('library-empty-cta')).not.toBeInTheDocument();
   });
 
   it('filtered-zero renders heading + body + optional reset button', async () => {

@@ -30,14 +30,20 @@ import { getServerSupabase } from '@/lib/supabase/server';
 import { userTzDayUtcRange, userTzDayFrom } from '@/lib/time/day';
 
 import { aggregateDay } from './aggregate';
-import type { DashboardSnapshot, FoodEntry, Profile, WaterLogEntry } from './types';
+import type {
+  AlcoholLogEntry,
+  DashboardSnapshot,
+  FoodEntry,
+  Profile,
+  WaterLogEntry,
+} from './types';
 
 export const fetchProfile = cache(async (uid: string): Promise<Profile> => {
   const supabase = await getServerSupabase();
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, calorie_target, bmr, tdee, timezone, created_at, last_dashboard_visit_at, target_mode, manual_override_value',
+      'id, calorie_target, bmr, tdee, bio_sex, current_weight_kg, timezone, created_at, last_dashboard_visit_at, target_mode, manual_override_value',
     )
     .eq('id', uid)
     .single();
@@ -62,6 +68,25 @@ export const fetchTodayEntries = cache(
       .order('logged_at', { ascending: true });
     if (error) throw new Error('entries_fetch_failed');
     return (data ?? []) as FoodEntry[];
+  },
+);
+
+export const fetchAlcoholLogs = cache(
+  async (uid: string, asOf: string): Promise<AlcoholLogEntry[]> => {
+    const asOfDate = new Date(asOf);
+    const startUtc = new Date(asOfDate.getTime() - 72 * 60 * 60 * 1000).toISOString();
+    const supabase = await getServerSupabase();
+    const { data, error } = await supabase
+      .from('alcohol_logs')
+      .select(
+        'id, user_id, entry_id, volume_ml, abv_percent, alcohol_grams, consumed_at, created_at',
+      )
+      .eq('user_id', uid)
+      .gte('consumed_at', startUtc)
+      .lte('consumed_at', asOf)
+      .order('consumed_at', { ascending: true });
+    if (error) throw new Error('alcohol_fetch_failed');
+    return (data ?? []) as AlcoholLogEntry[];
   },
 );
 
@@ -117,15 +142,17 @@ export async function fetchDaySnapshot(
   tz: string,
   now: string,
 ): Promise<DashboardSnapshot> {
-  const [entries, water, micros7d] = await Promise.all([
+  const [entries, water, micros7d, alcoholLogs] = await Promise.all([
     fetchTodayEntries(uid, day, tz),
     fetchTodayWater(uid, day),
     fetchMicros7d(uid, now, tz),
+    fetchAlcoholLogs(uid, now),
   ]);
   return aggregateDay({
     entries,
     water,
     micros7d,
+    alcoholLogs,
     profile,
     day,
     tz,

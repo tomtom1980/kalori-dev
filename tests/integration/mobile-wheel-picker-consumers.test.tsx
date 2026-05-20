@@ -24,7 +24,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const isMobileMock = vi.fn<() => boolean>(() => false);
 vi.mock('@/lib/hooks/use-is-mobile', () => ({
   useIsMobile: () => isMobileMock(),
-  MOBILE_QUERY: '(max-width: 767px)',
+  MOBILE_QUERY: '(max-width: 1279px)',
 }));
 
 const authFetch = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>();
@@ -40,8 +40,20 @@ vi.mock('next/navigation', () => ({
 }));
 
 import { ConfirmationScreen } from '@/app/(app)/log/_components/ConfirmationScreen';
-import { LibraryTab } from '@/app/(app)/log/_components/LibraryTab';
+import {
+  LibraryList,
+  type LibraryListProps,
+} from '@/app/(app)/log/_components/AddFoodTab/LibraryList';
 import { useLogFlowStore } from '@/lib/stores/useLogFlowStore';
+
+// Task 10 — migrated import. `<LibraryTab>` is gone; tests use the same
+// component (now `<LibraryList>`) via a thin wrapper that supplies the new
+// required `onAddNew` prop with a no-op default so existing render sites
+// keep working without touching every call.
+function LibraryTab(props: Partial<LibraryListProps> = {}) {
+  const { onAddNew = () => {}, ...rest } = props;
+  return <LibraryList onAddNew={onAddNew} {...rest} />;
+}
 
 const baseItems = [
   {
@@ -141,16 +153,17 @@ describe('ConfirmationScreen — portion picker breakpoint switch', () => {
     expect(list.getAttribute('aria-label')).toMatch(/portion/i);
 
     // Simulate keyboard selection — focus the listbox, ArrowDown ×3.
-    // Wheel options run 0.25–10 step 0.25 (40 rows), so 2 + 3*0.25 = 2.75.
+    // The fixture unit is "unit" which the discrete-unit heuristic
+    // classifies as a piece-count (integer step = 1), so the wheel
+    // renders integer options [1..20] starting around the baseline.
+    // From the initial value 2 with step 1, three ArrowDowns land on 5.
     list.focus();
     await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}');
     await user.click(screen.getByRole('button', { name: /done/i }));
 
-    // The reducer in ConfirmationScreen owns portion state; we don't have
-    // direct access to it here but the trigger label must reflect the new
-    // value. Spec: portion 2 + 3*0.25 = 2.75.
-    expect(trigger.textContent).toMatch(/2\.75/);
-    expect(screen.getByTestId('confirmation-item-0-kcal')).toHaveValue(193);
+    // Spec: portion 2 + 3*1 = 5; kcal 140 * (5/2) = 350.
+    expect(trigger.textContent).toMatch(/\b5\b/);
+    expect(screen.getByTestId('confirmation-item-0-kcal')).toHaveValue(350);
   });
 });
 

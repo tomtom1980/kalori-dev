@@ -21,8 +21,9 @@
  * the real SHA-256 hash.
  */
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 
-import { computeCacheKey } from '@/lib/ai/cache';
+import { AI_PROMPT_CONTRACT_VERSION, computeCacheKey } from '@/lib/ai/cache';
 
 describe('F8 — computeCacheKey (Task 3.2 cache key contract)', () => {
   it('produces a stable non-empty string for a given {callType, userId, normalizedInput}', () => {
@@ -81,6 +82,20 @@ describe('F8 — computeCacheKey (Task 3.2 cache key contract)', () => {
       normalizedInput: 'banh mi',
     });
     expect(a).not.toBe(b);
+  });
+
+  it('includes the prompt contract version so schema/prompt fixes bypass stale cache rows', () => {
+    const expected = createHash('sha256')
+      .update(`text-parse:user-alpha:${AI_PROMPT_CONTRACT_VERSION}:pho bo`)
+      .digest('hex');
+
+    expect(
+      computeCacheKey({
+        callType: 'text-parse',
+        userId: 'user-alpha',
+        normalizedInput: 'pho bo',
+      }),
+    ).toBe(expected);
   });
 
   it('missing / empty userId throws with a userId-specific error (defence-in-depth — service-role table has no RLS)', () => {

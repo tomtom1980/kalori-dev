@@ -5,7 +5,8 @@
  *
  * Provides:
  *   - `+ Add` button per column → opens Log modal with pre-filled
- *     `meal_category` via useLogFlowStore.openModal('type', { mealCategory }).
+ *     `meal_category` via useLogFlowStore.openModal('library', { mealCategory }).
+ *     Default subview is the Add Food → library list per the tab-merge spec.
  *   - `⋯` context-menu trigger → opens a minimal popover with Delete / Edit
  *     / Copy-to-today menu items.
  *   - Delete wiring — F-UI-3.6-C-1 delay-on-TTL: optimistic hide +
@@ -21,7 +22,7 @@
  * item click.
  */
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { announcePolite } from '@/lib/a11y/announce';
 import { authFetch, SessionExpiredError } from '@/lib/auth/refresh-interceptor';
@@ -50,24 +51,23 @@ export function MealAddButton({ category, timezone, viewedDay }: MealAddButtonPr
   return (
     <button
       type="button"
+      className="kalori-meal-add-button"
       data-testid={`meal-add-${category}`}
       aria-label={a11y}
       onClick={() =>
-        openModal('type', {
+        openModal('library', {
           mealCategory: category as MealCategoryHint,
           ...(viewedDay ? { logDate: viewedDay } : {}),
           ...(timezone ? { timezone } : {}),
         })
       }
       style={{
-        fontFamily: 'var(--font-sans)',
+        fontFamily: 'var(--font-mono)',
         fontSize: 'var(--type-label)',
-        fontWeight: 500,
+        fontWeight: 800,
         letterSpacing: '0.18em',
         textTransform: 'uppercase',
-        color: 'var(--color-oxblood-soft)',
-        background: 'transparent',
-        border: 'none',
+        marginTop: 'auto',
         padding: 'var(--spacing-3)',
         minHeight: 44,
         minWidth: 44,
@@ -99,9 +99,24 @@ export function EntryRowActions({ entry, timezone, viewedDay }: EntryRowActionsP
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const rootRef = useRef<HTMLSpanElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const openModal = useLogFlowStore((s) => s.openModal);
   const enterConfirmation = useLogFlowStore((s) => s.enterConfirmation);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (rootRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true);
+  }, [open]);
 
   if (hidden) {
     // Optimistic hide — row collapsed via parent display.
@@ -206,6 +221,7 @@ export function EntryRowActions({ entry, timezone, viewedDay }: EntryRowActionsP
 
   return (
     <span
+      ref={rootRef}
       style={{ position: 'relative', display: 'inline-block' }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') setOpen(false);

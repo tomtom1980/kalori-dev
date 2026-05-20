@@ -26,6 +26,7 @@ import { t } from '@/lib/i18n/en';
 
 import { IdentityRow } from './identity-row';
 import { PRIMARY_DESTINATIONS, isRouteActive } from './primary-destinations';
+import { SignOutButton } from './sign-out-button';
 
 import type { DisplayIdentity } from '@/lib/auth/get-display-identity';
 
@@ -58,7 +59,6 @@ export interface SidebarProps {
 export function Sidebar({ pathname, identity = ANONYMOUS_IDENTITY }: SidebarProps) {
   return (
     <aside
-      className="kalori-sidebar"
       style={{
         width: '240px',
         minHeight: '100vh',
@@ -115,8 +115,13 @@ export function Sidebar({ pathname, identity = ANONYMOUS_IDENTITY }: SidebarProp
               // components/nav/primary-destinations.ts)
               href={destination.href}
               data-testid={destination.testId}
-              className="kalori-sidebar-link"
               aria-current={active ? 'page' : undefined}
+              // Opt out of the sitewide 3D hover-lift (globals.css §"Sitewide
+              // clickable affordance layer"). The universal `translate3d(0,
+              // -2px, 12px)` scales nav links ~1.6% in projected size,
+              // pushing them past the 240px sidebar boundary and triggering
+              // a scrollbar on hover.
+              data-no-hover-lift="true"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -148,7 +153,6 @@ export function Sidebar({ pathname, identity = ANONYMOUS_IDENTITY }: SidebarProp
 function BrandRow() {
   return (
     <div
-      className="kalori-sidebar-brand"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -206,27 +210,7 @@ function UserStrip({ identity }: { identity: DisplayIdentity }) {
       }}
     >
       <IdentityRow identity={identity} />
-      <button
-        type="button"
-        aria-label={t.user.signOutA11y}
-        className="kalori-sidebar-signout"
-        style={{
-          minHeight: '44px',
-          minWidth: '44px',
-          textAlign: 'left',
-          background: 'transparent',
-          border: 'none',
-          padding: 0,
-          color: 'var(--color-dust)',
-          fontFamily: 'var(--font-sans)',
-          fontSize: 'var(--type-label)',
-          letterSpacing: '0.18em',
-          textTransform: 'uppercase',
-          cursor: 'pointer',
-        }}
-      >
-        {t.user.signOutLabel}
-      </button>
+      <SignOutButton />
     </div>
   );
 }

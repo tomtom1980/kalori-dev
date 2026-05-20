@@ -167,6 +167,60 @@ export async function authFetch(
 }
 
 /**
+ * Thrown by `authPost` when the server returns a non-2xx response. Carries
+ * the parsed `body` (JSON object if `Content-Type: application/json`,
+ * raw text otherwise, `null` if the body could not be read) alongside the
+ * HTTP `status`, so callers can recover structured error payloads (e.g. the
+ * `409 restore_name_conflict` shape from
+ * `app/api/library/bulk-delete/undo/route.ts`).
+ *
+ * Back-compat: extends `Error` and preserves the legacy message format
+ * `authPost ${url} failed: ${status}` so existing string-regex consumers
+ * (`lib/log-flow/classify-error.ts`, FoodDetail Log-Now's retry classifier
+ * which matches `/failed:\s*(\d+)/`) continue to work unchanged.
+ *
+ * Resolves F-CODEX-D-R2-03 / F-CODEX-D-R3-01 (paired with F-CODEX-D-R2-02).
+ */
+export class AuthApiError extends Error {
+  readonly status: number;
+  readonly body: unknown;
+
+  constructor(message: string, status: number, body: unknown) {
+    super(message);
+    this.name = 'AuthApiError';
+    this.status = status;
+    this.body = body;
+    // Restore the prototype chain for `instanceof` after TS down-leveling
+    // (the standard ES5 babel-extends pattern).
+    Object.setPrototypeOf(this, AuthApiError.prototype);
+  }
+}
+
+/**
+ * Best-effort body parser for `AuthApiError`. Reads the response body once
+ * (callers can no longer drain it after this) and returns:
+ *   - the parsed JSON object when `Content-Type` starts with `application/json`
+ *   - the raw text string otherwise (length-bounded so a runaway HTML error
+ *     page from a CDN edge cannot blow the heap)
+ *   - `null` when the body cannot be read (network abort during teardown)
+ */
+async function readErrorBody(res: Response): Promise<unknown> {
+  try {
+    const contentType = res.headers.get('content-type') ?? '';
+    if (contentType.toLowerCase().includes('application/json')) {
+      return (await res.json()) as unknown;
+    }
+    const text = await res.text();
+    // Bound at 8 KB — error payloads larger than this are pathological
+    // (typically a CDN 502 HTML page); the status code is the load-bearing
+    // signal for the caller, not the full HTML.
+    return text.length > 8192 ? text.slice(0, 8192) : text;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Convenience JSON POST wrapper. Accepts a plain object body, serializes it
  * once, and routes the call through `authFetch`. The serialized string is
  * what both the original and retry fetch see — preserves body bytes across
@@ -174,6 +228,9 @@ export async function authFetch(
  *
  * Extra `init` overrides exclude `method` and `body`; callers never set those
  * fields because the wrapper owns them.
+ *
+ * On non-2xx: throws `AuthApiError` carrying the structured response body
+ * (see class doc for the back-compat message format).
  */
 export async function authPost<T>(
   url: string,
@@ -191,7 +248,8 @@ export async function authPost<T>(
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(`authPost ${url} failed: ${res.status}`);
+    const errorBody = await readErrorBody(res);
+    throw new AuthApiError(`authPost ${url} failed: ${res.status}`, res.status, errorBody);
   }
   return (await res.json()) as T;
 }

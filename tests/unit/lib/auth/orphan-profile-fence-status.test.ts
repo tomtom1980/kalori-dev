@@ -4,8 +4,9 @@
  * `authFetch` (R1 firewall) does not pattern-match the response as
  * session-expiry and force-sign-out the user. Body shape unchanged.
  *
- * Distinct branches:
- *   - unauthenticated      → 401 `{ error: 'unauthorized' }`
+ * Distinct branches (status-code map per Phase A + Task D.2 US-STAB-D2):
+ *   - unauthenticated      → 401 canonical envelope `{ error: 'unauthenticated' }`
+ *                            + `WWW-Authenticate: Bearer realm="kalori"` (D.2)
  *   - orphan profile        → 422 `{ error: 'profile_lookup_failed' }`
  *   - transient lookup err  → 503 `{ error: 'profile_lookup_unavailable' }`
  *
@@ -53,6 +54,41 @@ function buildSupabaseMock(opts: MockOpts) {
   return { auth: { getUser }, from };
 }
 
+function buildMissingAiOptInColumnSupabaseMock() {
+  const select = vi.fn((cols: string) => ({
+    eq: () => ({
+      maybeSingle: async () => {
+        if (cols.includes('ai_summary_opt_in')) {
+          return {
+            data: null,
+            error: {
+              code: '42703',
+              message: 'column profiles.ai_summary_opt_in does not exist',
+            },
+          };
+        }
+        return {
+          data: {
+            id: 'u-test',
+            onboarding_completed_at: '2026-05-01T00:00:00.000Z',
+            timezone: 'UTC',
+          },
+          error: null,
+        };
+      },
+    }),
+  }));
+  const from = vi.fn((table: string) => {
+    if (table === 'profiles') return { select };
+    throw new Error(`unexpected table: ${table}`);
+  });
+  const getUser = vi.fn(async () => ({
+    data: { user: { id: 'u-test' } },
+    error: null,
+  }));
+  return { auth: { getUser }, from, select };
+}
+
 describe('requireProfileOrJson401 — orphan branch returns 422 (Codex R1 #1)', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -87,7 +123,7 @@ describe('requireProfileOrJson401 — orphan branch returns 422 (Codex R1 #1)', 
     expect(body.error).toBe('profile_lookup_failed');
   });
 
-  it('unauthenticated → status 401 (the only 401 branch)', async () => {
+  it('unauthenticated → status 401 canonical envelope (US-STAB-D2: body unauthenticated + WWW-Authenticate)', async () => {
     const supabase = buildSupabaseMock({ user: null });
     vi.doMock('@/lib/supabase/server', () => ({
       getServerSupabase: async () => supabase,
@@ -102,7 +138,12 @@ describe('requireProfileOrJson401 — orphan branch returns 422 (Codex R1 #1)', 
     const res = result as Response;
     expect(res.status).toBe(401);
     const body = (await res.json()) as { error?: string };
-    expect(body.error).toBe('unauthorized');
+    // Task D.2 (US-STAB-D2): body flipped from 'unauthorized' to
+    // 'unauthenticated' and WWW-Authenticate header added.
+    expect(body.error).toBe('unauthenticated');
+    expect(res.headers.get('www-authenticate')).toBe('Bearer realm="kalori"');
+    expect(res.headers.get('content-type')?.toLowerCase()).toContain('application/json');
+    expect(res.headers.get('location')).toBeNull();
   });
 
   it('transient lookup error → status 503 (also distinct from 401)', async () => {
@@ -126,6 +167,27 @@ describe('requireProfileOrJson401 — orphan branch returns 422 (Codex R1 #1)', 
     expect(res.status).not.toBe(401);
     const body = (await res.json()) as { error?: string };
     expect(body.error).toBe('profile_lookup_unavailable');
+  });
+
+  it('missing optional ai_summary_opt_in column → retries profile lookup and fails consent closed', async () => {
+    const supabase = buildMissingAiOptInColumnSupabaseMock();
+    vi.doMock('@/lib/supabase/server', () => ({
+      getServerSupabase: async () => supabase,
+    }));
+
+    const mod = (await import('@/lib/auth/orphan-profile-fence')) as {
+      requireProfileOrJson401: (opts: { route: string; selectExtras?: string }) => Promise<unknown>;
+    };
+    const result = await mod.requireProfileOrJson401({
+      route: '/api/ai/nutrition-summary',
+      selectExtras: 'timezone, ai_summary_opt_in, calorie_target',
+    });
+
+    expect(result).not.toBeInstanceOf(Response);
+    expect(supabase.select).toHaveBeenCalledTimes(2);
+    expect(supabase.select.mock.calls[0]?.[0]).toContain('ai_summary_opt_in');
+    expect(supabase.select.mock.calls[1]?.[0]).not.toContain('ai_summary_opt_in');
+    expect((result as { profile: Record<string, unknown> }).profile.ai_summary_opt_in).toBe(false);
   });
 });
 
@@ -243,5 +305,30 @@ describe('requireProfileOrRedirect — lookup_error must NOT redirect to /onboar
       mod.requireProfileOrRedirect({ route: '/dashboard', loginRedirectTo: '/dashboard' }),
     ).rejects.toThrow(/NEXT_REDIRECT:\/onboarding/);
     expect(navMocks.redirect).toHaveBeenCalledWith('/onboarding');
+  });
+
+  it('missing optional ai_summary_opt_in column → page routes keep rendering with opt-in false', async () => {
+    const supabase = buildMissingAiOptInColumnSupabaseMock();
+    vi.doMock('@/lib/supabase/server', () => ({
+      getServerSupabase: async () => supabase,
+    }));
+
+    const mod = (await import('@/lib/auth/orphan-profile-fence')) as {
+      requireProfileOrRedirect: (opts: {
+        route: string;
+        loginRedirectTo: string;
+        selectExtras?: string;
+      }) => Promise<unknown>;
+    };
+
+    const result = await mod.requireProfileOrRedirect({
+      route: '/dashboard',
+      loginRedirectTo: '/dashboard',
+      selectExtras: 'timezone, ai_summary_opt_in',
+    });
+
+    expect(supabase.select).toHaveBeenCalledTimes(2);
+    expect(navMocks.redirect).not.toHaveBeenCalled();
+    expect((result as { profile: Record<string, unknown> }).profile.ai_summary_opt_in).toBe(false);
   });
 });

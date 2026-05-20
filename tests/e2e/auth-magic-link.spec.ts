@@ -89,13 +89,16 @@ test.describe('auth · magic link', () => {
     const body = otpRequestBody as unknown as Record<string, unknown>;
     expect(body.email).toBe('test-user-magic@example.test');
     // supabase-js encodes `emailRedirectTo` as a URL query param, not a body
-    // field. The redirect target must point at our auth callback; the
-    // callback route is the one that eventually decides onboarding vs
-    // dashboard.
+    // field. The redirect target for magic-link must point at our PKCE-free
+    // verifyOtp handler at `/auth/confirm` (NOT `/auth/callback`). The
+    // callback route is reserved for Google OAuth (single-browser PKCE).
+    // Production switched to the token-hash flow because cross-browser
+    // clicks (request in Messenger in-app browser, click from Gmail) lost
+    // the PKCE code_verifier cookie and silently failed.
     expect(otpRequestUrl).not.toBeNull();
     const parsedUrl = new URL(otpRequestUrl as unknown as string);
     const redirectTo = parsedUrl.searchParams.get('redirect_to');
-    expect(redirectTo ?? '').toContain('/auth/callback');
+    expect(redirectTo ?? '').toContain('/auth/confirm');
   });
 
   test('surfaces an error banner when Supabase rejects the magic-link send', async ({ page }) => {

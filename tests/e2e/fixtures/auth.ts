@@ -54,6 +54,8 @@
 import { test as base, type BrowserContext, type Page } from '@playwright/test';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
+import { refuseProdSupabase } from '../../_utils/refuse-prod-supabase';
+
 export interface AuthFixtures {
   /** Page signed in as a freshly-provisioned onboarding-complete user. */
   authedPage: import('@playwright/test').Page;
@@ -117,6 +119,14 @@ function resolveEnv(): { url: string; anonKey: string; serviceRoleKey: string } 
       'Auth fixture env missing: SUPABASE_TEST_URL + SUPABASE_TEST_ANON_KEY + SUPABASE_TEST_SERVICE_ROLE_KEY (CI) or NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY + SUPABASE_SECRET_KEY (local) must all be set.',
     );
   }
+
+  // F-LIBOVR-E2E-INFRA-DRIFT — prod-ref guard. Ordering: this fires AFTER
+  // the missing-env throw above so the existing CI-DEFERRED classification
+  // (which keys on the "Auth fixture env missing" message) is preserved
+  // unchanged. The guard only fires when env IS populated AND points at
+  // the kalori-prod project ref — exactly the scenario where the fixture
+  // would otherwise leak ephemeral users into production auth.users.
+  refuseProdSupabase(url);
 
   return { url, anonKey, serviceRoleKey };
 }

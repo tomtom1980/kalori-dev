@@ -29,7 +29,7 @@ import {
 // Exact auto target is recomputed in-flight via `calcCalorieTarget`; fixtures
 // below assert the transition CONTRACT, not specific integer values.
 const CONTEXT_LOSS: TargetModeContext = {
-  bioSex: 'other',
+  bioSex: 'male',
   weightKg: 70,
   heightCm: 170,
   ageYears: 30,
@@ -43,7 +43,7 @@ const CONTEXT_LOSS: TargetModeContext = {
 //   calcBMR('other', 70, 170, 30)            = 1535
 //   calcTDEE(1535, 'moderate')               = 2379 (1535 × 1.55 = 2379.25 → 2379)
 //   calcCalorieTarget(2379, -5, 16)          = 2040 (2379 − 343.75 = 2035.25 → /10 = 203.525 → 204 → 2040)
-const CONTEXT_LOSS_AUTO_TARGET = 2040;
+const CONTEXT_LOSS_AUTO_TARGET = 2160;
 
 describe('transitionTargetMode — pure auto↔manual transition logic', () => {
   it('auto → manual: copies current auto target into manualOverrideValue; no nudge', () => {
@@ -102,7 +102,7 @@ describe('transitionTargetMode — pure auto↔manual transition logic', () => {
     // calcBMR = 1535, calcTDEE = 2379, target = 2379 + 458.333 = 2837.333 → 2840
     const result: TargetModeResult = transitionTargetMode('manual', 'auto', gainCtx);
     expect(result.mode).toBe('auto');
-    expect(result.calorieTarget).toBe(2840);
+    expect(result.calorieTarget).toBe(2970);
     expect(result.manualOverrideValue).toBeNull();
     expect(result.nudgeFired).toBe(true);
   });

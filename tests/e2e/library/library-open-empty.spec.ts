@@ -1,45 +1,45 @@
 /**
- * E2E: /library first-time empty state — Task 4.1 sub-step 4 §15.5.1.
+ * E2E: /library first-time empty state.
  *
  * Scope: the F-TEST-4 fixture provisions a brand-new user with zero library
- * items. Navigating to /library therefore hits the first-time empty state
- * rendered by <LibraryEmptyState kind="first-time"> (see
- * app/(app)/library/page.tsx — when `items.length === 0` the RSC skips the
- * client island entirely).
+ * items. The page now always renders the full LibraryClient — so the toolbar
+ * AND the page-level "Add Item" button are visible even with zero items, and
+ * the empty-state copy appears inline inside the grid area (via the grid's
+ * `renderEmpty` callback). This replaces the old "skip the client island +
+ * show a big CTA Link" surface — the page-level Add Item button is the
+ * single entry point for adding items.
  *
  * Asserts:
  *   - URL settles on /library (no login redirect, no onboarding redirect).
- *   - Empty-state region is visible with its testid.
- *   - Kicker + heading + body copy from `t.library.empty*` render.
- *   - CTA link with testid `library-empty-cta` points at `/log?tab=type`.
+ *   - Masthead + toolbar + Add Item button render even when items=0.
+ *   - Empty-state region renders with the new "no library items yet"
+ *     heading (no body, no CTA link).
  */
 import { expect } from '@playwright/test';
 
 import { test } from '../fixtures/auth';
 
 test.describe('/library · first-time empty', () => {
-  test('empty library shows empty-state copy + CTA to log flow', async ({ authedPage }) => {
+  test('empty library still shows the toolbar + Add Item entry point', async ({ authedPage }) => {
     await authedPage.goto('/library');
     await expect(authedPage).toHaveURL(/\/library(?:\?.*)?$/);
 
+    // Masthead + page-level Add Item button + tools rail all render even
+    // when the user has zero items — that's the whole point of unifying
+    // the empty + populated layouts.
+    await expect(authedPage.getByTestId('library-masthead')).toBeVisible();
+    await expect(authedPage.getByTestId('library-add-button')).toBeVisible();
+    await expect(authedPage.getByTestId('library-tools-rail')).toBeVisible();
+
+    // Empty-state surface appears inline inside the grid area. Heading
+    // copy is the simplified "no library items yet" line; the old
+    // "Open the log flow" CTA link is gone.
     const empty = authedPage.getByTestId('library-empty-first-time');
     await expect(empty).toBeVisible();
+    await expect(empty.getByRole('heading', { name: /no library items yet/i })).toBeVisible();
+    await expect(authedPage.getByTestId('library-empty-cta')).toHaveCount(0);
 
-    // Masthead renders above the empty state.
-    await expect(authedPage.getByTestId('library-masthead')).toBeVisible();
-
-    // Copy — the exact strings come from lib/i18n/en.ts
-    await expect(empty.getByRole('heading', { name: /no titles yet filed/i })).toBeVisible();
-    await expect(empty).toContainText(/log a meal by text or photo/i);
-
-    // CTA is a Next <Link> to /log?tab=type (see LibraryEmptyState.tsx).
-    const cta = authedPage.getByTestId('library-empty-cta');
-    await expect(cta).toBeVisible();
-    await expect(cta).toHaveAttribute('href', '/log?tab=type');
-
-    // Grid + bulk-actions bar + tools rail MUST NOT render when items=0.
-    await expect(authedPage.getByTestId('library-grid')).toHaveCount(0);
-    await expect(authedPage.getByTestId('library-tools-rail')).toHaveCount(0);
+    // No selection — the bulk-actions bar stays unmounted.
     await expect(authedPage.getByTestId('library-bulk-actions-bar')).toHaveCount(0);
   });
 });

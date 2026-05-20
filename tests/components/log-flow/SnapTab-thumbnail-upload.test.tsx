@@ -21,6 +21,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { LogFlowTabs } from '@/app/(app)/log/_components/LogFlowTabs';
 import { SnapTab } from '@/app/(app)/log/_components/SnapTab';
 import { t } from '@/lib/i18n/en';
 import { useLogFlowStore } from '@/lib/stores/useLogFlowStore';
@@ -28,6 +29,9 @@ import { useLogFlowStore } from '@/lib/stores/useLogFlowStore';
 // Shared mock handles — reset per-case.
 const authPostMock = vi.fn();
 const sentryCaptureExceptionMock = vi.fn();
+const NO_FOOD_TITLE = 'No recognizable food item is on this picture.';
+const NO_FOOD_BODY = 'Try another photo or add the food item without a photo.';
+const ADD_FOOD_ITEM = 'Add food item';
 
 vi.mock('@/lib/auth/refresh-interceptor', () => ({
   authPost: (...args: unknown[]) => authPostMock(...args),
@@ -114,7 +118,7 @@ describe('<SnapTab /> — Task 4.7.5 dual-output thumbnail upload', () => {
     const onAnalyzeSuccess = vi.fn();
     render(<SnapTab onAnalyzeSuccess={onAnalyzeSuccess} />);
 
-    const input = screen.getByTestId('snap-tab-file-input') as HTMLInputElement;
+    const input = screen.getByTestId('snap-tab-upload-input') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [makeImageFile()] } });
 
     await waitFor(() => {
@@ -183,7 +187,7 @@ describe('<SnapTab /> — Task 4.7.5 dual-output thumbnail upload', () => {
     const onAnalyzeSuccess = vi.fn();
     render(<SnapTab onAnalyzeSuccess={onAnalyzeSuccess} />);
 
-    const input = screen.getByTestId('snap-tab-file-input') as HTMLInputElement;
+    const input = screen.getByTestId('snap-tab-upload-input') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [makeImageFile()] } });
 
     await waitFor(() => {
@@ -234,7 +238,7 @@ describe('<SnapTab /> — Task 4.7.5 dual-output thumbnail upload', () => {
 
     render(<SnapTab onAnalyzeSuccess={vi.fn()} />);
 
-    const input = screen.getByTestId('snap-tab-file-input') as HTMLInputElement;
+    const input = screen.getByTestId('snap-tab-upload-input') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [makeImageFile()] } });
 
     await waitFor(() => {
@@ -276,7 +280,7 @@ describe('<SnapTab /> — Task 4.7.5 dual-output thumbnail upload', () => {
 
     render(<SnapTab onAnalyzeSuccess={vi.fn()} />);
 
-    const input = screen.getByTestId('snap-tab-file-input') as HTMLInputElement;
+    const input = screen.getByTestId('snap-tab-upload-input') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [makeImageFile()] } });
 
     await waitFor(() => {
@@ -290,5 +294,67 @@ describe('<SnapTab /> — Task 4.7.5 dual-output thumbnail upload', () => {
     // Exact i18n key match — surfaces copy drift (e.g. en.ts edits) as a
     // test failure instead of silently passing the looser regex.
     expect(warning.textContent).toBe(t.log.snapThumbnailFailed);
+  });
+
+  it('no-food vision fallback shows no manual detail form and Try Photo Again resets the snap draft', async () => {
+    authPostMock.mockImplementation(async (url: string) => {
+      if (url === '/api/ai/vision') {
+        return { fallback: true, reason: 'no_food', originalInput: '<image>' };
+      }
+      throw new Error(`unexpected URL ${url}`);
+    });
+
+    render(<SnapTab />);
+
+    const input = screen.getByTestId('snap-tab-upload-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [makeImageFile()] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(NO_FOOD_TITLE)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(NO_FOOD_BODY)).toBeInTheDocument();
+    expect(screen.queryByTestId('manual-entry-fallback')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/food name/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.log.fallbackSubmitCTA)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: ADD_FOOD_ITEM })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.log.fallbackRetryPhotoCTA })).toBeInTheDocument();
+    expect(useLogFlowStore.getState().clientIds.snap).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: t.log.fallbackRetryPhotoCTA }));
+
+    expect(useLogFlowStore.getState().snapDraft.status).toBe('idle');
+    expect(useLogFlowStore.getState().clientIds.snap).toBeUndefined();
+    expect(screen.queryByText(NO_FOOD_TITLE)).not.toBeInTheDocument();
+    expect(screen.getByTestId('snap-tab-dropzone')).toBeInTheDocument();
+    expect(screen.getByTestId('snap-tab-dropzone').querySelector('img')).toBeNull();
+  });
+
+  it('no-food Add food item opens the no-photo Add Food AI description flow', async () => {
+    authPostMock.mockImplementation(async (url: string) => {
+      if (url === '/api/ai/vision') {
+        return { fallback: true, reason: 'no_food', originalInput: '<image>' };
+      }
+      throw new Error(`unexpected URL ${url}`);
+    });
+
+    useLogFlowStore.getState().setActiveTab('snap');
+    render(<LogFlowTabs />);
+
+    const input = screen.getByTestId('snap-tab-upload-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [makeImageFile()] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(NO_FOOD_TITLE)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: ADD_FOOD_ITEM }));
+
+    expect(useLogFlowStore.getState().activeTab).toBe('type');
+    expect(useLogFlowStore.getState().snapDraft.status).toBe('idle');
+    expect(useLogFlowStore.getState().clientIds.snap).toBeUndefined();
+    expect(screen.getByText(t.log.typeDescribeLabel)).toBeInTheDocument();
+    expect(screen.getByTestId('type-tab-textarea')).toBeInTheDocument();
+    expect(screen.queryByTestId('manual-entry-fallback')).not.toBeInTheDocument();
   });
 });

@@ -49,15 +49,24 @@ describe('US-STAB-B6 — /settings page (Task B.6)', () => {
     vi.doUnmock('@/lib/supabase/server');
   });
 
-  async function renderSettingsPage() {
+  async function renderSettingsPage(
+    profileOverrides: Record<string, string | number | boolean | null> = {},
+  ) {
     vi.doMock('@/lib/auth/orphan-profile-fence', () => ({
       requireProfileOrRedirect: async () => ({
         user: { id: TEST_USER_ID, email: TEST_USER_EMAIL },
-        profile: { id: TEST_USER_ID, onboarding_completed_at: '2026-01-01T00:00:00Z' },
+        profile: {
+          id: TEST_USER_ID,
+          onboarding_completed_at: '2026-01-01T00:00:00Z',
+          ...profileOverrides,
+        },
       }),
     }));
     vi.doMock('@/lib/supabase/server', () => ({
       getServerSupabase: async () => buildSupabaseCountsMock(),
+    }));
+    vi.doMock('@/lib/time/day', () => ({
+      userTzDayFrom: () => '2026-05-18',
     }));
     const { default: SettingsPage } = await import('@/app/(app)/settings/page');
     const ui = await SettingsPage();
@@ -93,5 +102,32 @@ describe('US-STAB-B6 — /settings page (Task B.6)', () => {
     expect(container.querySelector('[data-testid="reduce-motion-toggle"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="settings-data-section"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="settings-account-section"]')).not.toBeNull();
+  });
+
+  it('renders the AI summary consent switch from the profile setting', async () => {
+    const { container } = await renderSettingsPage({ ai_summary_opt_in: true });
+    const toggle = container.querySelector('[data-testid="ai-summary-consent-toggle"]');
+
+    expect(toggle).not.toBeNull();
+    expect(toggle?.querySelector('[role="switch"]')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('renders a stable data export anchor for account-menu deep links', async () => {
+    const { container } = await renderSettingsPage();
+    const dataSection = container.querySelector('[data-testid="settings-data-section"]');
+
+    expect(dataSection).not.toBeNull();
+    expect(dataSection).toHaveAttribute('id', 'data-export');
+  });
+
+  it('renders birthday as readable text and derives age from the stored birthday', async () => {
+    const { getByText } = await renderSettingsPage({
+      birthday: '1980-05-27',
+      age: 99,
+      timezone: 'Asia/Bangkok',
+    });
+
+    expect(getByText('May 27, 1980')).toBeTruthy();
+    expect(getByText('45')).toBeTruthy();
   });
 });

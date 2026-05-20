@@ -63,7 +63,7 @@ export function EditorsNote({
           fontSize: 10.5,
           letterSpacing: '0.22em',
           textTransform: 'uppercase',
-          color: 'var(--color-oxblood-soft)',
+          color: 'var(--color-ivory)',
           margin: 0,
         }}
       >

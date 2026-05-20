@@ -2,7 +2,7 @@
 
 import { CalendarDays, RotateCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { t } from '@/lib/i18n/en';
 import { useDashboardDateTransitionStore } from '@/lib/stores/useDashboardDateTransitionStore';
@@ -28,9 +28,25 @@ function isIsoDay(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+/**
+ * DashboardDateControl
+ *
+ * Renders the native `<input type="date">` directly as the tap target so iOS
+ * Safari opens its OS-level wheel picker on a real user tap. The visible
+ * calendar icon is a decorative overlay (`pointer-events: none`,
+ * `aria-hidden="true"`). The input itself is positioned absolutely over a
+ * 44×44 wrapper, kept layout-preserving with `opacity: 0`, but
+ * `pointer-events: auto` so taps land on the input — which is the gesture
+ * iOS requires before opening the picker.
+ *
+ * This pattern aligns with `Planning/ui-design.md` §10.6.1 line 2990:
+ * "<input type='time'> and <input type='date'> ALREADY render an OS-level
+ * wheel on iOS/Android — do NOT shim them." Sibling precedent:
+ * `WeightQuickAdd.tsx` and `Confirmation/TimeEditor.tsx` both use the native
+ * input directly with no proxy button + showPicker shim.
+ */
 export function DashboardDateControl({ viewedDay, today }: DashboardDateControlProps) {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const [message, setMessage] = useState('');
   const loadingDay = useDashboardDateTransitionStore((state) => state.loadingDay);
   const setLoadingDay = useDashboardDateTransitionStore((state) => state.setLoadingDay);
@@ -56,17 +72,6 @@ export function DashboardDateControl({ viewedDay, today }: DashboardDateControlP
     router.push(day === today ? '/dashboard' : `/dashboard?day=${day}`);
   }
 
-  function openPicker(): void {
-    const input = inputRef.current;
-    if (!input) return;
-    if (typeof input.showPicker === 'function') {
-      input.showPicker();
-      return;
-    }
-    input.focus();
-    input.click();
-  }
-
   return (
     <section
       data-testid="dashboard-date-control"
@@ -84,16 +89,17 @@ export function DashboardDateControl({ viewedDay, today }: DashboardDateControlP
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
-        <button
-          type="button"
-          aria-label={t.dashboard.date.pickerA11y}
-          onClick={openPicker}
-          disabled={isLoading}
+        <span
+          className="kalori-dashboard-date-trigger"
           style={{
+            position: 'relative',
+            display: 'inline-grid',
+            placeItems: 'center',
             width: 44,
             height: 44,
-            display: 'grid',
-            placeItems: 'center',
+            minWidth: 44,
+            minHeight: 44,
+            flex: '0 0 auto',
             background: isLoading ? 'var(--color-bg)' : 'var(--color-bg-1)',
             border: '1px solid var(--color-rule-strong)',
             color: 'var(--color-sand)',
@@ -101,25 +107,73 @@ export function DashboardDateControl({ viewedDay, today }: DashboardDateControlP
             opacity: isLoading ? 0.72 : 1,
           }}
         >
-          <CalendarDays size={18} strokeWidth={1.6} aria-hidden="true" />
-        </button>
-        <input
-          ref={inputRef}
-          type="date"
-          value={viewedDay}
-          max={today}
-          disabled={isLoading}
-          data-testid="dashboard-date-input"
-          aria-label={t.dashboard.date.pickerA11y}
-          onChange={(event) => goToDay(event.currentTarget.value)}
-          style={{
-            position: 'absolute',
-            width: 1,
-            height: 1,
-            opacity: 0,
-            pointerEvents: 'none',
-          }}
-        />
+          <span
+            data-testid="dashboard-date-icon"
+            aria-hidden="true"
+            style={{
+              pointerEvents: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <CalendarDays size={18} strokeWidth={1.6} aria-hidden="true" />
+          </span>
+          <input
+            type="date"
+            value={viewedDay}
+            max={today}
+            disabled={isLoading}
+            data-testid="dashboard-date-input"
+            aria-label={t.dashboard.date.pickerA11y}
+            aria-busy={isLoading || undefined}
+            onChange={(event) => goToDay(event.currentTarget.value)}
+            // Desktop browsers (Chromium, Firefox, Safari) open the native
+            // date picker on the spinner chevron — NOT on a click anywhere
+            // in the field. Because this input is transparent (opacity: 0),
+            // there is no visible chevron to click, so a plain field click
+            // just focused the input without opening the picker. Calling
+            // `showPicker()` inside the click handler — which always runs
+            // under a user activation — opens the picker reliably on
+            // desktop. iOS/Android keep working as before (they open the
+            // OS-level wheel on field focus regardless of showPicker).
+            onClick={(event) => {
+              const el = event.currentTarget;
+              if (typeof el.showPicker === 'function') {
+                try {
+                  el.showPicker();
+                } catch {
+                  /* picker unsupported / blocked — fall back to native focus */
+                }
+              }
+            }}
+            // FIX-5-A F2: inline `outline: none` previously overrode the
+            // global `:focus-visible` ivory ring (2px solid ivory @ 2px
+            // offset). The input is visually invisible (opacity: 0) but
+            // remains the tab stop, so keyboard users need the canonical
+            // focus ring to render on it. Inline outline removed; the
+            // global rule now applies. `color: transparent` is retained
+            // so the value text doesn't show through the decorative
+            // calendar-icon overlay.
+            style={{
+              appearance: 'none',
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              margin: 0,
+              padding: 0,
+              pointerEvents: 'auto',
+              cursor: isLoading ? 'wait' : 'pointer',
+              opacity: 0,
+              background: 'transparent',
+              border: 'none',
+              outlineColor: 'var(--color-ivory)',
+              font: 'inherit',
+              color: 'transparent',
+            }}
+          />
+        </span>
         <div>
           <p
             style={{

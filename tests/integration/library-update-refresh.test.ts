@@ -15,6 +15,11 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Bug 3 (library overhaul 2026-05-16) — route now imports
+// `@/lib/storage/sign-thumbnail` which itself imports the `server-only`
+// guard module. Stub it for the node test environment.
+vi.mock('server-only', () => ({}));
+
 const refreshSession = vi.fn(async () => ({ error: null }));
 const signOut = vi.fn();
 
@@ -77,6 +82,19 @@ describe('F12 — /api/library/[id]/update refresh reinforcement', () => {
                 }),
               }
             : {
+                // E.CODEX B-H1 — pre-write read for cholesterol preserve-merge.
+                select: () => ({
+                  eq: () => ({
+                    eq: () => ({
+                      is: () => ({
+                        maybeSingle: async () => ({
+                          data: { nutrition: { macros: {} } },
+                          error: null,
+                        }),
+                      }),
+                    }),
+                  }),
+                }),
                 update: () => ({
                   eq: () => ({
                     eq: () => ({

@@ -69,6 +69,25 @@ describe('<WeightQuickAdd />', () => {
     expect(screen.getByTestId('weight-quick-add-submit')).toBeTruthy();
   });
 
+  it('groups the weight and date fields together when inline unit choice is enabled', () => {
+    render(
+      <WeightQuickAdd
+        mode="inline"
+        unitPref="metric"
+        todayUserTz={todayIso}
+        minDateUserTz={minDateIso}
+        allowUnitChoice
+        showDateInput
+      />,
+    );
+
+    const fieldPair = screen.getByTestId('weight-quick-add-field-pair');
+    expect(fieldPair).toContainElement(screen.getByTestId('weight-quick-add-input'));
+    expect(fieldPair).toContainElement(screen.getByTestId('weight-quick-add-date'));
+    expect(screen.getByRole('radio', { name: /^kg$/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^lb$/i })).toBeInTheDocument();
+  });
+
   it('fires authPost with { client_id, date, weight_kg, note }', async () => {
     render(
       <WeightQuickAdd

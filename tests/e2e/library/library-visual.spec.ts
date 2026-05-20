@@ -6,18 +6,17 @@
  * Animations are disabled via `reducedMotion: 'reduce'` + an injected
  * `animation-duration: 0s` CSS override so snapshots are deterministic.
  *
- * Matrix (24 images):
+ * Matrix (20 images):
  *   a. fresh-load              (populated grid, browse mode)
  *   b. empty-state             (no items)
  *   c. filtered-to-zero        (search yields zero matches)
  *   d. selection-mode-2        (2 items selected, BulkActionsBar visible)
  *   e. bulk-delete-dialog-open (3 items selected, BulkDelete dialog visible)
- *   f. merge-dialog-open       (2 items selected, Merge dialog visible)
  *
- * Why 24 and not the 32 in the briefing: "post-delete with undo toast"
- * (state g) is time-sensitive and flakey to snapshot; "focus-ring on card"
- * (state h) is covered by axe-core + keyboard-nav specs semantically. Both
- * are logged as deviations in Planning/.tmp/task-4.1-output.md sub-step 4.
+ * Why 20 and not the 32 in the briefing: "merge-dialog-open" became obsolete
+ * after migration 0020 made active duplicate rows impossible, "post-delete
+ * with undo toast" is time-sensitive and flakey to snapshot, and "focus-ring
+ * on card" is covered by axe-core + keyboard-nav specs semantically.
  *
  * Snapshots are stored next to the spec under -snapshots/. Run with
  * `--update-snapshots` once to generate baselines; subsequent runs compare.
@@ -62,7 +61,7 @@ test.describe('/library · visual regression', () => {
       // --- b. empty-state (BEFORE seeding anything) ---
       await authedPage.goto('/library');
       await disableAnimations(authedPage);
-      await expect(authedPage.getByTestId('library-empty-first-time')).toBeVisible();
+      await expect(authedPage.getByRole('region', { name: 'No library items yet.' })).toBeVisible();
       await expect(authedPage).toHaveScreenshot(`empty-state.${vp.name}.png`, {
         fullPage: true,
         maxDiffPixelRatio: SNAPSHOT_DIFF_THRESHOLD,
@@ -124,18 +123,6 @@ test.describe('/library · visual regression', () => {
         fullPage: true,
         maxDiffPixelRatio: SNAPSHOT_DIFF_THRESHOLD,
       });
-
-      // --- f. merge-dialog-open (while N=2) ---
-      await authedPage.getByTestId('library-merge-button').click();
-      await expect(authedPage.getByTestId('library-merge-dialog')).toBeVisible();
-      await disableAnimations(authedPage);
-      await expect(authedPage).toHaveScreenshot(`merge-dialog-open.${vp.name}.png`, {
-        fullPage: true,
-        maxDiffPixelRatio: SNAPSHOT_DIFF_THRESHOLD,
-      });
-      // Close merge dialog via Escape.
-      await authedPage.keyboard.press('Escape');
-      await expect(authedPage.getByTestId('library-merge-dialog')).toHaveCount(0);
 
       // --- e. bulk-delete-dialog-open (select 3 + open delete dialog) ---
       await authedPage.getByTestId(`library-card-${seeded[2]!.id}`).click();

@@ -13,7 +13,7 @@
  * (`useUndoQueueStore`) is already mounted at the chrome layout layer via
  * `<UndoToastMount />`, so the 5s countdown survives route changes.
  */
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EntryRowActions } from '@/components/dashboard/MealEntryContextTrigger';
@@ -216,5 +216,42 @@ describe('<EntryRowActions /> — F-UI-3.6-C-1 delay-on-TTL delete', () => {
 
     expect(authFetchSpy).toHaveBeenCalledTimes(1);
     expect(routerRefreshMock).not.toHaveBeenCalled();
+  });
+
+  it('closes an open row action menu when the user clicks outside it', () => {
+    const entry = makeEntry();
+    render(
+      <div>
+        <EntryRowActions entry={entry} />
+        <button type="button">Outside target</button>
+      </div>,
+    );
+
+    fireEvent.click(screen.getByTestId(`entry-menu-${entry.id}`));
+    expect(screen.getByTestId(`entry-menu-popover-${entry.id}`)).toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: /outside target/i }));
+
+    expect(screen.queryByTestId(`entry-menu-popover-${entry.id}`)).toBeNull();
+  });
+
+  it('opening another row action menu closes the previously open menu', () => {
+    const first = makeEntry({ id: 'entry-1' });
+    const second = makeEntry({ id: 'entry-2' });
+    render(
+      <div>
+        <EntryRowActions entry={first} />
+        <EntryRowActions entry={second} />
+      </div>,
+    );
+
+    fireEvent.click(screen.getByTestId('entry-menu-entry-1'));
+    expect(screen.getByTestId('entry-menu-popover-entry-1')).toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByTestId('entry-menu-entry-2'));
+    fireEvent.click(screen.getByTestId('entry-menu-entry-2'));
+
+    expect(screen.queryByTestId('entry-menu-popover-entry-1')).toBeNull();
+    expect(screen.getByTestId('entry-menu-popover-entry-2')).toBeInTheDocument();
   });
 });

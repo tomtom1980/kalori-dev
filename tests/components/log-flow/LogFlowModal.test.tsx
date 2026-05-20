@@ -5,7 +5,9 @@
  *   - role=dialog + aria-modal=true when open
  *   - close button dismisses
  *   - initialOpen opens the modal on mount
- *   - 3 panel containers (type / snap / library) exist once opened
+ *   - 2 panel containers (add-food / snap) exist once opened — the
+ *     Add Food panel hosts the library + AI-parse subviews internally
+ *     (Add Food merge).
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -33,12 +35,14 @@ describe('<LogFlowModal />', () => {
     expect(modal.getAttribute('role')).toBe('dialog');
   });
 
-  it('renders tablist + 3 tab triggers + section kicker once open', () => {
+  it('renders tablist + 2 tab triggers + section kicker once open', () => {
     render(<LogFlowModal initialOpen />);
     expect(screen.getByTestId('log-flow-tablist')).toBeInTheDocument();
-    expect(screen.getByTestId('log-flow-tab-type')).toBeInTheDocument();
+    expect(screen.getByTestId('log-flow-tab-add-food')).toBeInTheDocument();
     expect(screen.getByTestId('log-flow-tab-snap')).toBeInTheDocument();
-    expect(screen.getByTestId('log-flow-tab-library')).toBeInTheDocument();
+    // Legacy per-subview tab testids removed in the Add Food merge.
+    expect(screen.queryByTestId('log-flow-tab-type')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('log-flow-tab-library')).not.toBeInTheDocument();
   });
 
   it('modal has aria-labelledby + aria-describedby wired (compliance §M1)', () => {

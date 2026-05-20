@@ -18,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { recalcTargetIfNeeded } from '@/lib/nutrition/recalc';
 
 const baseProfile = {
-  bio_sex: 'other' as const,
+  bio_sex: 'male' as const,
   age: 30,
   height_cm: 170,
   current_weight_kg: 70,

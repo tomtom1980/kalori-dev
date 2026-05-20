@@ -30,6 +30,7 @@ export function MealsBulletin({ meals, timezone = 'UTC', viewedDay }: MealsBulle
   return (
     <section
       data-testid="meals-bulletin"
+      aria-labelledby="meals-bulletin-heading"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -38,6 +39,7 @@ export function MealsBulletin({ meals, timezone = 'UTC', viewedDay }: MealsBulle
     >
       <header>
         <h2
+          id="meals-bulletin-heading"
           style={{
             fontFamily: 'var(--font-serif)',
             fontSize: 'var(--type-section-md)',

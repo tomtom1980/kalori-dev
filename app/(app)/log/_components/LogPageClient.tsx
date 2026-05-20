@@ -24,7 +24,7 @@
  * by `<NavShell />` owns all modal rendering — and it subscribes to the
  * same `useLogFlowStore.isOpen` that we flip here.
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { t } from '@/lib/i18n/en';
 import type { ParsedItemT } from '@/lib/ai/schemas';
@@ -76,19 +76,36 @@ function libraryItemToParsedItem(item: LibraryItem, initialQuantity: number | nu
       : typeof item.default_portion === 'number' && item.default_portion > 0
         ? item.default_portion
         : 1;
+  const defaultPortion =
+    typeof item.default_portion === 'number' &&
+    Number.isFinite(item.default_portion) &&
+    item.default_portion > 0
+      ? item.default_portion
+      : null;
+  const ratio = defaultPortion ? portion / defaultPortion : 1;
+  const scale = (value: number | undefined): number => {
+    const base = value ?? 0;
+    if (!Number.isFinite(base) || !Number.isFinite(ratio) || ratio <= 0) return 0;
+    return Math.round(base * ratio * 10) / 10;
+  };
   const macros = item.nutrition.macros ?? { protein_g: 0, carbs_g: 0, fat_g: 0 };
   return {
     name: item.display_name,
     portion,
     unit: item.default_unit ?? 'g',
-    kcal: item.nutrition.kcal,
+    kcal: Math.round(item.nutrition.kcal * ratio),
     macros: {
-      protein_g: macros.protein_g,
-      carbs_g: macros.carbs_g,
-      fat_g: macros.fat_g,
-      fiber_g: macros.fiber_g ?? 0,
+      protein_g: scale(macros.protein_g),
+      carbs_g: scale(macros.carbs_g),
+      fat_g: scale(macros.fat_g),
+      fiber_g: scale(macros.fiber_g),
+      // Phase 2C — 5th macro (unit: mg). Default 0 so deep-link re-log
+      // pre-fills the confirmation correctly.
+      cholesterol_mg: scale(macros.cholesterol_mg),
     },
-    micros: item.nutrition.micros ?? {},
+    micros: Object.fromEntries(
+      Object.entries(item.nutrition.micros ?? {}).map(([key, value]) => [key, scale(value)]),
+    ),
     confidence: 1,
   };
 }
@@ -101,6 +118,19 @@ export function LogPageClient({
   deepLinkItem,
   deepLinkError = null,
 }: LogPageClientProps) {
+  // FU-US-STAB-A1-AC2 fix — track whether the modal-open intent has been
+  // fired once on this `/log` mount. `router.refresh()` after a successful
+  // save re-streams the RSC, which produces a new `libraryItems` array
+  // reference each time. Without this guard, the useEffect deps churn
+  // re-fires `state.openModal()` AFTER the ConfirmationScreen's onClose
+  // chain has just set `isOpen=false` — re-mounting the modal at a fresh
+  // Radix Dialog id and trapping the user back inside. The hydration
+  // side-effects (setLibraryItems, setActiveTab, deep-link entry, deep-link
+  // toast, legacy library selection seeding) still re-run because they
+  // need to stay in sync with the latest server props; only the
+  // `openModal()` call is gated to first mount + URL-deep-link transitions.
+  const didOpenForMountRef = useRef(false);
+
   useEffect(() => {
     const state = useLogFlowStore.getState();
 
@@ -130,7 +160,10 @@ export function LogPageClient({
         // row to the source library row (I12 contract).
         libraryItemIds: [deepLinkItem.id],
       });
-      if (!state.isOpen) state.openModal();
+      if (!state.isOpen && !didOpenForMountRef.current) {
+        state.openModal();
+        didOpenForMountRef.current = true;
+      }
       return;
     }
 
@@ -169,17 +202,25 @@ export function LogPageClient({
     ) {
       const existing = state.librarySelection.some((s) => s.itemId === initialItemId);
       if (!existing) {
+        const hydratedItem = libraryItems?.find((item) => item.id === initialItemId);
         const quantity =
           typeof initialQuantity === 'number' &&
           Number.isFinite(initialQuantity) &&
           initialQuantity > 0
             ? initialQuantity
-            : 1;
+            : hydratedItem?.defaultPortion !== undefined &&
+                Number.isFinite(hydratedItem.defaultPortion) &&
+                hydratedItem.defaultPortion > 0
+              ? hydratedItem.defaultPortion
+              : 1;
         state.setLibrarySelection([...state.librarySelection, { itemId: initialItemId, quantity }]);
       }
     }
 
-    if (!state.isOpen) state.openModal();
+    if (!state.isOpen && !didOpenForMountRef.current) {
+      state.openModal();
+      didOpenForMountRef.current = true;
+    }
   }, [initialTab, initialItemId, initialQuantity, libraryItems, deepLinkItem, deepLinkError]);
 
   // No modal rendering here — NavShell's <LogFlowModalMount /> owns that.

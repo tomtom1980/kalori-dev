@@ -156,4 +156,26 @@ describe('fetchMicros7d', () => {
     // DST-corrected endUtc computed above.
     expect(gte).toHaveBeenCalledWith('logged_at', '2026-03-02T07:00:00.000Z');
   });
+
+  it('fetchAlcoholLogs queries asOf minus 72 hours through asOf independent of viewed day', async () => {
+    const order = vi.fn(async () => ({ data: [], error: null }));
+    const lte = vi.fn(() => ({ order }));
+    const gte = vi.fn(() => ({ lte }));
+    const eq = vi.fn(() => ({ gte }));
+    const select = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ select }));
+
+    vi.doMock('@/lib/supabase/server', () => ({
+      getServerSupabase: async () => ({ from }),
+    }));
+
+    const { fetchAlcoholLogs } = await import('@/lib/dashboard/fetch');
+    await fetchAlcoholLogs('u-1', '2026-05-19T12:00:00.000Z');
+
+    expect(from).toHaveBeenCalledWith('alcohol_logs');
+    expect(eq).toHaveBeenCalledWith('user_id', 'u-1');
+    expect(gte).toHaveBeenCalledWith('consumed_at', '2026-05-16T12:00:00.000Z');
+    expect(lte).toHaveBeenCalledWith('consumed_at', '2026-05-19T12:00:00.000Z');
+    expect(order).toHaveBeenCalledWith('consumed_at', { ascending: true });
+  });
 });

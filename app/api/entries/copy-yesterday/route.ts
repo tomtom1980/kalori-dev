@@ -17,11 +17,16 @@
  *   - Empty source result → 400 (either ids belong to other user via RLS, or
  *     they simply don't exist).
  */
+import * as Sentry from '@sentry/nextjs';
 import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { rejectIfDeletingOrUnavailable } from '@/lib/account/deleting-fence';
+import {
+  aggregateAlcoholFromItems,
+  type AlcoholAggregatableItem,
+} from '@/lib/alcohol/aggregate-entry-logs';
 import { requireProfileOrJson401 } from '@/lib/auth/orphan-profile-fence';
 import { revalidateAllProgressRanges } from '@/lib/cache/revalidate-progress';
 import { TAGS } from '@/lib/cache/tags';
@@ -139,6 +144,91 @@ export async function POST(request: Request): Promise<Response> {
     error: { code?: string; message?: string } | null;
   };
 
+  /**
+   * Codex Round 2 C2-r2 (bugfix-tomi 2026-05-19-bac-improvements) — write
+   * `alcohol_logs` rows for any copied entries whose items[] carry alcohol
+   * metadata. Before this fix, the route preserved `is_alcoholic`/`volume_ml`/
+   * `abv_percent` on the food_entries.items JSONB but never touched
+   * `alcohol_logs` — copied beers/wines appeared in history but contributed
+   * 0 to BAC (which reads from alcohol_logs only).
+   *
+   * Contract:
+   *   - `consumed_at` is the NEW (copied) entry's logged_at, NOT the source
+   *     row's. Resolution from plan.md "open question" — copying to today is
+   *     a fresh drinking event; BAC must not resurrect yesterday's timeline.
+   *   - Idempotency: a SELECT-then-insert pattern keyed on entry_id makes a
+   *     re-copy under the same new_client_id a no-op (the alcohol_logs row
+   *     already exists for that entry_id).
+   *   - Non-drink copies and non-alcoholic items short-circuit to no-op via
+   *     the aggregator helper (`aggregateAlcoholFromItems`).
+   *   - alcohol_logs writes are SOFT — Sentry-captured failures do not roll
+   *     back the (already-committed) food_entries copies. Rationale: the
+   *     entry copy is authoritative, the BAC ledger is enrichment.
+   */
+  async function propagateAlcoholLogsForCopiedEntries(
+    entries: ReadonlyArray<Record<string, unknown>>,
+  ): Promise<void> {
+    for (const entry of entries) {
+      const entryId = typeof entry.id === 'string' ? entry.id : null;
+      if (!entryId) continue;
+      const mealCategory = typeof entry.meal_category === 'string' ? entry.meal_category : '';
+      if (mealCategory !== 'drink') continue;
+      const rawItems = entry.items;
+      if (!Array.isArray(rawItems)) continue;
+      const items = rawItems.filter(
+        (it): it is AlcoholAggregatableItem => typeof it === 'object' && it !== null,
+      );
+      const aggregate = aggregateAlcoholFromItems({ items, mealCategory });
+      if (!aggregate) continue;
+
+      // Idempotency — if this copied entry already has an alcohol_logs row
+      // (replay-of-replay or a prior successful copy under the same
+      // new_client_id), skip the insert.
+      const { data: existing, error: readErr } = (await supabase
+        .from('alcohol_logs')
+        .select('id')
+        .eq('entry_id', entryId)
+        .maybeSingle()) as {
+        data: { id: string } | null;
+        error: { code?: string; message?: string } | null;
+      };
+      if (readErr) {
+        Sentry.captureException(readErr, {
+          tags: {
+            component: 'entries-copy-yesterday',
+            route: 'copy-yesterday',
+            phase: 'alcohol_read',
+          },
+          extra: { user_id: userId, entry_id: entryId, pg_code: readErr.code },
+        });
+        continue; // soft-fail: skip this entry's alcohol log, keep going
+      }
+      if (existing) continue;
+
+      // consumed_at = the NEW entry's logged_at (today, set above via `now`).
+      const newConsumedAt = typeof entry.logged_at === 'string' ? entry.logged_at : now;
+      const { error: insErr } = (await supabase.from('alcohol_logs').insert({
+        user_id: userId,
+        entry_id: entryId,
+        volume_ml: aggregate.volume_ml,
+        abv_percent: aggregate.abv_percent,
+        alcohol_grams: aggregate.alcohol_grams,
+        consumed_at: newConsumedAt,
+      })) as { error: { code?: string; message?: string } | null };
+      if (insErr) {
+        Sentry.captureException(insErr, {
+          tags: {
+            component: 'entries-copy-yesterday',
+            route: 'copy-yesterday',
+            phase: 'alcohol_insert',
+          },
+          extra: { user_id: userId, entry_id: entryId, pg_code: insErr.code },
+        });
+        // soft-fail: continue to remaining copies
+      }
+    }
+  }
+
   if (insertErr) {
     // 23505 race — re-SELECT previously-committed rows by their client_ids.
     if (insertErr.code === '23505') {
@@ -150,6 +240,10 @@ export async function POST(request: Request): Promise<Response> {
         data: Record<string, unknown>[] | null;
       };
       if (replayed && replayed.length === ids.length) {
+        // C2-r2 — replay path still walks alcohol propagation so a copy that
+        // failed mid-way (entries committed, alcohol_logs missed) can repair
+        // on retry. The idempotency check inside the helper makes this safe.
+        await propagateAlcoholLogsForCopiedEntries(replayed);
         revalidateTag(TAGS.userEntries(userId, targetDay), 'max');
         // Task 4.5 R2 S3: full canonical 6-tag invalidation via shared helper.
         revalidateAllProgressRanges(userId);
@@ -159,6 +253,7 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ error: 'db_error' }, { status: 500 });
   }
 
+  await propagateAlcoholLogsForCopiedEntries(inserted ?? []);
   revalidateTag(TAGS.userEntries(userId, targetDay), 'max');
   // Task 4.5 R2 S3: full canonical 6-tag invalidation via shared helper.
   revalidateAllProgressRanges(userId);

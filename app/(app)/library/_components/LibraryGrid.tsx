@@ -31,13 +31,35 @@ export interface LibraryGridProps {
   onToggleSelect: (id: string) => void;
   /** Optional: a fallback to render when items.length === 0 (filtered-to-zero). */
   renderEmpty?: () => React.ReactNode;
+  /**
+   * Bug 2 (library overhaul 2026-05-16) — id of the card whose
+   * `router.push(/library/[id])` transition is currently pending. Used to
+   * paint a click-feedback cue on the originating card while the
+   * route-level `loading.tsx` skeleton boots.
+   */
+  pendingId?: string | null;
+  /**
+   * Bug 3 (library overhaul 2026-05-16) — per-card kebab menu Edit
+   * handler. When provided, each card mounts a quick-action menu
+   * trigger in its thumbnail's top-right (browse mode only).
+   */
+  onCardEdit?: (id: string) => void;
+  /**
+   * Bug 3 (library overhaul 2026-05-16) — per-card kebab menu Delete
+   * handler. Paired with `onCardEdit`.
+   */
+  onCardDelete?: (id: string) => void;
+  /** Kebab menu Quick log handler — opens a meal picker, then logs the
+   * item via /api/library/[id]/log-now. Same gating as `onCardEdit`. */
+  onCardQuickLog?: (id: string) => void;
+  /** Kebab menu Create recipe handler, shown only for eligible items. */
+  onCardCreateRecipe?: (id: string) => void;
 }
 
 function getColumnCount(): number {
   if (typeof window === 'undefined') return 4;
   const w = window.innerWidth;
   if (w >= 1280) return 4;
-  if (w >= 768) return 3;
   return 2;
 }
 
@@ -48,6 +70,11 @@ export function LibraryGrid({
   onActivate,
   onToggleSelect,
   renderEmpty,
+  pendingId = null,
+  onCardEdit,
+  onCardDelete,
+  onCardQuickLog,
+  onCardCreateRecipe,
 }: LibraryGridProps) {
   const listRef = useRef<HTMLUListElement>(null);
   const [activeId, setActiveId] = useState<string | null>(items[0]?.id ?? null);
@@ -60,8 +87,11 @@ export function LibraryGrid({
     setActiveId(id);
     // Defer focus to the next tick so the roving tabindex attribute update
     // is committed before we try to focus the node.
+    // Bug 3 — card root is now `<div role="button">` (not native button)
+    // to host the nested kebab menu trigger. `HTMLElement.focus()`
+    // still works on a div with `tabIndex>=0`.
     queueMicrotask(() => {
-      const node = listRef.current?.querySelector<HTMLButtonElement>(
+      const node = listRef.current?.querySelector<HTMLElement>(
         `[data-testid="library-card-${id}"]`,
       );
       node?.focus();
@@ -139,6 +169,11 @@ export function LibraryGrid({
               onActivate={onActivate}
               onToggleSelect={onToggleSelect}
               onFocus={handleFocus}
+              pending={pendingId === item.id}
+              onCardEdit={onCardEdit}
+              onCardDelete={onCardDelete}
+              onCardQuickLog={onCardQuickLog}
+              onCardCreateRecipe={onCardCreateRecipe}
             />
           </li>
         );

@@ -16,6 +16,7 @@
  * readers into `'use cache'` + `cacheTag([TAGS.userProgress(...)]).
  */
 import { headers } from 'next/headers';
+import dynamic from 'next/dynamic';
 import { redirect } from 'next/navigation';
 import { randomUUID } from 'node:crypto';
 import { Suspense } from 'react';
@@ -24,18 +25,31 @@ import { CalorieAdherenceBar } from '@/components/charts/CalorieAdherenceBar';
 import { ChartSkeleton } from '@/components/charts/ChartSkeleton';
 import { LoggingConsistencyCalendar } from '@/components/charts/LoggingConsistencyCalendar';
 import { MacroDistributionStackedArea } from '@/components/charts/MacroDistributionStackedArea';
-import { MicronutrientHeatmap } from '@/components/charts/MicronutrientHeatmap';
 import { TrendSummary } from '@/components/charts/TrendSummary';
 import { WeeklyReviewSkeleton } from '@/components/charts/WeeklyReviewSkeleton';
-import { WeightTrajectoryLine } from '@/components/charts/WeightTrajectoryLine';
-import { fetchProgressSnapshot, type ProgressRange } from '@/lib/aggregations/progress-fetch';
+import {
+  computeWindow,
+  parseProgressRangeParams,
+  type ProgressCustomRange,
+  type ProgressRange,
+} from '@/lib/aggregations/progress';
+import { fetchProgressSnapshot } from '@/lib/aggregations/progress-fetch';
 import { requireProfileOrRedirect } from '@/lib/auth/orphan-profile-fence';
 import { t } from '@/lib/i18n/en';
 import { getServerSupabase } from '@/lib/supabase/server';
 
 import { ProgressRangeToolbar } from './_components/ProgressRangeToolbar';
-import { ProgressWeightQuickAdd } from './_components/weight-quick-add';
 import { WeeklyReviewIsland } from './_components/weekly-review-island';
+
+const MicronutrientHeatmap = dynamic(
+  () => import('@/components/charts/MicronutrientHeatmap').then((m) => m.MicronutrientHeatmap),
+  { ssr: true, loading: () => <ChartSkeleton kind="heatmap" fullWidth /> },
+);
+
+const ProgressWeightTrajectoryPanel = dynamic(
+  () => import('./_components/weight-quick-add').then((m) => m.ProgressWeightTrajectoryPanel),
+  { ssr: true, loading: () => <ChartSkeleton kind="trend-summary" /> },
+);
 
 // NOTE: `force-dynamic` REMOVED in Task 4.3a R1 (2026-04-24) per perf-spec
 // §1.4 anti-pattern list. The route is inherently dynamic because
@@ -46,12 +60,7 @@ import { WeeklyReviewIsland } from './_components/weekly-review-island';
 // semantics today.
 
 interface ProgressPageProps {
-  searchParams: Promise<{ range?: string }>;
-}
-
-function normalizeRange(raw: string | undefined): ProgressRange {
-  if (raw === 'D' || raw === 'W' || raw === 'M') return raw;
-  return 'W';
+  searchParams: Promise<{ range?: string; start?: string; end?: string }>;
 }
 
 export default async function ProgressPage(props: ProgressPageProps) {
@@ -63,22 +72,19 @@ export default async function ProgressPage(props: ProgressPageProps) {
     loginRedirectTo: '/progress',
     // Task B.4 — `unit_pref` widened in for the inline weight quick-add
     // (`<ProgressWeightQuickAdd />`). Trivially-small column; same query.
-    selectExtras: 'calorie_target, bmr, tdee, timezone, unit_pref',
+    selectExtras: 'calorie_target, bmr, tdee, timezone, unit_pref, ai_summary_opt_in',
   });
   if (!profileRow.onboarding_completed_at) {
     redirect('/onboarding');
   }
 
-  const { range: rawRange } = await props.searchParams;
-  const range = normalizeRange(rawRange);
+  const search = await props.searchParams;
   const tz: string = (profileRow.timezone as string) ?? 'UTC';
   const nowIso = new Date().toISOString();
   // Task 4.3b — weight trajectory window start (30 days back). Derive from
   // `nowIso` instead of `Date.now()` for React Compiler purity (single
   // impurity source, resolved earlier, then reused).
   const nowMs = Date.parse(nowIso);
-  const weightSinceDate = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-
   // Task B.4 — inline weight quick-add user-timezone date props. PRD §3.5
   // backfill window is 30 days; minDate = today - 30d. Reuse the same
   // Intl.DateTimeFormat pattern used by the trajectory window so test
@@ -86,12 +92,25 @@ export default async function ProgressPage(props: ProgressPageProps) {
   const tzDateFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: tz });
   const todayUserTz = tzDateFormatter.format(new Date(nowMs));
   const minDateUserTz = tzDateFormatter.format(new Date(nowMs - 30 * 24 * 60 * 60 * 1000));
+  const rangeParams: { range?: string; start?: string; end?: string } = {};
+  if (search.range !== undefined) rangeParams.range = search.range;
+  if (search.start !== undefined) rangeParams.start = search.start;
+  if (search.end !== undefined) rangeParams.end = search.end;
+  const parsedRange = parseProgressRangeParams(rangeParams, todayUserTz);
+  if (parsedRange.needsRedirect) {
+    redirect(canonicalProgressHref(parsedRange.range));
+  }
+  const range = parsedRange.range;
+  const progressWindow = computeWindow(range, nowIso, tz);
+  const weightSinceDate = progressWindow.userTzStartDay;
   const unitPref: 'metric' | 'imperial' =
     (profileRow.unit_pref as 'metric' | 'imperial') ?? 'metric';
 
   // Profiles do not (yet) carry explicit macro targets; derive from
   // calorie_target via the 25/45/30 split (same defaults as the dashboard
   // macro bars per `lib/dashboard/aggregate.ts`).
+  // Phase 2D — cholesterol is explicit (USDA DV 300 mg/day). Pass it through
+  // for readability; the aggregator's default fallback is the same constant.
   const calorieTarget = Number(profileRow.calorie_target ?? 2000);
   const profile = {
     calorie_target: calorieTarget,
@@ -99,6 +118,7 @@ export default async function ProgressPage(props: ProgressPageProps) {
     carbs_target_g: Math.round((calorieTarget * 0.45) / 4),
     fat_target_g: Math.round((calorieTarget * 0.3) / 9),
     fiber_target_g: 30,
+    cholesterol_target_mg: 300,
   };
 
   // client_id for the weekly-review route handler — deterministic per
@@ -131,7 +151,17 @@ export default async function ProgressPage(props: ProgressPageProps) {
     >
       <Masthead />
 
-      <ProgressRangeToolbar active={range} windowLabel={computeWindowLabel(range, nowIso)} />
+      <ProgressRangeToolbar
+        active={rangeMode(range)}
+        today={todayUserTz}
+        customStart={typeof range === 'object' ? range.startOn : undefined}
+        customEnd={typeof range === 'object' ? range.endOn : undefined}
+        windowLabel={computeProgressWindowLabel(
+          range,
+          progressWindow.userTzStartDay,
+          progressWindow.userTzEndDay,
+        )}
+      />
 
       <section
         aria-label={t.progress.footer.chartsSectionLabel}
@@ -232,16 +262,15 @@ export default async function ProgressPage(props: ProgressPageProps) {
               populates after the first successful save. Hoisting the
               latest weight-log row to the parent is parked as
               F-B4-INITIAL-WEIGHT-HOIST (post-MVP). */}
-          <div style={{ marginBottom: 'var(--spacing-6)' }}>
-            <ProgressWeightQuickAdd
+          <Suspense fallback={<ChartSkeleton kind="trend-summary" />}>
+            <WeightTrajectorySection
+              userId={user.id}
+              sinceDate={weightSinceDate}
+              chartRange={weightTrajectoryRange(range)}
               unitPref={unitPref}
               todayUserTz={todayUserTz}
               minDateUserTz={minDateUserTz}
-              initialWeightKg={null}
             />
-          </div>
-          <Suspense fallback={<ChartSkeleton kind="trend-summary" />}>
-            <WeightTrajectorySection userId={user.id} sinceDate={weightSinceDate} />
           </Suspense>
         </div>
 
@@ -250,7 +279,7 @@ export default async function ProgressPage(props: ProgressPageProps) {
         <SectionHeader
           kicker={t.progress.sections.fromEditor.kicker}
           title={t.progress.sections.fromEditor.title}
-          subtitle={t.progress.sections.fromEditor.subtitle}
+          subtitle={computeProgressEditorSubtitle(range)}
         />
         <Suspense fallback={<WeeklyReviewSkeleton />}>
           <WeeklyReviewIsland
@@ -260,6 +289,9 @@ export default async function ProgressPage(props: ProgressPageProps) {
             nowIso={nowIso}
             requestOrigin={requestOrigin}
             cookieHeader={cookieHeader}
+            range={range}
+            profile={profile}
+            aiSummaryOptIn={profileRow.ai_summary_opt_in === true}
           />
         </Suspense>
       </section>
@@ -279,6 +311,7 @@ interface SectionProps {
     carbs_target_g: number;
     fat_target_g: number;
     fiber_target_g: number;
+    cholesterol_target_mg: number;
   };
   range: ProgressRange;
   tz: string;
@@ -313,9 +346,17 @@ async function LoggingConsistencySection({ userId, profile, range, tz, nowIso }:
 async function WeightTrajectorySection({
   userId,
   sinceDate,
+  chartRange,
+  unitPref,
+  todayUserTz,
+  minDateUserTz,
 }: {
   userId: string;
   sinceDate: string;
+  chartRange: '7d' | '30d' | 'custom';
+  unitPref: 'metric' | 'imperial';
+  todayUserTz: string;
+  minDateUserTz: string;
 }) {
   const supabase = await getServerSupabase();
   const [{ data: entries }, { data: profileRow }] = await Promise.all([
@@ -335,7 +376,17 @@ async function WeightTrajectorySection({
     profileRow?.goal_weight_kg === null || profileRow?.goal_weight_kg === undefined
       ? null
       : Number(profileRow.goal_weight_kg);
-  return <WeightTrajectoryLine entries={normalized} goalWeightKg={goalWeightKg} range="30d" />;
+  return (
+    <ProgressWeightTrajectoryPanel
+      entries={normalized}
+      goalWeightKg={goalWeightKg}
+      chartRange={chartRange}
+      unitPref={unitPref}
+      todayUserTz={todayUserTz}
+      minDateUserTz={minDateUserTz}
+      initialWeightKg={null}
+    />
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -468,9 +519,47 @@ function SectionRule() {
   );
 }
 
+function computeProgressWindowLabel(range: ProgressRange, start: string, end: string): string {
+  if (typeof range === 'object') return `CUSTOM RANGE · ${range.startOn} - ${range.endOn}`;
+  if (range === 'last_30' || range === 'M') return `LAST 30 DAYS · ${start} - ${end}`;
+  if (range === 'D') return `TODAY · ${start} - ${end}`;
+  return `LAST 7 DAYS · ${start} - ${end}`;
+}
+
+function computeProgressEditorSubtitle(range: ProgressRange): string {
+  if (range === 'last_30' || range === 'M') return 'a note on the 30-day record.';
+  if (typeof range === 'object') return 'a note on the selected record.';
+  return t.progress.sections.fromEditor.subtitle;
+}
+
+function rangeMode(range: ProgressRange): 'last_7' | 'last_30' | 'custom' {
+  if (typeof range === 'object') return 'custom';
+  if (range === 'last_30' || range === 'M') return 'last_30';
+  return 'last_7';
+}
+
+function canonicalProgressHref(range: 'last_7' | 'last_30' | ProgressCustomRange): string {
+  if (typeof range === 'object') {
+    return `/progress?range=custom&start=${range.startOn}&end=${range.endOn}`;
+  }
+  return `/progress?range=${range}`;
+}
+
+function weightTrajectoryRange(range: ProgressRange): '7d' | '30d' | 'custom' {
+  if (typeof range === 'object') return 'custom';
+  if (range === 'last_30' || range === 'M') return '30d';
+  return '7d';
+}
+
 function computeWindowLabel(range: ProgressRange, nowIso: string): string {
   const end = nowIso.slice(0, 10);
   if (range === 'D') return `WINDOW · TODAY · ROLLING 24 H.`;
   if (range === 'W') return `WINDOW · ROLLING 7 D. ENDING ${end}`;
   return `WINDOW · ROLLING 30 D. ENDING ${end}`;
+}
+
+function computeEditorSubtitle(range: ProgressRange): string {
+  if (range === 'D') return 'a note on today’s record.';
+  if (range === 'M') return 'a note on the 30-day record.';
+  return t.progress.sections.fromEditor.subtitle;
 }

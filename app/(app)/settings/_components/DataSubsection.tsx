@@ -16,6 +16,7 @@ export interface DataSubsectionProps {
 export function DataSubsection({ counts, userIdSlug }: DataSubsectionProps): React.ReactElement {
   return (
     <section
+      id="data-export"
       data-testid="settings-data-section"
       style={{
         marginTop: 'var(--spacing-8)',

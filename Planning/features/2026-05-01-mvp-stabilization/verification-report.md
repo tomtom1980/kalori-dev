@@ -192,6 +192,7 @@ The canonical 10-column schema, sorted by F-ID then AC#. Rows for F2/F3/F11 are 
 - **Suggested Fix:** Add a `Confirmation.TimeEditor` compound child (native `<input type="datetime-local">` or shadcn-style picker) bound to a `loggedAt` reducer field initialized to `new Date()`. Clamp client-side to `[now - 30d, now + 5min]`. Add Zod refinement on server: `logged_at >= now - 30d` else 400. Integration test: backfill within window allowed; outside rejected.
 
 ### F-VERIFY-204 — Library grid → detail page navigation is a no-op
+- **Status:** ✅ CLOSED 2026-05-14 by Task C.6 (commit `ab36e87`). `LibraryClient.tsx:247-252` `onActivate` now calls `router.push(\`/library/${item.id}\`)`; keyboard parity (AC2) verified via integration tests (`tests/integration/library-grid-navigation.test.tsx`); E2E coverage in `tests/e2e/web/user-stories/US-STAB-C6.spec.ts`. R1 firewall preserved.
 - **Severity:** P1
 - **Area:** UI / library
 - **Recommended Phase:** B

@@ -21,7 +21,14 @@ import { createHash } from 'node:crypto';
 // eslint-disable-next-line kalori/no-admin-in-app
 import { getAdminSupabase } from '@/lib/supabase/admin';
 
-export type CacheCallType = 'text-parse' | 'vision' | 'weekly-review';
+export type CacheCallType =
+  | 'text-parse'
+  | 'vision'
+  | 'weekly-review'
+  | 'nutrition-summary'
+  | 'library-recipe';
+
+export const AI_PROMPT_CONTRACT_VERSION = 'v3_recipe_eligibility';
 
 export interface CacheKeyInput {
   readonly callType: CacheCallType;
@@ -32,6 +39,12 @@ export interface CacheKeyInput {
 export interface CacheLookupResult<T> {
   readonly hit: boolean;
   readonly payload: T | null;
+}
+
+export interface LatestSuccessfulInput {
+  readonly callType: CacheCallType;
+  readonly userId: string;
+  readonly requestContext?: Record<string, unknown>;
 }
 
 export interface CacheWriteInput<T> {
@@ -45,7 +58,8 @@ export interface CacheWriteInput<T> {
 const DEFAULT_TTL_DAYS = 30;
 
 /**
- * Deterministic SHA-256 over `{callType}:{userId}:{normalizedInput}`. The
+ * Deterministic SHA-256 over
+ * `{callType}:{userId}:{AI_PROMPT_CONTRACT_VERSION}:{normalizedInput}`. The
  * separators prevent collisions between e.g. `('text-parse','a','b')` and
  * `('text','parsea','b')` since `:` is explicitly disallowed inside userId
  * by Supabase UUID shape.
@@ -58,7 +72,7 @@ export function computeCacheKey(input: CacheKeyInput): string {
   if (!input.userId || input.userId.trim().length === 0) {
     throw new Error('computeCacheKey: userId is required (F8 defence-in-depth)');
   }
-  const material = `${input.callType}:${input.userId}:${input.normalizedInput}`;
+  const material = `${input.callType}:${input.userId}:${AI_PROMPT_CONTRACT_VERSION}:${input.normalizedInput}`;
   return createHash('sha256').update(material).digest('hex');
 }
 
@@ -110,6 +124,36 @@ export async function lookup<T>(input: CacheKeyInput): Promise<CacheLookupResult
   }
 
   return { hit: true, payload: row.parsed_payload };
+}
+
+/**
+ * Fetch the newest non-expired parsed payload for this user + call type.
+ * This is intentionally broader than `lookup`: when the provider or exact
+ * cache path is unavailable, the route can still show the last successful
+ * summary from ai_response_cache instead of surfacing a raw failure.
+ */
+export async function lookupLatestSuccessful<T>(input: LatestSuccessfulInput): Promise<T | null> {
+  const admin = getAdminSupabase();
+  let query = admin
+    .from('ai_response_cache')
+    .select('parsed_payload, expires_at, user_id')
+    .eq('user_id', input.userId)
+    .eq('call_type', input.callType)
+    .gt('expires_at', new Date().toISOString());
+
+  if (input.requestContext) {
+    query = query.contains('parsed_payload', { request_context: input.requestContext });
+  }
+
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  const row = data as { parsed_payload?: T; expires_at?: string; user_id?: string };
+  if (row.user_id !== undefined && row.user_id !== input.userId) return null;
+  return row.parsed_payload ?? null;
 }
 
 /**

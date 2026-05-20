@@ -84,6 +84,50 @@ describe('<WeeklyReviewCore />', () => {
     expect(screen.getByText(/No days were logged in the past seven/)).toBeInTheDocument();
   });
 
+  it('period note for D renders today copy without the weekly drop cap', () => {
+    render(
+      <WeeklyReviewCore
+        variant="full"
+        status="fresh"
+        insights={{ body_markdown: 'Today shows 2 meals and 1,450 kcal.' }}
+        periodRange="D"
+      />,
+    );
+
+    expect(screen.getByText(/DAILY NOTE/)).toBeInTheDocument();
+    expect(screen.getByText(/Today shows 2 meals/)).toBeInTheDocument();
+    expect(screen.queryByTestId('weekly-review-drop-cap')).not.toBeInTheDocument();
+  });
+
+  it('sparse period note for M names the 30-day window instead of the week', () => {
+    render(
+      <WeeklyReviewCore
+        variant="full"
+        status="sparse-data"
+        insights={{ sparse_data: true, logged_days: [] }}
+        periodRange="M"
+      />,
+    );
+
+    expect(screen.getByText(/Too little logged in this 30-day window/)).toBeInTheDocument();
+    expect(screen.getByText(/No logs recorded in this 30-day window/)).toBeInTheDocument();
+    expect(screen.queryByText(/past seven/)).not.toBeInTheDocument();
+  });
+
+  it('custom period note names the selected range instead of the 30-day window', () => {
+    render(
+      <WeeklyReviewCore
+        variant="full"
+        status="fresh"
+        insights={{ body_markdown: 'The selected range has enough context.' }}
+        periodRange="custom"
+      />,
+    );
+
+    expect(screen.getByText(/SELECTED RANGE NOTE/)).toBeInTheDocument();
+    expect(screen.queryByText(/30-DAY NOTE/)).not.toBeInTheDocument();
+  });
+
   it('error status renders role=alert', () => {
     render(
       <WeeklyReviewCore variant="full" status="error" insights={{}} weekStartOn="2026-04-21" />,

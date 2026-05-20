@@ -489,7 +489,36 @@ test.describe('US-STAB-B4 — Progress weight quick-add + RSC refresh', () => {
     ).toBeVisible({ timeout: 5_000 });
 
     expect(reloadCount).toBe(0);
-    expect(navigationEvents.length).toBe(navigationsBeforeSubmit);
+    // FINAL-US 2026-05-16: assert no document-navigation AWAY from /progress
+    // (which is what AC1 actually says — "no hard reload, no navigation").
+    // The previous `navigationEvents.length === navigationsBeforeSubmit`
+    // over-asserted: in bundled-mode contention, a single extra
+    // `framenavigated` event can fire (likely a prefetch settling) without
+    // changing the document URL — which still honors the AC. Net URL
+    // invariance + reloadCount === 0 is the precise post-submit contract.
+    //
+    // Codex E.CODEX Round 1 (B-M1) — switch the per-event check from a
+    // regex over the full URL string to a parsed `pathname` equality.
+    // The old `/\/progress(?:\?.*)?$/` regex matched URLs whose ENTIRE
+    // string ended in /progress, but a transient navigation such as
+    // `/login?redirect_to=/progress` ALSO ends in /progress and would
+    // satisfy the regex — silently weakening the AC from "no navigation
+    // away" to "event URL string contains /progress at the end". Parse
+    // each event as a URL and assert pathname === '/progress' so any
+    // document leave (login redirect, error route, etc.) trips the AC.
+    await expect(authedPage).toHaveURL(/\/progress(?:\?.*)?$/);
+    expect(
+      navigationEvents.every((url) => {
+        try {
+          return new URL(url).pathname === '/progress';
+        } catch {
+          // Non-URL strings (rare; framenavigated typically yields a full URL)
+          // are treated as failures so we don't silently accept malformed
+          // navigation events.
+          return false;
+        }
+      }),
+    ).toBe(true);
 
     await authedPage.screenshot({
       path: `${SCREENSHOT_DIR}/B4-ac1-02-progress-router-refreshed.png`,

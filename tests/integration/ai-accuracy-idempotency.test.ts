@@ -27,6 +27,8 @@ import {
   type AccuracyFixture,
 } from '../fixtures/ai-accuracy/loader';
 
+const TEST_MICROS = { sodium: 1 };
+
 function mockSupabaseSsr(userId: string) {
   const getUser = vi.fn(async () => ({ data: { user: { id: userId } }, error: null }));
   vi.doMock('@/lib/supabase/server', () => ({
@@ -38,6 +40,10 @@ function mockAdminCacheMiss() {
   const makeMissBuilder = () => {
     const builder = {
       eq: () => builder,
+      in: () => builder,
+      gte: () => builder,
+      lt: async () => ({ count: 0, error: null }),
+      maybeSingle: async () => ({ data: null, error: null }),
       single: async () => ({ data: null, error: { code: 'PGRST116' } }),
     };
     return builder;
@@ -64,7 +70,7 @@ function calibratedGeminiStub(fx: AccuracyFixture) {
       unit: it.unit,
       kcal: it.kcal,
       macros: it.macros,
-      micros: {},
+      micros: TEST_MICROS,
       confidence: 0.82,
     })),
     reasoning: `Calibrated MSW stub for ${fx.name} — test-only; never shipped.`,

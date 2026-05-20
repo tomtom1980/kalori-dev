@@ -344,7 +344,6 @@ export function AccountDeleteFlow({
     <Dialog.Root open={open} onOpenChange={handleOpenChange} modal>
       <Dialog.Portal>
         <Dialog.Overlay
-          className="radix-overlay"
           data-testid="account-delete-overlay"
           style={{
             position: 'fixed',
@@ -354,7 +353,6 @@ export function AccountDeleteFlow({
           }}
         />
         <Dialog.Content
-          className="radix-content"
           data-testid={`account-delete-step${
             state.kind === 'warning'
               ? '1'

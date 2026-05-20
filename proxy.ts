@@ -41,27 +41,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-const PUBLIC_ROUTES: readonly string[] = [
-  '/',
-  '/login',
-  '/auth/callback',
-  '/api/auth',
-  '/sw.js',
-  '/manifest.json',
-  '/offline',
-] as const;
-
-function isPublicRoute(pathname: string): boolean {
-  for (const route of PUBLIC_ROUTES) {
-    if (route === '/') {
-      if (pathname === '/') return true;
-      continue;
-    }
-    if (pathname === route) return true;
-    if (pathname.startsWith(`${route}/`)) return true;
-  }
-  return false;
-}
+import { apiUnauthenticated401 } from '@/lib/auth/api-401-response';
+import { isPublicRoute } from '@/lib/auth/public-routes';
 
 export default async function proxy(request: NextRequest): Promise<NextResponse> {
   const response = NextResponse.next();
@@ -74,8 +55,15 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
   // Env-missing fallback: public routes still render (so /login + / work in
   // a fresh checkout), authed routes bounce to /login. This is strictly a
   // safety rail; in practice Vercel + `.env.local` always supply these vars.
+  //
+  // D.2 (Codex Round 1 critical): for `/api/*` (non-public) we MUST emit
+  // canonical JSON 401 instead of an HTML redirect — fetch/XHR/SW callers
+  // need a parseable `{error:'unauthenticated'}` envelope with
+  // `WWW-Authenticate: Bearer realm="kalori"`, not a `Location: /login`
+  // redirect. Page-route redirects are preserved unchanged.
   if (!url || !key) {
     if (isPublic) return response;
+    if (isApiPath(pathname)) return apiUnauthenticated401();
     return redirectToLogin(request);
   }
 
@@ -147,11 +135,34 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
   // pass through for everyone else.
   if (isPublic) return response;
 
-  // Protected route + no session → redirect to login with redirect_to.
-  if (!hasSession) return redirectToLogin(request);
+  // Protected route + no session.
+  //
+  // D.2 (Codex Round 1 critical): `/api/*` (non-public) MUST receive the
+  // canonical JSON 401 envelope (`{error:'unauthenticated'}` +
+  // `WWW-Authenticate: Bearer realm="kalori"`) BEFORE the request ever
+  // reaches the route handler — otherwise fetch/XHR/SW clients see a
+  // `Location: /login` redirect and follow it to the HTML login page,
+  // breaking the F12 refresh-interceptor contract and the deployed wire
+  // shape that callers depend on. Page routes preserve the existing 302
+  // redirect for browser navigation.
+  if (!hasSession) {
+    if (isApiPath(pathname)) return apiUnauthenticated401();
+    return redirectToLogin(request);
+  }
 
   // Protected route + session → pass through.
   return response;
+}
+
+/**
+ * `/api/*` path predicate. The public-route allowlist
+ * (`lib/auth/public-routes.ts`) already includes `/api/auth` (which matches
+ * `/api/auth` exactly OR any `/api/auth/...` sub-path); the `isPublicRoute`
+ * call earlier in `proxy()` short-circuits BEFORE we reach this predicate,
+ * so any path that reaches it is guaranteed non-public.
+ */
+function isApiPath(pathname: string): boolean {
+  return pathname === '/api' || pathname.startsWith('/api/');
 }
 
 function redirectToLogin(request: NextRequest): NextResponse {

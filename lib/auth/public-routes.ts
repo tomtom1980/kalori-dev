@@ -10,6 +10,7 @@
  *   - `/`                 marketing landing (task 1.1)
  *   - `/login`            magic-link + Google OAuth (task 2.1c)
  *   - `/auth/callback`    OAuth/magic-link handler (task 2.1c)
+ *   - `/auth/confirm`     PKCE-free magic-link verification (cross-browser fix)
  *   - `/api/auth/*`       server-owned auth endpoints (sign-out stub, future)
  *   - `/sw.js`            PWA service worker script (task 5.1.2)
  *   - `/manifest.json`    PWA web app manifest (task 5.1.2)
@@ -33,6 +34,7 @@ export const PUBLIC_ROUTES: readonly string[] = [
   '/',
   '/login',
   '/auth/callback',
+  '/auth/confirm',
   '/api/auth',
   '/sw.js',
   '/manifest.json',

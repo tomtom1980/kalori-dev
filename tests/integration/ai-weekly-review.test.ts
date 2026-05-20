@@ -718,9 +718,19 @@ describe('POST /api/ai/weekly-review — integration', () => {
     const { insert } = setupAdmin();
     setupCacheTagMock();
 
-    // 2026-04-22 is today; next Monday is 2026-04-27. Three Mondays from now
-    // is 2026-05-11 — firmly in the future with no ambiguity from clock skew.
-    const futureMonday = '2026-05-11';
+    // Date-resilient: compute a Monday that is firmly in the future relative
+    // to "now" (today's date can drift past the originally-hardcoded
+    // 2026-05-11 — see the May 15 sweep observation). Pick a Monday roughly
+    // 3 weeks out from the next Monday so DST / weekday wrap can't push it
+    // into the past.
+    const now = new Date();
+    const day = now.getUTCDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    const daysUntilNextMonday = (1 - day + 7) % 7 || 7; // 1..7 forwards
+    const nextMonday = new Date(now);
+    nextMonday.setUTCDate(now.getUTCDate() + daysUntilNextMonday);
+    // Push out three more weeks so the date is unambiguously future.
+    nextMonday.setUTCDate(nextMonday.getUTCDate() + 21);
+    const futureMonday = nextMonday.toISOString().slice(0, 10);
 
     const { POST } = await import('@/app/api/ai/weekly-review/route');
     const res = await POST(

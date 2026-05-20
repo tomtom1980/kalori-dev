@@ -33,8 +33,8 @@ import {
   deleteAccountCascade,
   type CascadePhase,
 } from '@/lib/account/delete';
+import { withAuth } from '@/lib/auth/with-auth';
 import { TAGS } from '@/lib/cache/tags';
-import { getServerSupabase } from '@/lib/supabase/server';
 // eslint-disable-next-line kalori/no-admin-in-app -- I9 account-deletion cascade requires service-role access to auth.users
 import { getAdminSupabase } from '@/lib/supabase/admin';
 
@@ -63,7 +63,13 @@ function causeFromError(err: unknown): string {
   return 'cascade_failed';
 }
 
-export async function POST(request: Request): Promise<Response> {
+export const POST = withAuth(async (request, { user, supabase }): Promise<Response> => {
+  // Task D.2 (US-STAB-D2): auth check moved into `withAuth`. The wrapper
+  // emits the canonical 401 envelope when no session is present, so the
+  // inner handler is guaranteed an authenticated `user` context. The
+  // body-parse 400 branch is preserved verbatim, just relocated AFTER the
+  // auth gate (matches the new order in /api/profile/save).
+
   // 1. Parse + validate body.
   let parsedBody: unknown;
   try {
@@ -80,13 +86,7 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  // 2. Auth guard — RLS-bound user-scoped client.
-  const supabase = await getServerSupabase();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData?.user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-  const userId = userData.user.id;
+  const userId = user.id;
 
   // 3. Run the cascade. Sequencing markers go to Sentry breadcrumbs in
   //    production so I9 ordering can be reconstructed from logs after a
@@ -141,7 +141,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   return NextResponse.json({ ok: true }, { status: 200 });
-}
+});
 
 export function GET(): Response {
   return NextResponse.json({ error: 'method_not_allowed' }, { status: 405 });

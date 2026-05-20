@@ -17,11 +17,20 @@
  *     trap lands with Task 2.1's auth wiring).
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ProfileMenu } from '@/components/nav/profile-menu';
 
-afterEach(() => cleanup());
+const routerPush = vi.fn();
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: routerPush }),
+}));
+
+afterEach(() => {
+  cleanup();
+  routerPush.mockClear();
+});
 
 describe('<ProfileMenu />', () => {
   it('renders the trigger closed by default', () => {
@@ -88,6 +97,30 @@ describe('<ProfileMenu />', () => {
     expect(screen.queryByRole('menu')).toBeNull();
     fireEvent.click(trigger);
     expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
+  it('navigates to Settings and closes the menu', () => {
+    render(<ProfileMenu userInitials="TS" />);
+    const trigger = screen.getByTestId('profile-menu-trigger');
+    fireEvent.click(trigger);
+
+    fireEvent.click(screen.getByRole('menuitem', { name: /settings/i }));
+
+    expect(routerPush).toHaveBeenCalledWith('/settings');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('navigates to the data export section and closes the menu', () => {
+    render(<ProfileMenu userInitials="TS" />);
+    const trigger = screen.getByTestId('profile-menu-trigger');
+    fireEvent.click(trigger);
+
+    fireEvent.click(screen.getByRole('menuitem', { name: /export/i }));
+
+    expect(routerPush).toHaveBeenCalledWith('/settings#data-export');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('structural snapshot', () => {

@@ -20,9 +20,11 @@
  *   - Double-hairline top+bottom per §7.2.6 via `.kalori-why-trigger` CSS.
  */
 import * as Collapsible from '@radix-ui/react-collapsible';
-import { useId } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 import { t } from '@/lib/i18n/en';
+import { formatMicroPercent, sortAndFilterMicrosByRdaPct } from '@/lib/nutrition/display-micros';
+import { DEFAULT_MICROS_LIST } from '@/lib/nutrition/micros-rda';
 
 export interface ReasoningIngredient {
   name: string;
@@ -46,6 +48,15 @@ export interface ReasoningPayload {
 export interface WhyTheseNumbersProps {
   source: 'text' | 'photo' | 'library' | 'manual';
   reasoning: string | ReasoningPayload | null;
+  items?: ({ micros?: Record<string, number> } & Record<string, unknown>)[];
+}
+
+interface WhyMicroRow {
+  key: string;
+  displayName: string;
+  value: number;
+  unit: string;
+  pct: number;
 }
 
 function normalizePayload(input: string | ReasoningPayload): ReasoningPayload {
@@ -59,8 +70,26 @@ function formatConfidence(c: number | undefined): string {
   return `${pct}%`;
 }
 
-export function WhyTheseNumbers({ source, reasoning }: WhyTheseNumbersProps) {
+export function WhyTheseNumbers({ source, reasoning, items = [] }: WhyTheseNumbersProps) {
   const bodyId = useId();
+  const microsId = useId();
+  const [microsOpen, setMicrosOpen] = useState(false);
+  const microRows = useMemo(() => {
+    const rows: WhyMicroRow[] = DEFAULT_MICROS_LIST.map((micro) => {
+      const value = items.reduce((sum, item) => {
+        const raw = item.micros?.[micro.code];
+        return sum + (typeof raw === 'number' && Number.isFinite(raw) ? raw : 0);
+      }, 0);
+      return {
+        key: micro.code,
+        displayName: micro.name,
+        value,
+        unit: micro.unit,
+        pct: formatMicroPercent(value, micro.rda),
+      };
+    });
+    return sortAndFilterMicrosByRdaPct(rows, { includeUnknownRda: false });
+  }, [items]);
   if (source === 'library' || source === 'manual') return null;
   if (reasoning == null) return null;
   if (typeof reasoning === 'string' && reasoning.trim().length === 0) return null;
@@ -73,6 +102,8 @@ export function WhyTheseNumbers({ source, reasoning }: WhyTheseNumbersProps) {
   const payload = normalizePayload(reasoning);
   const hasIngredients = (payload.ingredients?.length ?? 0) > 0;
   const hasSources = (payload.sources?.length ?? 0) > 0;
+  const topMicro = microRows[0];
+  const remainingMicros = microRows.slice(1);
 
   return (
     <Collapsible.Root>
@@ -92,6 +123,46 @@ export function WhyTheseNumbers({ source, reasoning }: WhyTheseNumbersProps) {
         className="kalori-why-content"
       >
         <p className="kalori-why-body">{payload.narrative}</p>
+        {topMicro ? (
+          <div data-testid="why-these-numbers-micros" className="kalori-why-micros">
+            <p data-testid="why-these-numbers-top-micro" className="kalori-why-estimate">
+              <span className="kalori-why-sources-label">
+                {t.log.confirmationWhyTopMicroHeading}
+              </span>{' '}
+              {topMicro.displayName} {topMicro.pct}
+              {t.log.confirmationWhyDvSuffix}
+            </p>
+            {remainingMicros.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  aria-expanded={microsOpen}
+                  aria-controls={microsId}
+                  className="kalori-fd-micros-expand-trigger"
+                  data-testid="why-these-numbers-micros-toggle"
+                  onClick={() => setMicrosOpen((open) => !open)}
+                >
+                  {microsOpen
+                    ? t.log.confirmationWhyHideAllMicros
+                    : t.log.confirmationWhyShowAllMicros.replace(
+                        '{count}',
+                        String(microRows.length),
+                      )}
+                </button>
+                {microsOpen ? (
+                  <ul id={microsId} data-testid="why-these-numbers-micros-list">
+                    {remainingMicros.map((row) => (
+                      <li key={row.key}>
+                        {row.displayName} {row.pct}
+                        {t.log.confirmationWhyDvSuffix}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        ) : null}
         {hasIngredients ? (
           <table data-testid="why-these-numbers-ingredients" className="kalori-why-table">
             <thead>
